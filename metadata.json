@@ -1,0 +1,5 @@
+{
+  "name": "Sistema de Gestão de Obras",
+  "description": "Sistema completo para agendamento, acompanhamento e gestão financeira de obras de construção civil com suporte a exportação e backup.",
+  "requestFramePermissions": []
+}

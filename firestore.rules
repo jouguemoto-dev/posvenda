@@ -1,0 +1,110 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // ===============================================================
+    // Assumed Data Model
+    // ===============================================================
+    //
+    // Collection: obras
+    // Fields:
+    //   - id: number
+    //   - numeroRegistro: string
+    //   - situacao: string (Pendente, Em Andamento, Concluído)
+    //   - prioridade: string (Alta, Média, Baixa)
+    //   - cliente: string
+    //   - vendedor: string
+    //   - local: string
+    //   - dataChegadaPlacas: string
+    //   - dataContrato: string
+    //   - quantidadePlacas: number
+    //   - valorMaoObra: number
+    //   - valorReceber: number
+    //   - dataObra: string
+    //   - dataConclusao: string
+    //   - equipe: string
+    //   - inversor: string
+    //   - formaPagamento: string
+    //   - observacoes: string
+    //   - createdBy: string
+    //   - createdAt: string
+    //
+    // ===============================================================
+
+    // ===============================================================
+    // Helper Functions
+    // ===============================================================
+    
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && 
+        (request.auth.token.email == "jouguemoto@gmail.com" && request.auth.token.email_verified == true);
+    }
+
+    function isValidObra(data) {
+      return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
+             data.situacao in ['Pendente', 'Em Andamento', 'Concluído'] &&
+             data.prioridade in ['Alta', 'Média', 'Baixa'] &&
+             data.numeroRegistro is string &&
+             data.valorReceber is number &&
+             data.quantidadePlacas is number;
+    }
+
+    function isValidServico(data) {
+      return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
+             data.situacao in ['Pendente', 'Em Andamento', 'Concluído'] &&
+             data.prioridade in ['Alta', 'Média', 'Baixa'] &&
+             data.numeroRegistro is string &&
+             data.valor is number;
+    }
+
+    function isValidConfig(data) {
+      return (data.nome is string || data.modelo is string) && 
+             (data.ativo is bool || !('ativo' in data));
+    }
+
+    match /obras/{obraId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidObra(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && isValidObra(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /servicos/{servicoId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidServico(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && isValidServico(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
+      allow delete: if isAdmin();
+    }
+
+    match /vendedores/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidConfig(request.resource.data);
+    }
+
+    match /equipes/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidConfig(request.resource.data);
+    }
+
+    match /inversores/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidConfig(request.resource.data);
+    }
+
+    match /formasPagamento/{id} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin() && isValidConfig(request.resource.data);
+    }
+
+    match /teams/{teamId} {
+      allow read, write: if true;
+    }
+
+    match /schedules/{scheduleId} {
+      allow read, write: if true;
+    }
+  }
+}

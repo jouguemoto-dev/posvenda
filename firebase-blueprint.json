@@ -1,0 +1,120 @@
+{
+  "entities": {
+    "Obra": {
+      "title": "Obra",
+      "description": "Representa um registro de obra no sistema.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number", "description": "Timestamp único do registro." },
+        "numeroRegistro": { "type": "string", "description": "Número sequencial do registro." },
+        "situacao": { "type": "string", "enum": ["Pendente", "Em Andamento", "Concluído"] },
+        "prioridade": { "type": "string", "enum": ["Alta", "Média", "Baixa"] },
+        "cliente": { "type": "string" },
+        "vendedor": { "type": "string" },
+        "local": { "type": "string" },
+        "dataChegadaPlacas": { "type": "string", "format": "date" },
+        "dataContrato": { "type": "string", "format": "date" },
+        "quantidadePlacas": { "type": "number" },
+        "valorMaoObra": { "type": "number" },
+        "valorReceber": { "type": "number" },
+        "dataObra": { "type": "string", "format": "date" },
+        "dataConclusao": { "type": "string", "format": "date" },
+        "equipe": { "type": "string" },
+        "inversor": { "type": "string" },
+        "formaPagamento": { "type": "string" },
+        "observacoes": { "type": "string" },
+        "createdBy": { "type": "string", "description": "UID do usuário que criou o registro." },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["cliente", "situacao", "prioridade"]
+    },
+    "Servico": {
+      "title": "Serviço",
+      "description": "Representa um agendamento de serviço no sistema.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "number" },
+        "numeroRegistro": { "type": "string" },
+        "situacao": { "type": "string", "enum": ["Pendente", "Em Andamento", "Concluído"] },
+        "prioridade": { "type": "string", "enum": ["Alta", "Média", "Baixa"] },
+        "dataAtendimento": { "type": "string", "format": "date" },
+        "cliente": { "type": "string" },
+        "local": { "type": "string" },
+        "vendedor": { "type": "string" },
+        "equipeServico": { "type": "string" },
+        "servico": { "type": "string" },
+        "valor": { "type": "number" },
+        "equipeInstalou": { "type": "string" },
+        "dataServico": { "type": "string", "format": "date" },
+        "observacao": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["cliente", "situacao", "prioridade"]
+    },
+    "Vendedor": {
+      "title": "Vendedor",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "ativo": { "type": "boolean" }
+      },
+      "required": ["nome"]
+    },
+    "Equipe": {
+      "title": "Equipe",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "lider": { "type": "string" },
+        "ativo": { "type": "boolean" }
+      },
+      "required": ["nome"]
+    },
+    "Inversor": {
+      "title": "Inversor",
+      "type": "object",
+      "properties": {
+        "modelo": { "type": "string" },
+        "marca": { "type": "string" },
+        "ativo": { "type": "boolean" }
+      },
+      "required": ["modelo"]
+    },
+    "FormaPagamento": {
+      "title": "Forma de Pagamento",
+      "type": "object",
+      "properties": {
+        "nome": { "type": "string" },
+        "ativo": { "type": "boolean" }
+      },
+      "required": ["nome"]
+    }
+  },
+  "firestore": {
+    "obras": {
+      "schema": { "$ref": "#/entities/Obra" },
+      "description": "Coleção principal de obras."
+    },
+    "servicos": {
+      "schema": { "$ref": "#/entities/Servico" },
+      "description": "Coleção de agendamentos de serviço."
+    },
+    "vendedores": {
+      "schema": { "$ref": "#/entities/Vendedor" },
+      "description": "Cadastro de vendedores."
+    },
+    "equipes": {
+      "schema": { "$ref": "#/entities/Equipe" },
+      "description": "Cadastro de equipes."
+    },
+    "inversores": {
+      "schema": { "$ref": "#/entities/Inversor" },
+      "description": "Cadastro de inversores."
+    },
+    "formasPagamento": {
+      "schema": { "$ref": "#/entities/FormaPagamento" },
+      "description": "Cadastro de formas de pagamento."
+    }
+  }
+}
