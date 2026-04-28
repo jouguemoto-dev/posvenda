@@ -13,7 +13,9 @@ import {
   Users,
   Calendar,
   Check,
-  AlertCircle
+  AlertCircle,
+  ClipboardList,
+  Wrench
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -31,6 +33,7 @@ import {
 } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { Obra, Servico } from '../types';
 
 interface Team {
   id: string;
@@ -71,9 +74,11 @@ const BASE_DATE = new Date('2026-04-06T00:00:00');
 
 interface EscalaViewProps {
   onBack?: () => void;
+  obras?: Obra[];
+  servicos?: Servico[];
 }
 
-export default function EscalaView({ onBack }: EscalaViewProps) {
+export default function EscalaView({ onBack, obras = [], servicos = [] }: EscalaViewProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [weekOffset, setWeekOffset] = useState(0);
   const [schedule, setSchedule] = useState<ScheduleData>({});
@@ -150,6 +155,19 @@ export default function EscalaView({ onBack }: EscalaViewProps) {
     setSchedule(newSchedule);
     handleSaveSchedule(newSchedule);
   };
+
+  const weekDatesFull = useMemo(() => {
+    const start = new Date(BASE_DATE);
+    start.setDate(start.getDate() + (weekOffset * 7));
+    return DAYS.map((_, i) => {
+      const d = new Date(start);
+      d.setDate(d.getDate() + i);
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    });
+  }, [weekOffset]);
 
   const weekDates = useMemo(() => {
     const start = new Date(BASE_DATE);
@@ -340,6 +358,11 @@ export default function EscalaView({ onBack }: EscalaViewProps) {
                     const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
                     const colorObj = COLORS.find(c => c.bg === cellData.color);
                     const isDark = colorObj?.isDark;
+                    const fullDate = weekDatesFull[dayIdx];
+
+                    // Match automatically scheduled items
+                    const matchingObras = obras.filter(o => o.dataObra === fullDate && o.equipe === team.name);
+                    const matchingServicos = servicos.filter(s => s.dataServico === fullDate && s.equipeServico === team.name);
 
                     return (
                       <td 
@@ -353,6 +376,24 @@ export default function EscalaView({ onBack }: EscalaViewProps) {
                           placeholder="..."
                           className={`w-full h-24 p-2 bg-transparent resize-none outline-none font-medium transition-colors ${isDark ? 'text-white placeholder:text-white/30' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
                         />
+
+                        {/* Automatic Items Display */}
+                        {(matchingObras.length > 0 || matchingServicos.length > 0) && (
+                          <div className="mt-2 space-y-1">
+                            {matchingObras.map(o => (
+                              <div key={o.id} className={`text-[10px] font-bold py-1 px-2 rounded-lg flex items-center gap-1.5 shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                                <ClipboardList size={10} />
+                                <span className="truncate">OBRA: {o.cliente}</span>
+                              </div>
+                            ))}
+                            {matchingServicos.map(s => (
+                              <div key={s.id} className={`text-[10px] font-bold py-1 px-2 rounded-lg flex items-center gap-1.5 shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                <Wrench size={10} />
+                                <span className="truncate">SERVIÇO: {s.cliente}</span>
+                              </div>
+                            ))}
+                          </div>
+                        )}
                         
                         {/* Color Palette Menu */}
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">

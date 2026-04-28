@@ -1497,7 +1497,11 @@ export default function App() {
       <main className="flex-1 overflow-y-auto p-2 md:p-4 scrollbar-hide">
         <div className="w-full space-y-4">
           {activeTab === 'escala' ? (
-            <EscalaView onBack={() => setActiveTab('obras')} />
+            <EscalaView 
+              onBack={() => setActiveTab('obras')} 
+              obras={obras} 
+              servicos={servicos} 
+            />
           ) : (
             <>
               {/* Header */}
@@ -1699,17 +1703,17 @@ export default function App() {
                           onChange={() => toggleSelectAll(scheduledObras)}
                         />
                       </th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Reg.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Status</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Prior.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Cliente</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-center">Dias</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Local</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Vend.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Equipe</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Previsão</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Financ.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right">Ações</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Reg.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Status</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Prior.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Cliente</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-center">Dias</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Local</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Vend.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Equipe</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Previsão</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Financ.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-indigo-50">
@@ -1726,7 +1730,7 @@ export default function App() {
                               obra.situacao === 'Pendente' ? 'bg-amber-50/40 border-l-4 border-amber-400' : 'bg-blue-50/40 border-l-4 border-blue-400'
                             } ${selectedIds.has(obra.id) ? 'bg-indigo-100/50' : ''}`}
                           >
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -1734,16 +1738,16 @@ export default function App() {
                                 onChange={() => toggleSelect(obra.id)}
                               />
                             </td>
-                            <td className="px-1.5 py-2">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-white px-1 py-0.5 rounded border border-indigo-100">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-white px-1.5 py-1 rounded border border-indigo-100">
                                 #{obra.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={obra.situacao}
                                 onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-full border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
                                   obra.situacao === 'Pendente' 
                                     ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                     : 'bg-blue-100 text-blue-700 border-blue-200'
@@ -1754,11 +1758,11 @@ export default function App() {
                                 <option value="Concluído">Concluído</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={obra.prioridade}
                                 onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-lg border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
                                   obra.prioridade === 'Alta' 
                                     ? 'bg-red-50 text-red-700 border-red-100' 
                                     : obra.prioridade === 'Média'
@@ -1771,11 +1775,11 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-xs font-bold text-slate-900 truncate max-w-[80px]">{obra.cliente}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-center ${
+                            <td className="px-3 py-3">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
                                 (() => {
                                   const dias = getDaysDiff(obra.dataContrato);
                                   return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -1784,25 +1788,25 @@ export default function App() {
                                 {getDaysDiff(obra.dataContrato)} d
                               </div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] text-slate-600 truncate max-w-[80px]">{obra.local || '---'}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] font-semibold text-slate-600">{obra.vendedor || '---'}</td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-1 py-0.5 rounded border border-slate-200/50 inline-block">
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] whitespace-nowrap">
+                              <div className="font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
                                 {obra.equipe || '---'}
                               </div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="flex items-center gap-1 text-[10px] font-bold text-indigo-700 bg-indigo-100 px-1 py-0.5 rounded-lg border border-indigo-200">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200">
                                 <Calendar size={10} /> {formatDateBR(obra.dataObra)}
                               </div>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[9px] text-slate-500">{obra.quantidadePlacas}p</div>
+                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter">{obra.quantidadePlacas} Placas</div>
                             </td>
-                            <td className="px-1.5 py-2 text-right">
+                            <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -1867,17 +1871,17 @@ export default function App() {
                           onChange={() => toggleSelectAll(unscheduledObras)}
                         />
                       </th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reg.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prior.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vend.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contrato</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reg.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prior.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vend.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contrato</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -1894,7 +1898,7 @@ export default function App() {
                               obra.situacao === 'Pendente' ? 'bg-amber-50/60 border-l-4 border-amber-400' : 'bg-blue-50/60 border-l-4 border-blue-400'
                             } ${selectedIds.has(obra.id) ? 'bg-indigo-50/80' : ''}`}
                           >
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -1902,16 +1906,16 @@ export default function App() {
                                 onChange={() => toggleSelect(obra.id)}
                               />
                             </td>
-                            <td className="px-1.5 py-2">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
                                 #{obra.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={obra.situacao}
                                 onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-full border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
                                   obra.situacao === 'Pendente' 
                                     ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                     : 'bg-blue-100 text-blue-700 border-blue-200'
@@ -1922,11 +1926,11 @@ export default function App() {
                                 <option value="Concluído">Concluído</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={obra.prioridade}
                                 onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-lg border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
                                   obra.prioridade === 'Alta' 
                                     ? 'bg-red-50 text-red-700 border-red-100' 
                                     : obra.prioridade === 'Média'
@@ -1939,11 +1943,11 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-xs font-bold text-slate-900 truncate max-w-[80px]">{obra.cliente}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-center ${
+                            <td className="px-3 py-3">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
                                 (() => {
                                   const dias = getDaysDiff(obra.dataContrato);
                                   return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -1952,23 +1956,23 @@ export default function App() {
                                 {getDaysDiff(obra.dataContrato)} d
                               </div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] text-slate-600 truncate max-w-[80px]">{obra.local || '---'}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] font-semibold text-slate-600">{obra.vendedor || '---'}</td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-1 py-0.5 rounded border border-slate-200/50 inline-block">
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
                                 {obra.equipe || '---'}
                               </div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               {formatDateBR(obra.dataContrato)}
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[9px] text-slate-500">{obra.quantidadePlacas}p</div>
+                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter">{obra.quantidadePlacas} Placas</div>
                             </td>
-                            <td className="px-1.5 py-2 text-right">
+                            <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -2090,7 +2094,7 @@ export default function App() {
                             exit={{ opacity: 0 }}
                             className={`hover:bg-slate-50 transition-colors bg-emerald-50/40 border-l-4 border-emerald-400 ${selectedIds.has(obra.id) ? 'bg-emerald-100/80' : ''}`}
                           >
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-3">
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
@@ -2098,29 +2102,29 @@ export default function App() {
                                 onChange={() => toggleSelect(obra.id)}
                               />
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-3">
                               <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded">
                                 #{obra.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-3 py-2">
-                              <div className="text-xs font-bold text-slate-900 truncate max-w-[100px]">{obra.cliente}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
                             </td>
-                            <td className="px-3 py-2 text-[10px] text-slate-500 font-medium">
+                            <td className="px-3 py-3 text-[10px] text-slate-500 font-medium whitespace-nowrap">
                               {getDaysDiff(obra.dataContrato)} d
                             </td>
-                            <td className="px-3 py-2">
-                              <div className="text-[10px] text-slate-500 truncate max-w-[100px]">{obra.local || '---'}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-500 min-w-[100px]">{obra.local || '---'}</div>
                             </td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600">{obra.vendedor || '---'}</td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600 font-medium">{obra.equipe || '---'}</td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 font-medium">{obra.equipe || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               {formatDateBR(obra.dataConclusao)}
                             </td>
-                            <td className="px-3 py-2 text-xs font-bold text-slate-900">
+                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap">
                               R$ {obra.valorReceber.toLocaleString('pt-BR')}
                             </td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -2176,11 +2180,11 @@ export default function App() {
                           onChange={() => toggleSelectAll(inProgressServicos)}
                         />
                       </th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dias</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
@@ -2204,7 +2208,7 @@ export default function App() {
                             exit={{ opacity: 0 }}
                             className={`hover:bg-slate-50 transition-colors bg-blue-50/20 border-l-4 border-blue-400 ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -2212,27 +2216,27 @@ export default function App() {
                                 onChange={() => toggleSelect(servico.id)}
                               />
                             </td>
-                            <td className="px-1.5 py-2">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
                                 #{servico.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
-                                className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-full border outline-none transition-all bg-blue-100 text-blue-700 border-blue-200"
+                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all bg-blue-100 text-blue-700 border-blue-200"
                               >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Em Andamento">Em Andamento</option>
                                 <option value="Concluído">Concluído</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={servico.prioridade}
                                 onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-lg border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
                                   servico.prioridade === 'Alta' 
                                     ? 'bg-red-50 text-red-700 border-red-100' 
                                     : servico.prioridade === 'Média'
@@ -2245,11 +2249,11 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               {formatDateBR(servico.dataAtendimento)}
                             </td>
-                            <td className="px-1.5 py-2 text-center">
-                              <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-block ${
+                            <td className="px-3 py-3 text-center">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
                                 (() => {
                                   const dias = getDaysDiff(servico.dataAtendimento);
                                   return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -2258,23 +2262,23 @@ export default function App() {
                                 {getDaysDiff(servico.dataAtendimento)} d
                               </div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-xs font-bold text-slate-900 truncate max-w-[80px] text-ellipsis overflow-hidden">{servico.cliente}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] text-slate-600 truncate max-w-[80px] text-ellipsis overflow-hidden">{servico.local || '---'}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">{servico.vendedor || '---'}</td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-1 py-0.5 rounded border border-slate-200/50 inline-block">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.vendedor || '---'}</td>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
                                 {servico.equipeServico || '---'}
                               </div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] font-semibold text-slate-600 truncate max-w-[80px]">{servico.servico || '---'}</td>
-                            <td className="px-1.5 py-2 text-xs font-bold text-slate-900 leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600 truncate max-w-[60px]">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">{formatDateBR(servico.dataServico)}</td>
-                            <td className="px-1.5 py-2 text-right">
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -2346,18 +2350,18 @@ export default function App() {
                           onChange={() => toggleSelectAll(pendingServicos)}
                         />
                       </th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
-                      <th className="px-1.5 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dias</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Serviço</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Instalou</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Instalou</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
@@ -2374,7 +2378,7 @@ export default function App() {
                             exit={{ opacity: 0 }}
                             className={`hover:bg-slate-50 transition-colors bg-amber-50/20 border-l-4 border-amber-400 ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -2382,27 +2386,27 @@ export default function App() {
                                 onChange={() => toggleSelect(servico.id)}
                               />
                             </td>
-                            <td className="px-1.5 py-2">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1 py-0.5 rounded border border-indigo-100">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
                                 #{servico.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
-                                className="text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-full border outline-none transition-all bg-amber-100 text-amber-700 border-amber-200"
+                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all bg-amber-100 text-amber-700 border-amber-200"
                               >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Em Andamento">Em Andamento</option>
                                 <option value="Concluído">Concluído</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2">
+                            <td className="px-3 py-3">
                               <select 
                                 value={servico.prioridade}
                                 onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-1.5 py-1 rounded-lg border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
                                   servico.prioridade === 'Alta' 
                                     ? 'bg-red-50 text-red-700 border-red-100' 
                                     : servico.prioridade === 'Média'
@@ -2415,11 +2419,11 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               {formatDateBR(servico.dataAtendimento)}
                             </td>
-                            <td className="px-1.5 py-2 text-center">
-                              <div className={`text-[10px] font-bold px-1.5 py-0.5 rounded inline-block ${
+                            <td className="px-3 py-3 text-center">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
                                 (() => {
                                   const dias = getDaysDiff(servico.dataAtendimento);
                                   return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -2428,23 +2432,23 @@ export default function App() {
                                 {getDaysDiff(servico.dataAtendimento)} d
                               </div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-xs font-bold text-slate-900 truncate max-w-[80px] text-ellipsis overflow-hidden">{servico.cliente}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
                             </td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] text-slate-600 truncate max-w-[80px] text-ellipsis overflow-hidden">{servico.local || '---'}</div>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">{servico.vendedor || '---'}</td>
-                            <td className="px-1.5 py-2">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-1 py-0.5 rounded border border-slate-200/50 inline-block">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.vendedor || '---'}</td>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
                                 {servico.equipeServico || '---'}
                               </div>
                             </td>
-                            <td className="px-1.5 py-2 text-[10px] font-semibold text-slate-600 truncate max-w-[80px]">{servico.servico || '---'}</td>
-                            <td className="px-1.5 py-2 text-xs font-bold text-slate-900 leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600 truncate max-w-[60px]">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-1.5 py-2 text-[10px] text-slate-600">{formatDateBR(servico.dataServico)}</td>
-                            <td className="px-1.5 py-2 text-right">
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -2578,7 +2582,7 @@ export default function App() {
                             exit={{ opacity: 0 }}
                             className={`hover:bg-slate-50 transition-colors ${selectedIds.has(servico.id) ? 'bg-emerald-100/50' : ''}`}
                           >
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
@@ -2586,17 +2590,17 @@ export default function App() {
                                 onChange={() => toggleSelect(servico.id)}
                               />
                             </td>
-                            <td className="px-3 py-2">
-                              <span className="font-mono text-xs font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded border border-slate-200">
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[10px] font-bold text-slate-500 bg-slate-100 px-1.5 py-1 rounded border border-slate-200">
                                 #{servico.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-3 whitespace-nowrap">
                               <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
                                 Concluído
                               </span>
                             </td>
-                            <td className="px-3 py-2">
+                            <td className="px-3 py-3">
                               <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border ${
                                 servico.prioridade === 'Alta' 
                                   ? 'bg-red-50 text-red-700 border-red-100' 
@@ -2607,27 +2611,31 @@ export default function App() {
                                 {servico.prioridade}
                               </span>
                             </td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600">
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               {formatDateBR(servico.dataAtendimento)}
                             </td>
-                            <td className="px-3 py-2">
-                              <div className="text-[10px] font-bold px-1.5 py-0.5 rounded text-center bg-slate-100 text-slate-600">
+                            <td className="px-3 py-3 text-center">
+                              <div className="text-[10px] font-bold px-2 py-1 rounded inline-block bg-slate-100 text-slate-600">
                                 {getDaysDiff(servico.dataAtendimento)} d
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-xs font-bold text-slate-900">{servico.cliente}</td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600 truncate max-w-[120px]">{servico.local || '---'}</td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600">{servico.vendedor || '---'}</td>
-                            <td className="px-3 py-2">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-1.5 py-0.5 rounded border border-slate-200/50 inline-block">
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                            </td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.vendedor || '---'}</td>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
                                 {servico.equipeServico || '---'}
                               </div>
                             </td>
-                            <td className="px-3 py-2 text-[10px] font-semibold text-slate-600">{servico.servico || '---'}</td>
-                            <td className="px-3 py-2 text-xs font-bold text-slate-900">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-3 py-2 text-[10px] text-slate-600">{formatDateBR(servico.dataServico)}</td>
-                            <td className="px-3 py-2 text-right">
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 min-w-[80px]">{servico.equipeInstalou || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
