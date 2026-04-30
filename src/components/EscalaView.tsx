@@ -71,7 +71,15 @@ const COLORS = [
   { name: 'Branco', bg: '#ffffff', text: '#1e2f3e', isDark: false },
 ];
 
-const BASE_DATE = new Date('2026-04-06T00:00:00');
+const BASE_DATE = new Date(2026, 3, 6); // April 6, 2026 is a Monday
+
+const calculateInitialOffset = () => {
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diffTime = today.getTime() - BASE_DATE.getTime();
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+  return Math.floor(diffDays / 7);
+};
 
 interface EscalaViewProps {
   onBack?: () => void;
@@ -81,7 +89,7 @@ interface EscalaViewProps {
 
 export default function EscalaView({ onBack, obras = [], servicos = [] }: EscalaViewProps) {
   const [teams, setTeams] = useState<Team[]>([]);
-  const [weekOffset, setWeekOffset] = useState(0);
+  const [weekOffset, setWeekOffset] = useState(calculateInitialOffset());
   const [schedule, setSchedule] = useState<ScheduleData>({});
   const [isSyncing, setIsSyncing] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -91,6 +99,14 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
   const [activeCell, setActiveCell] = useState<{day: string, teamId: string} | null>(null);
   const [addingClientTo, setAddingClientTo] = useState<{day: string, teamId: string} | null>(null);
+
+  const todayStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
 
   // Firestore Listeners
   useEffect(() => {
@@ -315,18 +331,27 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
           <button 
             onClick={() => setWeekOffset(prev => prev - 1)}
             className="p-2 hover:bg-slate-100 rounded-xl transition-all text-[#1e2f3e]"
+            title="Semana Anterior"
           >
             <ChevronLeft size={24} />
           </button>
-          <div className="px-4 text-center min-w-[200px]">
+          <div className="px-4 text-center min-w-[200px] border-x border-slate-100">
             <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Semana</p>
             <p className="font-bold text-[#1e2f3e]">{weekRange}</p>
           </div>
           <button 
             onClick={() => setWeekOffset(prev => prev + 1)}
             className="p-2 hover:bg-slate-100 rounded-xl transition-all text-[#1e2f3e]"
+            title="Próxima Semana"
           >
             <ChevronRight size={24} />
+          </button>
+          
+          <button 
+            onClick={() => setWeekOffset(calculateInitialOffset())}
+            className="ml-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100"
+          >
+            Hoje
           </button>
         </div>
 
@@ -366,13 +391,20 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
               </tr>
             </thead>
             <tbody>
-              {DAYS.map((day, dayIdx) => (
-                <tr key={day} className="border-b border-slate-100 last:border-0">
-                  <td className="p-6 bg-slate-50 border-r border-slate-100 w-64 min-w-[200px]">
-                    <div className="mb-3">
-                      <p className="font-bold text-[#1e2f3e]">{day}</p>
-                      <p className="text-sm text-slate-400 font-medium">{weekDates[dayIdx]}</p>
-                    </div>
+              {DAYS.map((day, dayIdx) => {
+                const isToday = weekDatesFull[dayIdx] === todayStr;
+                return (
+                  <tr key={day} className={`border-b border-slate-100 last:border-0 ${isToday ? 'bg-indigo-50/30' : ''}`}>
+                    <td className={`p-6 border-r border-slate-100 w-64 min-w-[200px] transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
+                      <div className="mb-3">
+                        <div className="flex items-center gap-2">
+                          <p className="font-bold text-[#1e2f3e]">{day}</p>
+                          {isToday && (
+                            <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full uppercase tracking-tighter">Hoje</span>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-400 font-medium">{weekDates[dayIdx]}</p>
+                      </div>
                     
                     {/* Daily Summary of Scheduled Items */}
                     <div className="space-y-1.5">
@@ -530,8 +562,9 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                     );
                   })}
                 </tr>
-              ))}
-            </tbody>
+              );
+            })}
+          </tbody>
           </table>
         </div>
       </div>
