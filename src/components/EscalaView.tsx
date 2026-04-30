@@ -15,7 +15,8 @@ import {
   Check,
   AlertCircle,
   ClipboardList,
-  Wrench
+  Wrench,
+  UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -89,6 +90,7 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   const [editingTeam, setEditingTeam] = useState<{id: string, name: string} | null>(null);
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
   const [activeCell, setActiveCell] = useState<{day: string, teamId: string} | null>(null);
+  const [addingClientTo, setAddingClientTo] = useState<{day: string, teamId: string} | null>(null);
 
   // Firestore Listeners
   useEffect(() => {
@@ -228,8 +230,24 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
 
     const head = [['Dia / Data', ...teams.map(t => t.name)]];
     const body = DAYS.map((day, i) => {
+      const fullDate = weekDatesFull[i];
+      const dailyObras = obras.filter(o => o.dataObra === fullDate);
+      const dailyServicos = servicos.filter(s => s.dataServico === fullDate);
+      
+      let dayText = `${day} (${weekDates[i]})`;
+      
+      if (dailyObras.length > 0 || dailyServicos.length > 0) {
+        dayText += '\n\nAGENDADOS:';
+        dailyObras.forEach(o => {
+          dayText += `\n• ${o.cliente} (${o.equipe || 'N/A'})`;
+        });
+        dailyServicos.forEach(s => {
+          dayText += `\n• ${s.cliente} (${s.equipeServico || 'N/A'})`;
+        });
+      }
+
       return [
-        `${day} (${weekDates[i]})`,
+        dayText,
         ...teams.map(team => schedule[day]?.[team.id]?.text || '')
       ];
     });
@@ -350,9 +368,41 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
             <tbody>
               {DAYS.map((day, dayIdx) => (
                 <tr key={day} className="border-b border-slate-100 last:border-0">
-                  <td className="p-6 bg-slate-50 border-r border-slate-100">
-                    <p className="font-bold text-[#1e2f3e]">{day}</p>
-                    <p className="text-sm text-slate-400 font-medium">{weekDates[dayIdx]}</p>
+                  <td className="p-6 bg-slate-50 border-r border-slate-100 w-64 min-w-[200px]">
+                    <div className="mb-3">
+                      <p className="font-bold text-[#1e2f3e]">{day}</p>
+                      <p className="text-sm text-slate-400 font-medium">{weekDates[dayIdx]}</p>
+                    </div>
+                    
+                    {/* Daily Summary of Scheduled Items */}
+                    <div className="space-y-1.5">
+                      {obras.filter(o => o.dataObra === weekDatesFull[dayIdx]).map(o => (
+                        <div key={o.id} className="text-[10px] bg-white border border-indigo-100 p-1.5 rounded-lg shadow-sm">
+                          <div className="flex items-center gap-1 text-indigo-600 font-bold mb-0.5">
+                            <ClipboardList size={10} />
+                            <span>Obra</span>
+                          </div>
+                          <p className="text-[#1e2f3e] font-bold truncate">{o.cliente}</p>
+                          <p className="text-slate-500 font-medium truncate flex items-center gap-1">
+                            <Users size={8} />
+                            {o.equipe || 'Sem equipe'}
+                          </p>
+                        </div>
+                      ))}
+                      {servicos.filter(s => s.dataServico === weekDatesFull[dayIdx]).map(s => (
+                        <div key={s.id} className="text-[10px] bg-white border border-blue-100 p-1.5 rounded-lg shadow-sm">
+                          <div className="flex items-center gap-1 text-blue-600 font-bold mb-0.5">
+                            <Wrench size={10} />
+                            <span>Serviço</span>
+                          </div>
+                          <p className="text-[#1e2f3e] font-bold truncate">{s.cliente}</p>
+                          <p className="text-slate-500 font-medium truncate flex items-center gap-1">
+                            <Users size={8} />
+                            {s.equipeServico || 'Sem equipe'}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
                   </td>
                   {teams.map(team => {
                     const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
@@ -361,13 +411,19 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                     const fullDate = weekDatesFull[dayIdx];
 
                     // Match automatically scheduled items
-                    const matchingObras = obras.filter(o => o.dataObra === fullDate && o.equipe === team.name);
-                    const matchingServicos = servicos.filter(s => s.dataServico === fullDate && s.equipeServico === team.name);
+                    const matchingObras = obras.filter(o => 
+                      o.dataObra === fullDate && 
+                      o.equipe?.trim().toLowerCase() === team.name.trim().toLowerCase()
+                    );
+                    const matchingServicos = servicos.filter(s => 
+                      s.dataServico === fullDate && 
+                      s.equipeServico?.trim().toLowerCase() === team.name.trim().toLowerCase()
+                    );
 
                     return (
                       <td 
                         key={team.id} 
-                        className="p-2 border-r border-slate-100 relative group"
+                        className="p-2 border-r border-slate-100 relative group min-h-[120px]"
                         style={{ backgroundColor: cellData.color }}
                       >
                         <textarea 
@@ -379,24 +435,39 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
 
                         {/* Automatic Items Display */}
                         {(matchingObras.length > 0 || matchingServicos.length > 0) && (
-                          <div className="mt-2 space-y-1">
+                          <div className="mt-2 space-y-1.5 px-1 pb-1">
                             {matchingObras.map(o => (
-                              <div key={o.id} className={`text-[10px] font-bold py-1 px-2 rounded-lg flex items-center gap-1.5 shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
-                                <ClipboardList size={10} />
-                                <span className="truncate">OBRA: {o.cliente}</span>
+                              <div key={o.firebaseId || o.id} className={`text-[10px] font-bold py-1.5 px-2 rounded-lg flex flex-col shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <ClipboardList size={10} />
+                                  <span className="uppercase tracking-wider opacity-70">Obra Agendada</span>
+                                </div>
+                                <span className="truncate">{o.cliente}</span>
+                                <span className="text-[8px] opacity-60">Equipe: {o.equipe}</span>
                               </div>
                             ))}
                             {matchingServicos.map(s => (
-                              <div key={s.id} className={`text-[10px] font-bold py-1 px-2 rounded-lg flex items-center gap-1.5 shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
-                                <Wrench size={10} />
-                                <span className="truncate">SERVIÇO: {s.cliente}</span>
+                              <div key={s.firebaseId || s.id} className={`text-[10px] font-bold py-1.5 px-2 rounded-lg flex flex-col shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
+                                <div className="flex items-center gap-1.5 mb-1">
+                                  <Wrench size={10} />
+                                  <span className="uppercase tracking-wider opacity-70">Serviço Agendado</span>
+                                </div>
+                                <span className="truncate">{s.cliente}</span>
+                                <span className="text-[8px] opacity-60">Equipe: {s.equipeServico}</span>
                               </div>
                             ))}
                           </div>
                         )}
-                        
-                        {/* Color Palette Menu */}
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                        {/* Cell Actions Menu */}
+                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
+                          <button 
+                            onClick={() => setAddingClientTo(addingClientTo?.day === day && addingClientTo?.teamId === team.id ? null : {day, teamId: team.id})}
+                            className={`p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
+                            title="Adicionar Cliente"
+                          >
+                            <UserPlus size={14} />
+                          </button>
+
                           <button 
                             onClick={() => setActiveCell(activeCell?.day === day && activeCell?.teamId === team.id ? null : {day, teamId: team.id})}
                             className={`p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
@@ -405,6 +476,33 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                           </button>
                           
                           <AnimatePresence>
+                            {addingClientTo?.day === day && addingClientTo?.teamId === team.id && (
+                              <motion.div 
+                                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                                animate={{ opacity: 1, scale: 1, y: 0 }}
+                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                                className="absolute right-0 mt-8 bg-white p-2 rounded-xl shadow-2xl border border-slate-200 w-48 max-h-64 overflow-y-auto z-20"
+                              >
+                                <p className="text-[10px] font-bold text-slate-400 uppercase px-2 mb-1">Clientes Ativos</p>
+                                {Array.from(new Set([
+                                  ...obras.map(o => o.cliente),
+                                  ...servicos.map(s => s.cliente)
+                                ])).filter(Boolean).sort().map(clientName => (
+                                  <button 
+                                    key={clientName}
+                                    onClick={() => {
+                                      const currentText = cellData.text ? cellData.text + '\n' : '';
+                                      updateCell(day, team.id, currentText + clientName, cellData.color);
+                                      setAddingClientTo(null);
+                                    }}
+                                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 rounded-lg text-slate-700 font-medium"
+                                  >
+                                    {clientName}
+                                  </button>
+                                ))}
+                              </motion.div>
+                            )}
+
                             {activeCell?.day === day && activeCell?.teamId === team.id && (
                               <motion.div 
                                 initial={{ opacity: 0, scale: 0.9, y: -10 }}

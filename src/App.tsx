@@ -41,7 +41,9 @@ import {
   Cloud,
   ChevronLeft,
   Palette,
-  Trash
+  Trash,
+  ArrowUp,
+  ArrowDown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -243,6 +245,18 @@ export default function App() {
     vendedor: ''
   });
 
+  const [sortConfig, setSortConfig] = useState<{ key: keyof Obra; direction: 'asc' | 'desc' }>({
+    key: 'id',
+    direction: 'asc'
+  });
+
+  const handleSort = (key: keyof Obra) => {
+    setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
   // Form State
   const [formData, setFormData] = useState<Partial<Obra>>({
     situacao: 'Pendente',
@@ -399,16 +413,15 @@ export default function App() {
       if (filtros.vendedor && !obra.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
       return true;
     }).sort((a, b) => {
-      const prioridadeOrder = { 'Alta': 1, 'Média': 2, 'Baixa': 3 };
-      
-      // High Priority always at the top
-      if (a.prioridade === 'Alta' && b.prioridade !== 'Alta') return -1;
-      if (a.prioridade !== 'Alta' && b.prioridade === 'Alta') return 1;
-      
-      // Otherwise, older first (newer below older)
-      return a.id - b.id;
+      const { key, direction } = sortConfig;
+      let valA = a[key] ?? '';
+      let valB = b[key] ?? '';
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
     });
-  }, [obras, filtros]);
+  }, [obras, filtros, sortConfig]);
 
   const activeObras = useMemo(() => filteredObras.filter(o => o.situacao !== 'Concluído'), [filteredObras]);
   const scheduledObras = useMemo(() => activeObras.filter(o => o.dataObra && o.dataObra !== ''), [activeObras]);
@@ -420,8 +433,16 @@ export default function App() {
       if (filtrosArquivados.cliente && !o.cliente.toLowerCase().includes(filtrosArquivados.cliente.toLowerCase())) return false;
       if (filtrosArquivados.vendedor && !o.vendedor.toLowerCase().includes(filtrosArquivados.vendedor.toLowerCase())) return false;
       return true;
-    }).sort((a, b) => b.id - a.id); // Newer first for archive
-  }, [obras, filtrosArquivados]);
+    }).sort((a, b) => {
+      const { key, direction } = sortConfig;
+      let valA = a[key] ?? '';
+      let valB = b[key] ?? '';
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [obras, filtrosArquivados, sortConfig]);
 
   const filteredServicos = useMemo(() => {
     return servicos.filter(servico => {
@@ -1712,16 +1733,86 @@ export default function App() {
                           onChange={() => toggleSelectAll(scheduledObras)}
                         />
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Reg.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Status</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Prior.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Cliente</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-center">Dias</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Local</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Vend.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Equipe</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Previsão</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider">Financ.</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Reg. {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('situacao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Status {sortConfig.key === 'situacao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('prioridade')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Prior. {sortConfig.key === 'prioridade' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('cliente')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Cliente {sortConfig.key === 'cliente' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-center cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('dataContrato')}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Dias {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('local')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Local {sortConfig.key === 'local' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('vendedor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Vend. {sortConfig.key === 'vendedor' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('equipe')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Equipe {sortConfig.key === 'equipe' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('dataObra')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Previsão {sortConfig.key === 'dataObra' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                        onClick={() => handleSort('formaPagamento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
@@ -1880,16 +1971,86 @@ export default function App() {
                           onChange={() => toggleSelectAll(unscheduledObras)}
                         />
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Reg.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Status</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prior.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vend.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Contrato</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Reg. {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('situacao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Status {sortConfig.key === 'situacao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('prioridade')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Prior. {sortConfig.key === 'prioridade' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('cliente')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Cliente {sortConfig.key === 'cliente' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('dataContrato')}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Dias {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('local')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Local {sortConfig.key === 'local' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('vendedor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Vend. {sortConfig.key === 'vendedor' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('equipe')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Equipe {sortConfig.key === 'equipe' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('dataContrato')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Contrato {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('formaPagamento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
@@ -2080,13 +2241,27 @@ export default function App() {
                           onChange={() => toggleSelectAll(archivedObras)}
                         />
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Registro</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Registro {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dias</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Conclusão</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSort('dataConclusao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Conclusão {sortConfig.key === 'dataConclusao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>

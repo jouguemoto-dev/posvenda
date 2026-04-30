@@ -148,87 +148,165 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
   const exportPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
     
-    // --- HEADER COMUM ---
-    doc.setFontSize(10);
-    doc.setTextColor(100);
-    doc.text(companyDetails.fullName, pageWidth / 2, 10, { align: 'center' });
-    doc.text(`CNPJ: ${companyDetails.cnpj}`, pageWidth / 2, 15, { align: 'center' });
-    doc.setFontSize(8);
-    doc.text(companyDetails.address, pageWidth / 2, 20, { align: 'center' });
-    doc.line(10, 22, pageWidth - 10, 22);
-
+    // --- ESTILOS GERAIS ---
+    const primaryIndigo = [79, 70, 229];
+    const primaryEmerald = [16, 185, 129];
+    const slate800 = [30, 41, 59];
+    const slate400 = [148, 163, 184];
+    
     if (activeTab === 'proposta') {
-      // --- PROPOSTA DE SERVIÇO ---
-      doc.setFontSize(14);
-      doc.setTextColor(79, 70, 229); // Indigo-600
-      doc.setFont('helvetica', 'bold');
-      doc.text('PROPOSTA DE SERVIÇO DE PÓS-VENDA', pageWidth / 2, 32, { align: 'center' });
+      // --- HEADER PROPOSTA ---
+      doc.setFillColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+      doc.rect(0, 0, pageWidth, 40, 'F');
       
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'bold');
+      doc.text('PROPOSTA DE SERVIÇO DE PÓS-VENDA', pageWidth / 2, 25, { align: 'center' });
+      
+      // Detalhes da Empresa no Header
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${companyDetails.fullName} | CNPJ: ${companyDetails.cnpj}`, pageWidth / 2, 33, { align: 'center' });
+      
+      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
+      
+      // Seção: Dados do Cliente
+      doc.setFillColor(248, 250, 252); // slate-50
+      doc.rect(15, 45, pageWidth - 30, 30, 'F');
+      doc.setDrawColor(226, 232, 240); // slate-200
+      doc.rect(15, 45, pageWidth - 30, 30, 'D');
+      
+      doc.setFontSize(9);
+      doc.setTextColor(slate400[0], slate400[1], slate400[2]);
+      doc.setFont('helvetica', 'bold');
+      doc.text('DADOS DO CLIENTE', 20, 52);
+      
+      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
       doc.setFontSize(10);
-      doc.setTextColor(30, 41, 59); // Slate-800
-      
-      // Dados do Cliente
-      doc.setFont('helvetica', 'bold');
-      doc.text('DADOS DO CLIENTE', 20, 45);
       doc.setFont('helvetica', 'normal');
-      doc.text(`Nome: ${proposalData.nomeCliente}`, 20, 52);
-      doc.text(`Endereço: ${proposalData.endereco}`, 20, 57);
-      doc.text(`Número do Sistema: ${proposalData.numeroSistema}`, 20, 62);
+      doc.text(`Nome: ${proposalData.nomeCliente}`, 20, 60);
+      doc.text(`Endereço: ${proposalData.endereco}`, 20, 66);
+      doc.text(`Número do Sistema: ${proposalData.numeroSistema}`, pageWidth - 20, 60, { align: 'right' });
 
-      // Serviços
+      // Seção: Serviços
+      doc.setFontSize(9);
+      doc.setTextColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
       doc.setFont('helvetica', 'bold');
-      doc.text('DESCRIÇÃO DOS SERVIÇOS OFERECIDOS', 20, 75);
+      doc.text('DESCRIÇÃO DOS SERVIÇOS OFERECIDOS', 20, 85);
+      doc.line(20, 87, pageWidth - 20, 87);
+      
+      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(10);
       servicosInclusos.forEach((s, i) => {
-        doc.text(`- ${s}`, 25, 82 + (i * 5));
+        if (s.trim()) {
+          doc.circle(22, 94 + (i * 6), 1, 'F');
+          doc.text(s, 26, 95 + (i * 6));
+        }
       });
 
-      // Periodicidade e Valores
-      doc.setFont('helvetica', 'bold');
-      doc.text('PERIODICIDADE E VALORES', 20, 120);
-      doc.setFont('helvetica', 'normal');
-      doc.text('Periodicidade sugerida: Semestral ou Anual', 20, 127);
-      doc.text(`Valor manutenção avulsa: R$ ${(proposalData.valorAvulso || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 132);
-      doc.text(`Valor plano anual (desconto): R$ ${(proposalData.valorPlanoAnual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, 137);
-
-      // Prazos e Termos
-      doc.setFont('helvetica', 'bold');
-      doc.text('VALIDADE E PRAZOS', 20, 150);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Validade da proposta: ${proposalData.validade}`, 20, 157);
-      doc.text(`Prazo para execução: ${proposalData.prazoExecucao}`, 20, 162);
-
-      doc.setFont('helvetica', 'bold');
-      doc.text('TERMOS DE GARANTIA E RESPONSABILIDADE', 20, 175);
-      doc.setFontSize(8);
-      doc.text(doc.splitTextToSize(termosGarantia, pageWidth - 40), 20, 182);
+      // Seção: Valores em destaque
+      const boxY = 145;
+      doc.setFillColor(245, 247, 255); // indigo-50
+      doc.rect(15, boxY, (pageWidth - 40) / 2, 25, 'F');
+      doc.setDrawColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+      doc.rect(15, boxY, (pageWidth - 40) / 2, 25, 'D');
       
-      doc.save(`Proposta_PosVenda_${proposalData.nomeCliente.replace(/ /g, '_')}.pdf`);
-    } else {
-      // --- RECIBO DE PAGAMENTO ---
+      doc.text('VALOR AVULSO', 20, boxY + 8);
       doc.setFontSize(14);
-      doc.setTextColor(16, 185, 129); // Emerald-500
       doc.setFont('helvetica', 'bold');
-      doc.text('RECIBO DE PAGAMENTO', pageWidth / 2, 40, { align: 'center' });
+      doc.text(`R$ ${(proposalData.valorAvulso || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, boxY + 18);
       
       doc.setFontSize(10);
-      doc.setTextColor(30, 41, 59);
-      
-      doc.setFont('helvetica', 'bold');
-      doc.text(`RECIBO Nº: ${receiptData.numeroRecibo}`, 20, 55);
-      doc.text(`VALOR: R$ ${(receiptData.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - 20, 55, { align: 'right' });
-      
       doc.setFont('helvetica', 'normal');
-      const textoRecibo = `Recebi(emos) de ${proposalData.nomeCliente}, a importância de R$ ${(receiptData.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${receiptData.formaPagamento}), referente ao serviço de ${receiptData.servicoRealizado}.`;
-      doc.text(doc.splitTextToSize(textoRecibo, pageWidth - 40), 20, 65);
-
-      doc.text(`Data: ${new Date(receiptData.dataPagamento).toLocaleDateString('pt-BR')}`, 20, 85);
+      doc.setFillColor(255, 255, 255);
+      doc.rect(15 + (pageWidth - 40) / 2 + 10, boxY, (pageWidth - 40) / 2, 25, 'F');
+      doc.setDrawColor(slate400[0], slate400[1], slate400[2]);
+      doc.rect(15 + (pageWidth - 40) / 2 + 10, boxY, (pageWidth - 40) / 2, 25, 'D');
       
-      // Assinatura
-      doc.line(pageWidth / 2 - 40, 110, pageWidth / 2 + 40, 110);
+      doc.text('PLANO ANUAL', 15 + (pageWidth - 40) / 2 + 15, boxY + 8);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`R$ ${(proposalData.valorPlanoAnual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 15 + (pageWidth - 40) / 2 + 15, boxY + 18);
+
+      // Prazos e Termos
+      doc.setFontSize(9);
+      doc.setTextColor(slate400[0], slate400[1], slate400[2]);
+      doc.text(`Validade: ${proposalData.validade}  |  Prazo: ${proposalData.prazoExecucao}`, pageWidth / 2, 185, { align: 'center' });
+
+      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
       doc.setFontSize(8);
-      doc.text(companyDetails.name, pageWidth / 2, 115, { align: 'center' });
+      doc.setFont('helvetica', 'bold');
+      doc.text('TERMOS DE GARANTIA E RESPONSABILIDADE', 20, 200);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(100);
+      const splitTerms = doc.splitTextToSize(termosGarantia, pageWidth - 40);
+      doc.text(splitTerms, 20, 205);
+      
+      // Footer
+      doc.setFontSize(7);
+      doc.setTextColor(slate400[0], slate400[1], slate400[2]);
+      doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} - ${companyDetails.address}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+      doc.save(`Proposta_PosVenda_${proposalData.nomeCliente.replace(/ /g, '_')}.pdf`);
+    } else {
+      // --- HEADER RECIBO ---
+      doc.setFillColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
+      doc.rect(0, 0, pageWidth, 50, 'F');
+      
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('RECIBO', 20, 35);
+      
+      doc.setFontSize(10);
+      doc.text(`Nº ${receiptData.numeroRecibo}`, pageWidth - 20, 35, { align: 'right' });
+      
+      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
+      
+      // Box de Valor
+      doc.setFillColor(240, 253, 244); // emerald-50
+      doc.rect(pageWidth - 85, 60, 70, 20, 'F');
+      doc.setDrawColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
+      doc.rect(pageWidth - 85, 60, 70, 20, 'D');
+      
+      doc.setFontSize(8);
+      doc.setTextColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
+      doc.text('VALOR TOTAL', pageWidth - 80, 68);
+      doc.setFontSize(14);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`R$ ${(receiptData.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - 80, 76);
+      
+      // Conteúdo principal
+      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const corpoRecibo = `Recebemos de ${proposalData.nomeCliente.toUpperCase()}, a importância de R$ ${(receiptData.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${receiptData.formaPagamento}), referente à execução do serviço de ${receiptData.servicoRealizado}.`;
+      const splitCorpo = doc.splitTextToSize(corpoRecibo, pageWidth - 40);
+      doc.text(splitCorpo, 20, 100);
+
+      doc.setFontSize(10);
+      doc.text(`Data do Pagamento: ${new Date(receiptData.dataPagamento).toLocaleDateString('pt-BR')}`, 20, 130);
+      
+      // Seção da empresa
+      doc.setFillColor(248, 250, 252);
+      doc.rect(15, 150, pageWidth - 30, 40, 'F');
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text('EMITIDO POR:', 20, 158);
+      doc.setFont('helvetica', 'normal');
+      doc.text(companyDetails.fullName, 20, 165);
+      doc.text(`CNPJ: ${companyDetails.cnpj}`, 20, 171);
+      doc.text(companyDetails.address, 20, 177);
+
+      // Assinatura
+      doc.line(pageWidth / 2 - 40, 240, pageWidth / 2 + 40, 240);
+      doc.setFontSize(8);
+      doc.text(companyDetails.name.toUpperCase(), pageWidth / 2, 246, { align: 'center' });
+      doc.text('ASSINATURA DO RESPONSÁVEL', pageWidth / 2, 252, { align: 'center' });
 
       doc.save(`Recibo_PosVenda_${proposalData.nomeCliente.replace(/ /g, '_')}.pdf`);
     }
