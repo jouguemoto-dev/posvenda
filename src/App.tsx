@@ -53,6 +53,7 @@ import { Obra, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, 
 import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
+import NotebookView from './components/NotebookView';
 import { 
   collection, 
   addDoc, 
@@ -207,7 +208,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(USERS[0]);
-  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda'>('obras');
+  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda' | 'notebook'>('obras');
   const [obras, setObras] = useState<Obra[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
@@ -1518,7 +1519,16 @@ export default function App() {
     <div className="h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
       <main className="flex-1 overflow-y-auto p-2 md:p-4 scrollbar-hide">
         <div className="w-full space-y-4">
-          {activeTab === 'posvenda' ? (
+          {activeTab === 'notebook' ? (
+            <NotebookView 
+              user={{ id: currentUser.id, name: currentUser.name }} 
+              attendants={Array.from(new Set([
+                ...USERS.map(u => u.name),
+                ...vendedores.map(v => v.nome)
+              ])).sort()}
+              onBack={() => setActiveTab('obras')}
+            />
+          ) : activeTab === 'posvenda' ? (
             <PosVendaView onBack={() => setActiveTab('obras')} />
           ) : activeTab === 'escala' ? (
             <EscalaView 
@@ -1565,6 +1575,12 @@ export default function App() {
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'posvenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Pós-Venda
+              </button>
+              <button 
+                onClick={() => setActiveTab('notebook')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'notebook' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Bloco de Notas
               </button>
             </div>
 
