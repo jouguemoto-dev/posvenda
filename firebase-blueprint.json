@@ -96,6 +96,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "tipo": { "type": "string", "enum": ["proposta", "recibo"] },
         "nomeCliente": { "type": "string" },
         "endereco": { "type": "string" },
         "numeroSistema": { "type": "string" },
@@ -108,6 +109,20 @@
         "valorPago": { "type": "number" },
         "formaPagamento": { "type": "string" },
         "servicoRealizado": { "type": "string" },
+        "companyDetails": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "fullName": { "type": "string" },
+            "cnpj": { "type": "string" },
+            "address": { "type": "string" }
+          }
+        },
+        "servicosInclusos": {
+          "type": "array",
+          "items": { "type": "string" }
+        },
+        "termosGarantia": { "type": "string" },
         "createdBy": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
