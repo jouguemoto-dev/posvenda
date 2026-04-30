@@ -50,6 +50,7 @@ import autoTable from 'jspdf-autotable';
 import { Obra, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule } from './types';
 import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import EscalaView from './components/EscalaView';
+import PosVendaView from './components/PosVendaView';
 import { 
   collection, 
   addDoc, 
@@ -204,7 +205,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(USERS[0]);
-  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala'>('obras');
+  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda'>('obras');
   const [obras, setObras] = useState<Obra[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
@@ -1496,7 +1497,9 @@ export default function App() {
     <div className="h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
       <main className="flex-1 overflow-y-auto p-2 md:p-4 scrollbar-hide">
         <div className="w-full space-y-4">
-          {activeTab === 'escala' ? (
+          {activeTab === 'posvenda' ? (
+            <PosVendaView onBack={() => setActiveTab('obras')} />
+          ) : activeTab === 'escala' ? (
             <EscalaView 
               onBack={() => setActiveTab('obras')} 
               obras={obras} 
@@ -1535,6 +1538,12 @@ export default function App() {
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'escala' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Escala Semanal
+              </button>
+              <button 
+                onClick={() => setActiveTab('posvenda')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'posvenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Pós-Venda
               </button>
             </div>
 
@@ -2992,7 +3001,7 @@ export default function App() {
                           name="quantidadePlacas"
                           disabled={!canEditAllFields}
                           min="0"
-                          value={formData.quantidadePlacas}
+                          value={isNaN(Number(formData.quantidadePlacas)) ? '' : formData.quantidadePlacas}
                           onChange={handleInputChange}
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                         />
@@ -3020,7 +3029,7 @@ export default function App() {
                               type="number" 
                               disabled={!canEditAllFields}
                               placeholder="Valor personalizado"
-                              value={valorMaoObraOutros}
+                              value={isNaN(Number(valorMaoObraOutros)) ? '' : valorMaoObraOutros}
                               onChange={(e) => setValorMaoObraOutros(e.target.value)}
                               className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
                             />
@@ -3210,7 +3219,7 @@ export default function App() {
                         <input 
                           type="number" 
                           name="valor"
-                          value={servicoFormData.valor}
+                          value={isNaN(Number(servicoFormData.valor)) ? '' : servicoFormData.valor}
                           onChange={handleServicoInputChange}
                           placeholder="0,00"
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"

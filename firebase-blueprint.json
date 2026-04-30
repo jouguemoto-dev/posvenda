@@ -89,6 +89,29 @@
         "ativo": { "type": "boolean" }
       },
       "required": ["nome"]
+    },
+    "PosVenda": {
+      "title": "Pós-Venda",
+      "description": "Registros de propostas e recibos de pós-venda.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nomeCliente": { "type": "string" },
+        "endereco": { "type": "string" },
+        "numeroSistema": { "type": "string" },
+        "validade": { "type": "string" },
+        "prazoExecucao": { "type": "string" },
+        "valorAvulso": { "type": "number" },
+        "valorPlanoAnual": { "type": "number" },
+        "numeroRecibo": { "type": "string" },
+        "dataPagamento": { "type": "string", "format": "date" },
+        "valorPago": { "type": "number" },
+        "formaPagamento": { "type": "string" },
+        "servicoRealizado": { "type": "string" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["nomeCliente", "valorPago", "numeroRecibo"]
     }
   },
   "firestore": {
@@ -115,6 +138,10 @@
     "formasPagamento": {
       "schema": { "$ref": "#/entities/FormaPagamento" },
       "description": "Cadastro de formas de pagamento."
+    },
+    "posvenda": {
+      "schema": { "$ref": "#/entities/PosVenda" },
+      "description": "Registros de propostas e recibos de pós-venda."
     }
   }
 }
