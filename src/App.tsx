@@ -292,6 +292,9 @@ export default function App() {
     observacao: ''
   });
 
+  const [equipeOutros, setEquipeOutros] = useState('');
+  const [equipeServicoOutros, setEquipeServicoOutros] = useState('');
+  const [equipeInstalouOutros, setEquipeInstalouOutros] = useState('');
   const [valorMaoObraOutros, setValorMaoObraOutros] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -543,7 +546,7 @@ export default function App() {
     setIsDeleteModalOpen(true);
   };
 
-  const syncToWeeklySchedule = async (dateStr: string, teamName: string, clientName: string) => {
+  const syncToWeeklySchedule = async (dateStr: string, teamName: string, clientName: string, extraInfo?: string) => {
     if (!dateStr || !teamName || !clientName) return;
 
     try {
@@ -552,58 +555,18 @@ export default function App() {
         doc.data().name.trim().toLowerCase() === teamName.trim().toLowerCase()
       );
       
-      let teamId: string;
-
       if (!teamDoc) {
         // Auto-create team if it doesn't exist in the schedule view
-        const newTeamRef = await addDoc(collection(db, 'teams'), { 
+        await addDoc(collection(db, 'teams'), { 
           name: teamName.trim(),
-          createdAt: serverTimestamp() 
+          createdAt: serverTimestamp(),
+          order: teamsSnapshot.docs.length // Put at the end
         });
-        teamId = newTeamRef.id;
         console.log(`Equipe "${teamName}" criada automaticamente na escala.`);
-      } else {
-        teamId = teamDoc.id;
       }
 
-      const BASE_DATE = new Date('2026-04-06T00:00:00');
-      const targetDate = new Date(dateStr + 'T00:00:00');
-      
-      const diffTime = targetDate.getTime() - BASE_DATE.getTime();
-      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-      const weekOffset = Math.floor(diffDays / 7);
-      
-      const days = ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'];
-      const dayName = days[targetDate.getDay()];
-
-      const docId = `week_${weekOffset}`;
-      const scheduleRef = doc(db, 'schedules', docId);
-      const scheduleSnap = await getDoc(scheduleRef);
-
-      let scheduleData: any = {};
-      if (scheduleSnap.exists()) {
-        try {
-          scheduleData = JSON.parse(scheduleSnap.data().data);
-        } catch (e) {
-          console.error("Error parsing schedule data", e);
-        }
-      }
-
-      if (!scheduleData[dayName]) scheduleData[dayName] = {};
-      if (!scheduleData[dayName][teamId]) scheduleData[dayName][teamId] = { text: '', color: '#ffffff' };
-
-      const currentText = scheduleData[dayName][teamId].text;
-      const clientEntry = `Cliente: ${clientName}`;
-      
-      if (!currentText.includes(clientEntry)) {
-        scheduleData[dayName][teamId].text = currentText ? `${currentText}\n${clientEntry}` : clientEntry;
-        
-        await setDoc(scheduleRef, {
-          weekOffset,
-          data: JSON.stringify(scheduleData),
-          updatedAt: serverTimestamp()
-        }, { merge: true });
-      }
+      // REMOVED: Redundant text sync logic. 
+      // EscalaView now uses automatic cards which is much cleaner and avoids duplication.
     } catch (error) {
       console.error("Error syncing to weekly schedule:", error);
     }
@@ -710,6 +673,7 @@ export default function App() {
     
     const valorMaoObraFinal = formData.valorMaoObra === 0 ? parseFloat(valorMaoObraOutros) || 0 : formData.valorMaoObra || 0;
     
+    const finalEquipe = formData.equipe === 'Outros' ? equipeOutros : formData.equipe;
     const obraData = {
       numeroRegistro: editandoId 
         ? obras.find(o => o.id === editandoId)?.numeroRegistro || String(Date.now()).slice(-3)
@@ -726,7 +690,7 @@ export default function App() {
       valorReceber: valorReceberCalculado,
       dataObra: formData.dataObra || '',
       dataConclusao: formData.dataConclusao || '',
-      equipe: formData.equipe || '',
+      equipe: finalEquipe || '',
       inversor: formData.inversor || '',
       formaPagamento: formData.formaPagamento || '',
       observacoes: formData.observacoes || '',
@@ -748,7 +712,7 @@ export default function App() {
         });
       }
       if (obraData.dataObra && obraData.equipe) {
-        await syncToWeeklySchedule(obraData.dataObra, obraData.equipe, obraData.cliente);
+        await syncToWeeklySchedule(obraData.dataObra, obraData.equipe, obraData.cliente, 'Obra');
       }
       resetForm();
     } catch (error) {
@@ -760,6 +724,8 @@ export default function App() {
     e.preventDefault();
     if (!user) return;
     
+    const finalEquipeServico = servicoFormData.equipeServico === 'Outros' ? equipeServicoOutros : servicoFormData.equipeServico;
+    const finalEquipeInstalou = servicoFormData.equipeInstalou === 'Outros' ? equipeInstalouOutros : servicoFormData.equipeInstalou;
     const servicoData = {
       numeroRegistro: editandoServicoId 
         ? servicos.find(s => s.id === editandoServicoId)?.numeroRegistro || String(Date.now()).slice(-3)
@@ -770,10 +736,10 @@ export default function App() {
       vendedor: servicoFormData.vendedor || '',
       local: servicoFormData.local || '',
       dataAtendimento: servicoFormData.dataAtendimento || '',
-      equipeServico: servicoFormData.equipeServico || '',
+      equipeServico: finalEquipeServico || '',
       servico: servicoFormData.servico || '',
       valor: Number(servicoFormData.valor) || 0,
-      equipeInstalou: servicoFormData.equipeInstalou || '',
+      equipeInstalou: finalEquipeInstalou || '',
       dataServico: servicoFormData.dataServico || '',
       observacao: servicoFormData.observacao || '',
       updatedAt: serverTimestamp(),
@@ -793,8 +759,9 @@ export default function App() {
           createdAt: serverTimestamp(),
         });
       }
-      if (servicoData.dataServico && servicoData.equipeInstalou) {
-        await syncToWeeklySchedule(servicoData.dataServico, servicoData.equipeInstalou, servicoData.cliente);
+      const teamToSync = servicoData.equipeServico || servicoData.equipeInstalou;
+      if (servicoData.dataServico && teamToSync) {
+        await syncToWeeklySchedule(servicoData.dataServico, teamToSync, servicoData.cliente, servicoData.servico);
       }
       resetServicoForm();
     } catch (error) {
@@ -843,6 +810,7 @@ export default function App() {
       observacoes: ''
     });
     setValorMaoObraOutros('');
+    setEquipeOutros('');
     setEditandoId(null);
     setIsFormOpen(false);
   };
@@ -862,6 +830,8 @@ export default function App() {
       dataServico: '',
       observacao: ''
     });
+    setEquipeServicoOutros('');
+    setEquipeInstalouOutros('');
     setEditandoServicoId(null);
     setIsServicoFormOpen(false);
   };
@@ -870,6 +840,16 @@ export default function App() {
     setFormData({
       ...obra
     });
+    
+    // Check if equipe exists in the list
+    const equipeExists = equipes.some(e => e.nome === obra.equipe);
+    if (obra.equipe && !equipeExists) {
+      setFormData(prev => ({ ...prev, equipe: 'Outros' }));
+      setEquipeOutros(obra.equipe);
+    } else {
+      setEquipeOutros('');
+    }
+
     if (![60, 70, 80, 100].includes(obra.valorMaoObra)) {
       setFormData(prev => ({ ...prev, valorMaoObra: 0 }));
       setValorMaoObraOutros(String(obra.valorMaoObra));
@@ -882,6 +862,23 @@ export default function App() {
     setServicoFormData({
       ...servico
     });
+
+    const equipeServicoExists = equipes.some(e => e.nome === servico.equipeServico);
+    if (servico.equipeServico && !equipeServicoExists) {
+      setServicoFormData(prev => ({ ...prev, equipeServico: 'Outros' }));
+      setEquipeServicoOutros(servico.equipeServico);
+    } else {
+      setEquipeServicoOutros('');
+    }
+
+    const equipeInstalouExists = equipes.some(e => e.nome === servico.equipeInstalou);
+    if (servico.equipeInstalou && !equipeInstalouExists) {
+      setServicoFormData(prev => ({ ...prev, equipeInstalou: 'Outros' }));
+      setEquipeInstalouOutros(servico.equipeInstalou);
+    } else {
+      setEquipeInstalouOutros('');
+    }
+
     setEditandoServicoId(servico.id);
     setIsServicoFormOpen(true);
   };
@@ -3250,21 +3247,33 @@ export default function App() {
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField label="Equipe Responsável">
-                        <div className="relative">
-                          <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <select 
-                            name="equipe"
-                            disabled={!canEditAllFields}
-                            value={formData.equipe}
-                            onChange={handleInputChange}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
-                          >
-                            <option value="">Selecione uma equipe</option>
-                            {equipes.filter(e => e.ativo).map(e => (
-                              <option key={e.id} value={e.nome}>{e.nome}</option>
-                            ))}
-                            <option value="Outros">Outros</option>
-                          </select>
+                        <div className="space-y-2">
+                          <div className="relative">
+                            <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <select 
+                              name="equipe"
+                              disabled={!canEditAllFields}
+                              value={formData.equipe}
+                              onChange={handleInputChange}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            >
+                              <option value="">Selecione uma equipe</option>
+                              {equipes.filter(e => e.ativo).map(e => (
+                                <option key={e.id} value={e.nome}>{e.nome}</option>
+                              ))}
+                              <option value="Outros">Outros</option>
+                            </select>
+                          </div>
+                          {formData.equipe === 'Outros' && (
+                            <input 
+                              type="text"
+                              disabled={!canEditAllFields}
+                              placeholder="Nome da equipe personalizada"
+                              value={equipeOutros}
+                              onChange={(e) => setEquipeOutros(e.target.value)}
+                              className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          )}
                         </div>
                       </FormField>
                       <FormField label="Observações Adicionais">
@@ -3417,32 +3426,54 @@ export default function App() {
                         />
                       </FormField>
                       <FormField label="Equipe Serviço">
-                        <select 
-                          name="equipeServico"
-                          value={servicoFormData.equipeServico}
-                          onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Selecione a equipe</option>
-                          {equipes.filter(e => e.ativo).map(e => (
-                            <option key={e.id} value={e.nome}>{e.nome}</option>
-                          ))}
-                          <option value="Outros">Outros</option>
-                        </select>
+                        <div className="space-y-2">
+                          <select 
+                            name="equipeServico"
+                            value={servicoFormData.equipeServico}
+                            onChange={handleServicoInputChange}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Selecione a equipe</option>
+                            {equipes.filter(e => e.ativo).map(e => (
+                              <option key={e.id} value={e.nome}>{e.nome}</option>
+                            ))}
+                            <option value="Outros">Outros</option>
+                          </select>
+                          {servicoFormData.equipeServico === 'Outros' && (
+                            <input 
+                              type="text"
+                              placeholder="Nome da equipe personalizada"
+                              value={equipeServicoOutros}
+                              onChange={(e) => setEquipeServicoOutros(e.target.value)}
+                              className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          )}
+                        </div>
                       </FormField>
                       <FormField label="Equipe que Instalou">
-                        <select 
-                          name="equipeInstalou"
-                          value={servicoFormData.equipeInstalou}
-                          onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Selecione a equipe</option>
-                          {equipes.filter(e => e.ativo).map(e => (
-                            <option key={e.id} value={e.nome}>{e.nome}</option>
-                          ))}
-                          <option value="Outros">Outros</option>
-                        </select>
+                        <div className="space-y-2">
+                          <select 
+                            name="equipeInstalou"
+                            value={servicoFormData.equipeInstalou}
+                            onChange={handleServicoInputChange}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          >
+                            <option value="">Selecione a equipe</option>
+                            {equipes.filter(e => e.ativo).map(e => (
+                              <option key={e.id} value={e.nome}>{e.nome}</option>
+                            ))}
+                            <option value="Outros">Outros</option>
+                          </select>
+                          {servicoFormData.equipeInstalou === 'Outros' && (
+                            <input 
+                              type="text"
+                              placeholder="Nome da equipe personalizada"
+                              value={equipeInstalouOutros}
+                              onChange={(e) => setEquipeInstalouOutros(e.target.value)}
+                              className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                            />
+                          )}
+                        </div>
                       </FormField>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

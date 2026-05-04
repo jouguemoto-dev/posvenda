@@ -39,6 +39,7 @@ import { Obra, Servico } from '../types';
 interface Team {
   id: string;
   name: string;
+  order?: number;
 }
 
 interface ScheduleData {
@@ -73,14 +74,6 @@ const COLORS = [
 
 const BASE_DATE = new Date(2026, 3, 6); // April 6, 2026 is a Monday
 
-const calculateInitialOffset = () => {
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const diffTime = today.getTime() - BASE_DATE.getTime();
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-  return Math.floor(diffDays / 7);
-};
-
 interface EscalaViewProps {
   onBack?: () => void;
   obras?: Obra[];
@@ -89,7 +82,6 @@ interface EscalaViewProps {
 
 export default function EscalaView({ onBack, obras = [], servicos = [] }: EscalaViewProps) {
   const [teams, setTeams] = useState<Team[]>([]);
-  const [weekOffset, setWeekOffset] = useState(calculateInitialOffset());
   const [schedule, setSchedule] = useState<ScheduleData>({});
   const [isSyncing, setIsSyncing] = useState(false);
   const [isTeamModalOpen, setIsTeamModalOpen] = useState(false);
@@ -102,17 +94,44 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
 
   const todayStr = useMemo(() => {
     const d = new Date();
+    // Use local date parts to ensure it matches the local view
     const y = d.getFullYear();
     const m = String(d.getMonth() + 1).padStart(2, '0');
     const day = String(d.getDate()).padStart(2, '0');
     return `${y}-${m}-${day}`;
   }, []);
 
+  const calculateInitialOffset = () => {
+    try {
+      const now = new Date();
+      // Set to midnight local time
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+      
+      // Calculate how many days since BASE_DATE
+      const diffTime = today.getTime() - BASE_DATE.getTime();
+      const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+      
+      // Return the number of full weeks
+      return Math.floor(diffDays / 7);
+    } catch (e) {
+      return 0;
+    }
+  };
+
+  const [weekOffset, setWeekOffset] = useState(calculateInitialOffset());
+
   // Firestore Listeners
   useEffect(() => {
     const qTeams = query(collection(db, 'teams'), orderBy('name'));
     const unsubscribeTeams = onSnapshot(qTeams, (snapshot) => {
       const teamsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
+      // Sort by order field, then by name
+      teamsData.sort((a, b) => {
+        const orderA = a.order ?? 999;
+        const orderB = b.order ?? 999;
+        if (orderA !== orderB) return orderA - orderB;
+        return a.name.localeCompare(b.name);
+      });
       setTeams(teamsData);
     });
 
@@ -232,6 +251,25 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
     }
   };
 
+  const moveTeam = async (index: number, direction: 'left' | 'right') => {
+    const newTeams = [...teams];
+    const targetIndex = direction === 'left' ? index - 1 : index + 1;
+    if (targetIndex < 0 || targetIndex >= newTeams.length) return;
+
+    [newTeams[index], newTeams[targetIndex]] = [newTeams[targetIndex], newTeams[index]];
+
+    try {
+      const updates = newTeams.map((team, idx) => 
+        updateDoc(doc(db, 'teams', team.id), { order: idx })
+      );
+      await Promise.all(updates);
+      addToast("Equipes reordenadas!");
+    } catch (e) {
+      console.error("Error reordering teams", e);
+      addToast("Erro ao reordenar.");
+    }
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF('landscape');
     const title = "Escala Semanal de Trabalho";
@@ -247,24 +285,42 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
     const head = [['Dia / Data', ...teams.map(t => t.name)]];
     const body = DAYS.map((day, i) => {
       const fullDate = weekDatesFull[i];
-      const dailyObras = obras.filter(o => o.dataObra === fullDate);
-      const dailyServicos = servicos.filter(s => s.dataServico === fullDate);
+      const dailyObras = obras.filter(o => {
+        const oDate = (o.dataObra || '').split('T')[0];
+        const isExactDate = oDate === fullDate;
+        const isOngoing = o.situacao === 'Em Andamento' && oDate && oDate < fullDate;
+        return isExactDate || isOngoing;
+      });
+      const dailyServicos = servicos.filter(s => {
+        const sDate = (s.dataServico || '').split('T')[0];
+        const isExactDate = sDate === fullDate;
+        const isOngoing = s.situacao === 'Em Andamento' && sDate && sDate < fullDate;
+        return isExactDate || isOngoing;
+      });
       
       let dayText = `${day} (${weekDates[i]})`;
       
       if (dailyObras.length > 0 || dailyServicos.length > 0) {
-        dayText += '\n\nAGENDADOS:';
+        dayText += '\n\nATIVIDADES:';
         dailyObras.forEach(o => {
-          dayText += `\n• ${o.cliente} (${o.equipe || 'N/A'})`;
+          const oDate = (o.dataObra || '').split('T')[0];
+          const isOngoing = o.situacao === 'Em Andamento' && oDate < fullDate;
+          dayText += `\n• [OBRA] ${o.cliente} (${o.equipe || 'N/A'})${o.quantidadePlacas ? ` - ${o.quantidadePlacas} pl` : ''}${isOngoing ? ' [ANDAMENTO]' : ''}`;
         });
         dailyServicos.forEach(s => {
-          dayText += `\n• ${s.cliente} (${s.equipeServico || 'N/A'})`;
+          const sDate = (s.dataServico || '').split('T')[0];
+          const isOngoing = s.situacao === 'Em Andamento' && sDate < fullDate;
+          dayText += `\n• [SERVIÇO] ${s.cliente} (${s.equipeServico || s.equipeInstalou || 'N/A'})${s.servico ? ` - ${s.servico}` : ''}${isOngoing ? ' [ANDAMENTO]' : ''}`;
         });
       }
 
       return [
         dayText,
-        ...teams.map(team => schedule[day]?.[team.id]?.text || '')
+        ...teams.map(team => {
+          const manualText = schedule[day]?.[team.id]?.text || '';
+          // Clean up manual text from auto-synced entries to avoid redundancy
+          return manualText.split('\n').filter(line => !line.trim().startsWith('Cliente:')).join('\n');
+        })
       ];
     });
 
@@ -297,9 +353,9 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   };
 
   return (
-    <div className="min-h-full bg-[#eef2f7] p-6 font-sans text-base">
+    <div className="min-h-full bg-[#eef2f7] p-4 md:p-6 font-sans text-base text-[#1e2f3e]">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
         <div className="flex items-center gap-4">
           {onBack && (
             <button 
@@ -379,14 +435,32 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
           <table className="w-full border-collapse">
             <thead>
               <tr className="bg-[#1e2f3e] text-white">
-                <th className="p-6 text-left font-bold border-r border-white/10 w-48">Dia / Data</th>
-                {teams.map(team => (
-                  <th key={team.id} className="p-6 text-center font-bold border-r border-white/10 min-w-[200px]">
-                    {team.name}
+                <th className="p-4 text-left font-bold border-r border-white/10 w-48 text-sm">Dia / Data</th>
+                {teams.map((team, tIdx) => (
+                  <th key={team.id} className="p-4 text-center font-bold border-r border-white/10 min-w-[220px] text-sm relative group/header">
+                    <div className="flex items-center justify-center gap-3">
+                      <button 
+                        onClick={() => moveTeam(tIdx, 'left')}
+                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${tIdx === 0 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
+                        disabled={tIdx === 0}
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      
+                      <span className="truncate max-w-[120px]">{team.name}</span>
+                      
+                      <button 
+                        onClick={() => moveTeam(tIdx, 'right')}
+                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${tIdx === teams.length - 1 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
+                        disabled={tIdx === teams.length - 1}
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
                   </th>
                 ))}
                 {teams.length === 0 && (
-                  <th className="p-6 text-center italic text-white/50">Nenhuma equipe cadastrada</th>
+                  <th className="p-3 text-center italic text-white/50">Nenhuma equipe cadastrada</th>
                 )}
               </tr>
             </thead>
@@ -394,48 +468,18 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
               {DAYS.map((day, dayIdx) => {
                 const isToday = weekDatesFull[dayIdx] === todayStr;
                 return (
-                  <tr key={day} className={`border-b border-slate-100 last:border-0 ${isToday ? 'bg-indigo-50/30' : ''}`}>
-                    <td className={`p-6 border-r border-slate-100 w-64 min-w-[200px] transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
-                      <div className="mb-3">
+                  <tr key={day} className={`border-b border-slate-200 last:border-0 ${isToday ? 'bg-indigo-50/40' : ''}`}>
+                    <td className={`p-4 border-r border-slate-200 w-48 min-w-[180px] transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
+                      <div className="mb-2">
                         <div className="flex items-center gap-2">
-                          <p className="font-bold text-[#1e2f3e]">{day}</p>
+                          <p className="font-bold text-[#1e2f3e] text-sm">{day}</p>
                           {isToday && (
-                            <span className="px-2 py-0.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full uppercase tracking-tighter">Hoje</span>
+                            <span className="px-2 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
                           )}
                         </div>
-                        <p className="text-sm text-slate-400 font-medium">{weekDates[dayIdx]}</p>
+                        <p className="text-sm text-slate-500 font-medium">{weekDates[dayIdx]}</p>
                       </div>
-                    
-                    {/* Daily Summary of Scheduled Items */}
-                    <div className="space-y-1.5">
-                      {obras.filter(o => o.dataObra === weekDatesFull[dayIdx]).map(o => (
-                        <div key={o.id} className="text-[10px] bg-white border border-indigo-100 p-1.5 rounded-lg shadow-sm">
-                          <div className="flex items-center gap-1 text-indigo-600 font-bold mb-0.5">
-                            <ClipboardList size={10} />
-                            <span>Obra</span>
-                          </div>
-                          <p className="text-[#1e2f3e] font-bold truncate">{o.cliente}</p>
-                          <p className="text-slate-500 font-medium truncate flex items-center gap-1">
-                            <Users size={8} />
-                            {o.equipe || 'Sem equipe'}
-                          </p>
-                        </div>
-                      ))}
-                      {servicos.filter(s => s.dataServico === weekDatesFull[dayIdx]).map(s => (
-                        <div key={s.id} className="text-[10px] bg-white border border-blue-100 p-1.5 rounded-lg shadow-sm">
-                          <div className="flex items-center gap-1 text-blue-600 font-bold mb-0.5">
-                            <Wrench size={10} />
-                            <span>Serviço</span>
-                          </div>
-                          <p className="text-[#1e2f3e] font-bold truncate">{s.cliente}</p>
-                          <p className="text-slate-500 font-medium truncate flex items-center gap-1">
-                            <Users size={8} />
-                            {s.equipeServico || 'Sem equipe'}
-                          </p>
-                        </div>
-                      ))}
-                    </div>
-                  </td>
+                    </td>
                   {teams.map(team => {
                     const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
                     const colorObj = COLORS.find(c => c.bg === cellData.color);
@@ -443,49 +487,94 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                     const fullDate = weekDatesFull[dayIdx];
 
                     // Match automatically scheduled items
-                    const matchingObras = obras.filter(o => 
-                      o.dataObra === fullDate && 
-                      o.equipe?.trim().toLowerCase() === team.name.trim().toLowerCase()
-                    );
-                    const matchingServicos = servicos.filter(s => 
-                      s.dataServico === fullDate && 
-                      s.equipeServico?.trim().toLowerCase() === team.name.trim().toLowerCase()
-                    );
+                    const matchingObras = obras.filter(o => {
+                      const obraEquipe = (o.equipe || '').trim().toLowerCase();
+                      const teamName = team.name.trim().toLowerCase();
+                      const isTeamMatch = obraEquipe === teamName;
+                      if (!isTeamMatch) return false;
+                      
+                      const oDate = (o.dataObra || '').split('T')[0];
+                      const isExactDate = oDate === fullDate;
+                      // Show if it already in progress (show on all days after start, but only if not completed)
+                      const isOngoing = o.situacao === 'Em Andamento' && oDate && oDate < fullDate;
+                      
+                      return isExactDate || isOngoing;
+                    });
+
+                    const matchingServicos = servicos.filter(s => {
+                      const equipeS = (s.equipeServico || '').trim().toLowerCase();
+                      const equipeI = (s.equipeInstalou || '').trim().toLowerCase();
+                      const teamName = team.name.trim().toLowerCase();
+                      
+                      const isTeamMatch = equipeS === teamName || equipeI === teamName;
+                      if (!isTeamMatch) return false;
+                      
+                      const sDate = (s.dataServico || '').split('T')[0];
+                      const isExactDate = sDate === fullDate;
+                      // Show if it already in progress (show on all days after start, but only if not completed)
+                      const isOngoing = s.situacao === 'Em Andamento' && sDate && sDate < fullDate;
+                      
+                      return isExactDate || isOngoing;
+                    });
 
                     return (
                       <td 
                         key={team.id} 
-                        className="p-2 border-r border-slate-100 relative group min-h-[120px]"
+                        className="p-2 border-r border-slate-200 relative group min-h-[120px] align-top"
                         style={{ backgroundColor: cellData.color }}
                       >
                         <textarea 
-                          value={cellData.text}
-                          onChange={(e) => updateCell(day, team.id, e.target.value)}
+                          value={cellData.text.split('\n').filter(line => !line.trim().startsWith('Cliente:')).join('\n')} 
+                          onChange={(e) => {
+                            // When user changes text manually, we keep their changes
+                            // But we filter out the auto-synced part to avoid redundancy in the view state if any remains
+                            updateCell(day, team.id, e.target.value);
+                          }}
                           placeholder="..."
-                          className={`w-full h-24 p-2 bg-transparent resize-none outline-none font-medium transition-colors ${isDark ? 'text-white placeholder:text-white/30' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
+                          className={`w-full h-20 p-2 bg-transparent resize-none outline-none font-medium text-sm transition-colors ${isDark ? 'text-white placeholder:text-white/40' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
                         />
 
                         {/* Automatic Items Display */}
-                        {(matchingObras.length > 0 || matchingServicos.length > 0) && (
-                          <div className="mt-2 space-y-1.5 px-1 pb-1">
+                        { (matchingObras.length > 0 || matchingServicos.length > 0) && (
+                          <div className="mt-2 space-y-2 px-1 pb-2">
                             {matchingObras.map(o => (
-                              <div key={o.firebaseId || o.id} className={`text-[10px] font-bold py-1.5 px-2 rounded-lg flex flex-col shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-indigo-50 text-indigo-700 border-indigo-100'}`}>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <ClipboardList size={10} />
-                                  <span className="uppercase tracking-wider opacity-70">Obra Agendada</span>
+                              <div key={o.firebaseId || o.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-white text-indigo-700 border-indigo-100'}`}>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <ClipboardList size={12} className="opacity-70" />
+                                    <span className="uppercase tracking-widest text-[9px] opacity-60">Obra</span>
+                                  </div>
+                                  {o.situacao === 'Em Andamento' && o.dataObra !== fullDate && (
+                                    <span className="text-[8px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-black uppercase">Andamento</span>
+                                  )}
                                 </div>
-                                <span className="truncate">{o.cliente}</span>
-                                <span className="text-[8px] opacity-60">Equipe: {o.equipe}</span>
+                                <span className="font-bold truncate mb-1 text-sm">{o.cliente}</span>
+                                <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
+                                  <span className="font-medium">{o.equipe}</span>
+                                  {o.quantidadePlacas > 0 && (
+                                    <span className="bg-indigo-50 px-1.5 py-0.5 rounded-md font-black italic">{o.quantidadePlacas} pl</span>
+                                  )}
+                                </div>
                               </div>
                             ))}
                             {matchingServicos.map(s => (
-                              <div key={s.firebaseId || s.id} className={`text-[10px] font-bold py-1.5 px-2 rounded-lg flex flex-col shadow-sm border ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-blue-50 text-blue-700 border-blue-100'}`}>
-                                <div className="flex items-center gap-1.5 mb-1">
-                                  <Wrench size={10} />
-                                  <span className="uppercase tracking-wider opacity-70">Serviço Agendado</span>
+                              <div key={s.firebaseId || s.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-white text-blue-700 border-blue-100'}`}>
+                                <div className="flex items-center justify-between mb-1.5">
+                                  <div className="flex items-center gap-1.5">
+                                    <Wrench size={12} className="opacity-70" />
+                                    <span className="uppercase tracking-widest text-[9px] opacity-60">Serviço</span>
+                                  </div>
+                                  {s.situacao === 'Em Andamento' && s.dataServico !== fullDate && (
+                                    <span className="text-[8px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-black uppercase">Andamento</span>
+                                  )}
                                 </div>
-                                <span className="truncate">{s.cliente}</span>
-                                <span className="text-[8px] opacity-60">Equipe: {s.equipeServico}</span>
+                                <span className="font-bold truncate mb-1 text-sm">{s.cliente}</span>
+                                <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
+                                  <span className="font-medium">{s.equipeServico || s.equipeInstalou || '---'}</span>
+                                  {s.servico && (
+                                    <span className="bg-blue-50 px-1.5 py-0.5 rounded-md font-black truncate ml-2 text-[10px] uppercase">{s.servico}</span>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
