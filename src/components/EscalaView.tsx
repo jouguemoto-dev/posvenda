@@ -288,38 +288,28 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
       const dailyObras = obras.filter(o => {
         const oDate = (o.dataObra || '').split('T')[0];
         const isExactDate = oDate === fullDate;
-        const isOngoing = o.situacao === 'Em Andamento' && oDate && oDate < fullDate;
-        return isExactDate || isOngoing;
+        return isExactDate;
       });
       const dailyServicos = servicos.filter(s => {
         const sDate = (s.dataServico || '').split('T')[0];
         const isExactDate = sDate === fullDate;
-        const isOngoing = s.situacao === 'Em Andamento' && sDate && sDate < fullDate;
-        return isExactDate || isOngoing;
+        return isExactDate;
       });
       
       let dayText = `${day} (${weekDates[i]})`;
       
-      if (dailyObras.length > 0 || dailyServicos.length > 0) {
-        dayText += '\n\nATIVIDADES:';
-        dailyObras.forEach(o => {
-          const oDate = (o.dataObra || '').split('T')[0];
-          const isOngoing = o.situacao === 'Em Andamento' && oDate < fullDate;
-          dayText += `\n• [OBRA] ${o.cliente} (${o.equipe || 'N/A'})${o.quantidadePlacas ? ` - ${o.quantidadePlacas} pl` : ''}${isOngoing ? ' [ANDAMENTO]' : ''}`;
-        });
-        dailyServicos.forEach(s => {
-          const sDate = (s.dataServico || '').split('T')[0];
-          const isOngoing = s.situacao === 'Em Andamento' && sDate < fullDate;
-          dayText += `\n• [SERVIÇO] ${s.cliente} (${s.equipeServico || s.equipeInstalou || 'N/A'})${s.servico ? ` - ${s.servico}` : ''}${isOngoing ? ' [ANDAMENTO]' : ''}`;
-        });
-      }
-
       return [
         dayText,
         ...teams.map(team => {
           const manualText = schedule[day]?.[team.id]?.text || '';
           // Clean up manual text from auto-synced entries to avoid redundancy
-          return manualText.split('\n').filter(line => !line.trim().startsWith('Cliente:')).join('\n');
+          const filteredLines = manualText.split('\n').filter(line => {
+            const trimmed = line.trim();
+            return !trimmed.startsWith('Cliente:') && 
+                   !trimmed.startsWith('• [OBRA]') && 
+                   !trimmed.startsWith('• [SERVIÇO]');
+          });
+          return filteredLines.join('\n');
         })
       ];
     });
@@ -495,10 +485,8 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                       
                       const oDate = (o.dataObra || '').split('T')[0];
                       const isExactDate = oDate === fullDate;
-                      // Show if it already in progress (show on all days after start, but only if not completed)
-                      const isOngoing = o.situacao === 'Em Andamento' && oDate && oDate < fullDate;
                       
-                      return isExactDate || isOngoing;
+                      return isExactDate;
                     });
 
                     const matchingServicos = servicos.filter(s => {
@@ -511,10 +499,8 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                       
                       const sDate = (s.dataServico || '').split('T')[0];
                       const isExactDate = sDate === fullDate;
-                      // Show if it already in progress (show on all days after start, but only if not completed)
-                      const isOngoing = s.situacao === 'Em Andamento' && sDate && sDate < fullDate;
                       
-                      return isExactDate || isOngoing;
+                      return isExactDate;
                     });
 
                     return (
@@ -524,7 +510,12 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                         style={{ backgroundColor: cellData.color }}
                       >
                         <textarea 
-                          value={cellData.text.split('\n').filter(line => !line.trim().startsWith('Cliente:')).join('\n')} 
+                          value={cellData.text.split('\n').filter(line => {
+                            const trimmed = line.trim();
+                            return !trimmed.startsWith('Cliente:') && 
+                                   !trimmed.startsWith('• [OBRA]') && 
+                                   !trimmed.startsWith('• [SERVIÇO]');
+                          }).join('\n')} 
                           onChange={(e) => {
                             // When user changes text manually, we keep their changes
                             // But we filter out the auto-synced part to avoid redundancy in the view state if any remains
@@ -544,9 +535,6 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                     <ClipboardList size={12} className="opacity-70" />
                                     <span className="uppercase tracking-widest text-[9px] opacity-60">Obra</span>
                                   </div>
-                                  {o.situacao === 'Em Andamento' && o.dataObra !== fullDate && (
-                                    <span className="text-[8px] bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded-md font-black uppercase">Andamento</span>
-                                  )}
                                 </div>
                                 <span className="font-bold truncate mb-1 text-sm">{o.cliente}</span>
                                 <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
@@ -564,9 +552,6 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                     <Wrench size={12} className="opacity-70" />
                                     <span className="uppercase tracking-widest text-[9px] opacity-60">Serviço</span>
                                   </div>
-                                  {s.situacao === 'Em Andamento' && s.dataServico !== fullDate && (
-                                    <span className="text-[8px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-black uppercase">Andamento</span>
-                                  )}
                                 </div>
                                 <span className="font-bold truncate mb-1 text-sm">{s.cliente}</span>
                                 <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
