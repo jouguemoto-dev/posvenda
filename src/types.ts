@@ -47,6 +47,7 @@ export interface Servico {
   valor: number;
   equipeInstalou: string;
   dataServico: string;
+  formaPagamento: string;
   observacao: string;
   createdBy?: string;
   createdAt?: any;

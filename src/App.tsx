@@ -43,7 +43,12 @@ import {
   Palette,
   Trash,
   ArrowUp,
-  ArrowDown
+  ArrowDown,
+  Database,
+  PlusCircle,
+  ShieldCheck,
+  Table,
+  AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -289,6 +294,7 @@ export default function App() {
     valor: 0,
     equipeInstalou: '',
     dataServico: '',
+    formaPagamento: '',
     observacao: ''
   });
 
@@ -750,6 +756,7 @@ export default function App() {
       valor: Number(servicoFormData.valor) || 0,
       equipeInstalou: finalEquipeInstalou || '',
       dataServico: servicoFormData.dataServico || '',
+      formaPagamento: servicoFormData.formaPagamento || '',
       observacao: servicoFormData.observacao || '',
       updatedAt: serverTimestamp(),
     };
@@ -837,6 +844,7 @@ export default function App() {
       valor: 0,
       equipeInstalou: '',
       dataServico: '',
+      formaPagamento: '',
       observacao: ''
     });
     setEquipeServicoOutros('');
@@ -1022,13 +1030,43 @@ export default function App() {
   };
 
   const exportarJSON = () => {
-    const dataStr = JSON.stringify(obras, null, 2);
+    const backupData = {
+      version: '2.0',
+      exportedAt: new Date().toISOString(),
+      obras,
+      servicos,
+      config: {
+        vendedores,
+        equipes,
+        inversores,
+        formasPagamento
+      }
+    };
+    const dataStr = JSON.stringify(backupData, null, 2);
     const blob = new Blob([dataStr], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `backup_obras_${new Date().toISOString().split('T')[0]}.json`;
+    link.download = `backup_completo_cbc_${new Date().toISOString().split('T')[0]}.json`;
     link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const exportarCSV = (tipo: 'obras' | 'servicos') => {
+    const data = tipo === 'obras' ? obras : servicos;
+    if (data.length === 0) {
+      alert('Não há dados para exportar.');
+      return;
+    }
+
+    // Prepare data for XLSX (it's better than raw CSV for encoding/special chars)
+    const ws = XLSX.utils.json_to_sheet(data.map(item => {
+      const { firebaseId, ...rest } = item as any;
+      return rest;
+    }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, tipo.charAt(0).toUpperCase() + tipo.slice(1));
+    XLSX.writeFile(wb, `export_${tipo}_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const handleFileImport = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1038,15 +1076,44 @@ export default function App() {
     const reader = new FileReader();
     
     if (file.name.endsWith('.json')) {
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
-          const dados = JSON.parse(event.target?.result as string);
-          if (Array.isArray(dados)) {
-            setObras(dados);
-            alert('Backup importado com sucesso!');
+          const content = event.target?.result as string;
+          const data = JSON.parse(content);
+          
+          if (data.version === '2.0' && data.obras && data.servicos) {
+            // Full backup format
+            if (confirm('Deseja restaurar este backup completo? Isso irá ADICIONAR os dados aos existentes.')) {
+              let countObras = 0;
+              let countServicos = 0;
+
+              for (const o of data.obras) {
+                const { firebaseId, ...rest } = o;
+                await addDoc(collection(db, 'obras'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
+                countObras++;
+              }
+
+              for (const s of data.servicos) {
+                const { firebaseId, ...rest } = s;
+                await addDoc(collection(db, 'servicos'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
+                countServicos++;
+              }
+
+              alert(`Backup restaurado! ${countObras} obras e ${countServicos} serviços importados.`);
+            }
+          } else if (Array.isArray(data)) {
+            // Old format (only obras)
+            if (confirm('Arquivo de backup antigo (apenas obras) detectado. Importar?')) {
+              for (const o of data) {
+                const { firebaseId, ...rest } = o;
+                await addDoc(collection(db, 'obras'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
+              }
+              alert('Obras importadas do backup antigo.');
+            }
           }
         } catch (err) {
-          alert('Erro ao importar arquivo JSON.');
+          console.error(err);
+          alert('Erro ao processar arquivo de backup.');
         }
       };
       reader.readAsText(file);
@@ -1108,6 +1175,7 @@ export default function App() {
                 valor: Number(row['Valor']) || 0,
                 equipeInstalou: row['Equipe Instalou'] || '',
                 dataServico: normalizeDate(row['Data Serviço']),
+                formaPagamento: row['Forma Pagamento'] || '',
                 observacao: row['Observação'] || '',
                 createdBy: user.uid,
                 createdAt: serverTimestamp(),
@@ -1199,7 +1267,8 @@ export default function App() {
           valor: Number(cols[8]) || 0,
           equipeInstalou: cols[9] || '',
           dataServico: normalizeDate(cols[10]),
-          observacao: cols[11] || '',
+          formaPagamento: cols[11] || '',
+          observacao: cols[12] || '',
           createdBy: user.uid,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -1263,11 +1332,12 @@ export default function App() {
         'Valor',
         'Equipe Instalou',
         'Data Serviço (DD/MM/AAAA)',
+        'Forma Pagamento',
         'Observação'
       ];
       
       const exampleData = [
-        ['Pendente', 'Média', '12/05/2024', 'Maria Souza', 'Av. Central, 456', 'Roberto', 'Equipe Beta', 'Manutenção Inversor', '250', 'Equipe Alfa', '14/05/2024', 'Verificar conectores']
+        ['Pendente', 'Média', '12/05/2024', 'Maria Souza', 'Av. Central, 456', 'Roberto', 'Equipe Beta', 'Manutenção Inversor', '250', 'Equipe Alfa', '14/05/2024', 'PIX', 'Verificar conectores']
       ];
 
       const ws = XLSX.utils.aoa_to_sheet([headers, ...exampleData]);
@@ -1429,134 +1499,169 @@ export default function App() {
     // --- TOP LOGO & COMPANY INFO ---
     doc.setFont("helvetica", "bold");
     doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setFontSize(28);
+    doc.setFontSize(32);
+    const cbcWidth = doc.getTextWidth("CBC");
     doc.text("CBC", margin, 25);
     doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.text("solaris", margin + 22, 25);
+    doc.text("solaris", margin + cbcWidth + 1, 25);
 
-    doc.setFontSize(8);
+    doc.setFontSize(8.5);
     doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
     doc.setFont("helvetica", "normal");
     doc.text("Cbcsolaris Solar Projetos e Instalação de Sistemas Fotovoltaicos LTDA - 37.426.463/0001-20", margin, 32);
-    doc.text("Rua Itapagipe, 75 · Imbiribeira · Recife/PE · CEP 51150-690", margin, 36);
-    doc.text("cbc@energiasrenovaveis.com · +55 81 98101-1951", margin, 40);
+    doc.text("Rua Itapagipe, 75 · Imbiribeira · Recife/PE · CEP 51150-690", margin, 36.5);
+    doc.text("cbc@energiasrenovaveis.com · +55 81 98101-1951", margin, 41);
 
     // Separator Line
     doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setLineWidth(0.8);
-    doc.line(margin, 45, pageWidth - margin, 45);
+    doc.setLineWidth(1.2);
+    doc.line(margin, 46, pageWidth - margin, 46);
 
     // --- TITLE ---
-    doc.setFontSize(22);
+    doc.setFontSize(24);
     doc.setFont("helvetica", "normal");
-    doc.text("RECIBO DE PRESTAÇÃO DE SERVIÇOS", pageWidth / 2, 60, { align: 'center', charSpace: 1 });
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.text("RECIBO DE PRESTAÇÃO DE SERVIÇOS", pageWidth / 2, 65, { align: 'center', charSpace: 2.5 });
 
     // --- SUB-HEADER BOX (Nº & DATE) ---
     doc.setFillColor(lightGreen[0], lightGreen[1], lightGreen[2]);
-    doc.setDrawColor(200, 200, 200);
-    doc.setLineWidth(0.1);
-    doc.rect(margin, 70, contentWidth, 12, 'FD');
+    doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.setLineWidth(0.2);
+    doc.rect(margin, 75, contentWidth, 14, 'FD');
     
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(11);
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.text(`Nº ${s.numeroRegistro || '2026-001'}`, margin + 5, 78);
+    doc.setFontSize(12);
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.text(`Nº REGISTRO: ${s.numeroRegistro || '---'}`, margin + 5, 84);
     
     const today = new Date();
     const dataFormatada = today.toLocaleDateString('pt-BR');
-    doc.text(`Data do serviço: ${dataFormatada}`, pageWidth - margin - 5, 78, { align: 'right' });
+    doc.text(`DATA DE EMISSÃO: ${dataFormatada}`, pageWidth - margin - 5, 84, { align: 'right' });
 
-    // --- CLIENT INFO BOX ---
-    let y = 90;
-    doc.setDrawColor(200);
-    doc.rect(margin, y, contentWidth, 40);
-    
+    // --- CLIENT INFO SECTION ---
+    let y = 100;
     doc.setFontSize(10);
     doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.text("Cliente:", margin + 5, y + 10);
-    doc.setTextColor(0);
-    doc.text(String(s.cliente || "").toUpperCase(), margin + 25, y + 10);
-    
-    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.text("CPF/CNPJ:", pageWidth / 2 + 10, y + 10);
-    doc.setTextColor(0);
-    doc.text("---.---.---/--", pageWidth / 2 + 40, y + 10); 
-
-    y += 18;
-    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.text("Endereço:", margin + 5, y);
-    doc.setTextColor(0);
-    const splitEndereco = doc.splitTextToSize(String(s.local || "N/A").toUpperCase(), contentWidth - 30);
-    doc.text(splitEndereco, margin + 25, y);
-
-    // --- SERVICE GRID ---
-    y = 150;
-    // Left Accent Bar
-    doc.setFillColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.rect(margin, y, 2.5, 25, 'F');
-    
-    // Background Light Box
-    doc.setFillColor(248, 250, 252);
-    doc.rect(margin + 2.5, y, contentWidth - 2.5, 25, 'F');
-    
-    doc.setFontSize(11);
-    doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    const descServico = String(s.servico || "VISITA TÉCNICA + MANUTENÇÃO").toUpperCase();
-    doc.text(descServico, margin + 10, y + 14);
-
-    // Value Box
-    const valorStr = Number(s.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
-    doc.setDrawColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.rect(pageWidth - margin - 45, y + 5, 40, 15);
-    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setFontSize(16);
-    doc.text(valorStr, pageWidth - margin - 25, y + 15.5, { align: 'center' });
-
-    // --- TOTAL ---
-    y += 40;
+    doc.text("DADOS DO CLIENTE", margin, y);
+    
+    doc.setDrawColor(230);
+    doc.line(margin, y + 2, pageWidth - margin, y + 2);
+    
+    y += 10;
+    doc.setFontSize(10);
     doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.setFontSize(11);
-    doc.text("TOTAL", pageWidth - margin - 65, y);
-    doc.setFontSize(18);
-    doc.setTextColor(0);
-    doc.text(`R$ ${valorStr}`, pageWidth - margin, y, { align: 'right' });
-
-    // --- PAYMENT METHOD ---
-    y += 15;
-    doc.setDrawColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.rect(margin, y, 90, 14);
-    doc.setFontSize(12);
     doc.setFont("helvetica", "bold");
-    doc.text("Forma de pagamento: PIX", margin + 5, y + 9.5);
-
-    // --- SIGNATURE AREA ---
-    y = 245;
-    doc.setLineWidth(0.5);
-    doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.line(margin, y, margin + 85, y);
-    
-    // Hand-drawn style for "Júlio" (Simulated)
-    doc.setFont("times", "italic");
-    doc.setFontSize(22);
-    doc.setTextColor(0);
-    doc.text("Júlio", margin + 30, y - 5);
-    
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(10);
-    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.text("CBC Solaris (responsável)", margin + 10, y + 6);
+    doc.text("CLIENTE:", margin, y);
     doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+    doc.text(String(s.cliente || "---").toUpperCase(), margin + 25, y);
+    
+    y += 7;
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("LOCAL:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+    const splitEndereco = doc.splitTextToSize(String(s.local || "---").toUpperCase(), contentWidth - 25);
+    doc.text(splitEndereco, margin + 25, y);
+    
+    y += (splitEndereco.length * 5) + 2;
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("VENDEDOR:", margin, y);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(0);
+    doc.text(String(s.vendedor || "---").toUpperCase(), margin + 25, y);
+
+    // --- SERVICE DESCRIPTION SECTION ---
+    y += 15;
+    doc.setFontSize(10);
+    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("DESCRIÇÃO DO SERVIÇO", margin, y);
+    doc.setDrawColor(230);
+    doc.line(margin, y + 2, pageWidth - margin, y + 2);
+
+    y += 10;
+    // Service Box
+    doc.setFillColor(252, 252, 252);
+    doc.setDrawColor(240);
+    doc.rect(margin, y, contentWidth, 40, 'F');
+    
+    doc.setFontSize(11);
+    doc.setTextColor(20);
+    doc.setFont("helvetica", "bold");
+    const splitServico = doc.splitTextToSize(String(s.servico || "SERVIÇO NÃO ESPECIFICADO").toUpperCase(), contentWidth - 10);
+    doc.text(splitServico, margin + 5, y + 10);
+
+    // Observation
+    if (s.observacao) {
+      doc.setFontSize(8);
+      doc.setTextColor(100);
+      doc.setFont("helvetica", "italic");
+      doc.text("OBSERVAÇÕES:", margin + 5, y + 25);
+      doc.setFont("helvetica", "normal");
+      const splitObs = doc.splitTextToSize(s.observacao, contentWidth - 15);
+      doc.text(splitObs, margin + 5, y + 29);
+    }
+
+    // --- FINANCIAL SUMMARY ---
+    y += 55;
+    doc.setFillColor(lightGreen[0], lightGreen[1], lightGreen[2]);
+    doc.rect(pageWidth - margin - 70, y, 70, 25, 'F');
+    
+    const valorStr = Number(s.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    
+    doc.setFontSize(9);
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("VALOR TOTAL", pageWidth - margin - 35, y + 8, { align: 'center' });
+    
+    doc.setFontSize(18);
+    doc.text(`R$ ${valorStr}`, pageWidth - margin - 35, y + 18, { align: 'center' });
+
+    // Payment Method
+    doc.setFontSize(10);
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("FORMA DE PAGAMENTO:", margin, y + 10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.setFontSize(12);
+    doc.text(String(s.formaPagamento || "---").toUpperCase(), margin, y + 18);
+
+    // --- FOOTER AND SIGNATURE ---
+    y = 240;
+    doc.setDrawColor(200);
+    doc.line(margin + 5, y, margin + 85, y);
+    
+    doc.setFont("times", "italic");
+    doc.setFontSize(24);
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.text("Júlio", margin + 45, y - 5, { align: 'center' });
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(0);
+    doc.text("CBC SOLARIS", margin + 45, y + 6, { align: 'center' });
     doc.setFontSize(8);
     doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.text("assinatura e carimbo", margin + 22, y + 12);
+    doc.text("Responsável Local", margin + 45, y + 11, { align: 'center' });
 
-    // Bottom Right Info
-    doc.setFontSize(8);
-    doc.text("cbc@energiasrenovaveis.com", pageWidth - margin, y - 10, { align: 'right' });
-    doc.text("+55 81 98101-1951", pageWidth - margin, y - 5, { align: 'right' });
-    doc.text("Recife/PE", pageWidth - margin, y, { align: 'right' });
-    doc.text(`Emissão: ${dataFormatada}`, pageWidth - margin, y + 5, { align: 'right' });
+    // Right Side Info
+    const signatureDate = `RECEBEMOS O VALOR ACIMA EM ${dataFormatada}`;
+    doc.setFontSize(7);
+    doc.text(signatureDate, pageWidth - margin, y - 5, { align: 'right' });
+    doc.setDrawColor(200);
+    doc.line(pageWidth - margin - 80, y, pageWidth - margin, y);
+    doc.text("ASSINATURA DO CLIENTE", pageWidth - margin - 40, y + 6, { align: 'center' });
+
+    // Bottom info
+    doc.setFontSize(7);
+    doc.setTextColor(150);
+    const generatedInfo = `Documento gerado eletronicamente em ${new Date().toLocaleString('pt-BR')}`;
+    doc.text(generatedInfo, pageWidth / 2, 285, { align: 'center' });
 
     // Save PDF
     doc.save(`Recibo_${s.numeroRegistro || 'S-N'}_${String(s.cliente || 'Cliente').replace(/\s+/g, '_')}.pdf`);
@@ -2016,6 +2121,11 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
+                              {obra.observacao && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacao}>
+                                  {obra.observacao}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
@@ -2043,7 +2153,15 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter">{obra.quantidadePlacas} Placas</div>
+                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter flex items-center gap-1">
+                                <span>{obra.quantidadePlacas} Placas</span>
+                                {obra.formaPagamento && (
+                                  <>
+                                    <span className="text-slate-300">|</span>
+                                    <span className="text-indigo-600 font-bold">{obra.formaPagamento}</span>
+                                  </>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -2261,6 +2379,11 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
+                              {obra.observacao && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacao}>
+                                  {obra.observacao}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
@@ -2286,7 +2409,15 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter">{obra.quantidadePlacas} Placas</div>
+                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter flex items-center gap-1">
+                                <span>{obra.quantidadePlacas} Placas</span>
+                                {obra.formaPagamento && (
+                                  <>
+                                    <span className="text-slate-300">|</span>
+                                    <span className="text-indigo-600 font-bold">{obra.formaPagamento}</span>
+                                  </>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -2439,6 +2570,11 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
+                              {obra.observacao && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacao}>
+                                  {obra.observacao}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-3 text-[10px] text-slate-500 font-medium whitespace-nowrap">
                               {getDaysDiff(obra.dataContrato)} d
@@ -2451,8 +2587,11 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               {formatDateBR(obra.dataConclusao)}
                             </td>
-                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap">
-                              R$ {obra.valorReceber.toLocaleString('pt-BR')}
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
+                              {obra.formaPagamento && (
+                                <div className="text-[9px] text-indigo-600 font-bold uppercase tracking-tighter mt-0.5">{obra.formaPagamento}</div>
+                              )}
                             </td>
                             <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -2523,6 +2662,7 @@ export default function App() {
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Instalou</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
@@ -2605,6 +2745,11 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                              {servico.observacao && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
+                                  {servico.observacao}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
@@ -2619,6 +2764,11 @@ export default function App() {
                             <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[80px]">
+                                {servico.formaPagamento || '---'}
+                              </div>
+                            </td>
                             <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
@@ -2786,6 +2936,11 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                              {servico.observacao && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
+                                  {servico.observacao}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
@@ -2800,6 +2955,11 @@ export default function App() {
                             <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[80px]">
+                                {servico.formaPagamento || '---'}
+                              </div>
+                            </td>
                             <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
                                 <button 
@@ -2973,6 +3133,11 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                              {servico.observacao && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
+                                  {servico.observacao}
+                                </div>
+                              )}
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
@@ -3582,6 +3747,20 @@ export default function App() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
                         />
                       </FormField>
+
+                      <FormField label="Forma de Pagamento">
+                        <select 
+                          name="formaPagamento"
+                          value={servicoFormData.formaPagamento}
+                          onChange={handleServicoInputChange}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="">Selecione</option>
+                          {formasPagamento.filter(f => f.ativo).map(f => (
+                            <option key={f.id} value={f.nome}>{f.nome}</option>
+                          ))}
+                        </select>
+                      </FormField>
                       <FormField label="Equipe Serviço">
                         <div className="space-y-2">
                           <select 
@@ -3971,10 +4150,13 @@ export default function App() {
                         <DetailItem label="Situação" value={<StatusBadge status={selectedServico.situacao} />} icon={<Activity size={14} />} />
                         <DetailItem label="Vendedor" value={selectedServico.vendedor || '---'} icon={<UserIcon size={14} />} />
                         <DetailItem label="Atendimento" value={formatDateBR(selectedServico.dataAtendimento)} icon={<Calendar size={14} />} />
+                        <DetailItem label="Forma de Pagamento" value={selectedServico.formaPagamento || '---'} icon={<DollarSign size={14} />} />
+                        <div className="md:col-span-1">
+                          <DetailItem label="Valor do Serviço" value={`R$ ${Number(selectedServico.valor).toLocaleString('pt-BR')}`} icon={<DollarSign size={14} />} />
+                        </div>
                         <div className="md:col-span-2">
                           <DetailItem label="Local do Serviço" value={selectedServico.local || '---'} icon={<MapPin size={14} />} />
                         </div>
-                        <DetailItem label="Valor do Serviço" value={`R$ ${Number(selectedServico.valor).toLocaleString('pt-BR')}`} icon={<DollarSign size={14} />} />
                       </div>
 
                       <hr className="border-slate-100" />
@@ -4056,6 +4238,10 @@ export default function App() {
         formasPagamento={formasPagamento}
         onSave={handleSaveConfig}
         onDelete={handleDeleteConfig}
+        onBackup={exportarJSON}
+        onExportXLS={exportarCSV}
+        onFileImport={handleFileImport}
+        onDownloadTemplate={downloadImportTemplate}
         isAdmin={currentUser.role === 'Admin'}
       />
 
@@ -4084,7 +4270,21 @@ function DetailItem({ label, value, icon }: { label: string, value: React.ReactN
 }
 
 // Settings Modal Component
-function SettingsModal({ isOpen, onClose, vendedores, equipes, inversores, formasPagamento, onSave, onDelete, isAdmin }: any) {
+function SettingsModal({ 
+  isOpen, 
+  onClose, 
+  vendedores, 
+  equipes, 
+  inversores, 
+  formasPagamento, 
+  onSave, 
+  onDelete, 
+  onBackup, 
+  onExportXLS, 
+  onFileImport,
+  onDownloadTemplate,
+  isAdmin 
+}: any) {
   const [activeTab, setActiveTab] = useState('vendedores');
   const [isAdding, setIsAdding] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
@@ -4120,18 +4320,23 @@ function SettingsModal({ isOpen, onClose, vendedores, equipes, inversores, forma
 
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar Tabs */}
-          <div className="w-64 bg-slate-50 border-r border-slate-200 p-4 space-y-2">
+          <div className="w-64 bg-slate-50 border-r border-slate-200 p-4 space-y-2 shrink-0">
             <TabButton active={activeTab === 'vendedores'} onClick={() => { setActiveTab('vendedores'); setIsAdding(false); }} icon={<UserIcon size={18} />} label="Vendedores" />
             <TabButton active={activeTab === 'equipes'} onClick={() => { setActiveTab('equipes'); setIsAdding(false); }} icon={<Users size={18} />} label="Equipes" />
             <TabButton active={activeTab === 'inversores'} onClick={() => { setActiveTab('inversores'); setIsAdding(false); }} icon={<BarChart3 size={18} />} label="Inversores" />
             <TabButton active={activeTab === 'formasPagamento'} onClick={() => { setActiveTab('formasPagamento'); setIsAdding(false); }} icon={<DollarSign size={18} />} label="Pagamentos" />
+            <div className="my-4 border-t border-slate-200 pt-4">
+              <TabButton active={activeTab === 'bancoDados'} onClick={() => { setActiveTab('bancoDados'); setIsAdding(false); }} icon={<Database size={18} />} label="Banco de Dados" />
+            </div>
           </div>
 
           {/* Content Area */}
           <div className="flex-1 flex flex-col overflow-hidden bg-white">
             <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900 capitalize">{activeTab}</h3>
-              {isAdmin && !isAdding && (
+              <h3 className="text-lg font-bold text-slate-900 capitalize">
+                {activeTab === 'bancoDados' ? 'Gestão de Dados' : activeTab}
+              </h3>
+              {isAdmin && !isAdding && activeTab !== 'bancoDados' && (
                 <button onClick={() => { setIsAdding(true); setFormData({ ativo: true }); }} className="flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all">
                   <Plus size={18} /> Novo Cadastro
                 </button>
@@ -4139,7 +4344,76 @@ function SettingsModal({ isOpen, onClose, vendedores, equipes, inversores, forma
             </div>
 
             <div className="flex-1 overflow-y-auto p-6 scrollbar-hide">
-              {isAdding ? (
+              {activeTab === 'bancoDados' ? (
+                <div className="space-y-8">
+                  {/* Backup & Restore Section */}
+                  <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100">
+                    <h4 className="text-sm font-bold text-amber-800 mb-4 flex items-center gap-2">
+                       <ShieldCheck size={18} /> Backup & Restauração
+                    </h4>
+                    <p className="text-xs text-amber-600 mb-6">
+                      Recomendamos baixar um backup completo semanalmente para segurança dos seus dados.
+                    </p>
+                    <div className="flex flex-wrap gap-4">
+                      <button 
+                        onClick={onBackup}
+                        className="flex items-center gap-2 bg-white text-amber-700 border border-amber-200 px-6 py-3 rounded-xl text-sm font-bold hover:bg-amber-100 transition-all shadow-sm"
+                      >
+                        <Download size={18} />
+                        Download Backup Completo (JSON)
+                      </button>
+                      <label className="flex items-center gap-2 bg-amber-600 text-white px-6 py-3 rounded-xl text-sm font-bold hover:bg-amber-700 transition-all cursor-pointer shadow-md">
+                        <Upload size={18} />
+                        Restaurar Backup
+                        <input type="file" accept=".json" onChange={onFileImport} className="hidden" />
+                      </label>
+                    </div>
+                  </div>
+
+                  {/* Export Options */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <Table size={18} /> Exportar Planilhas (XLSX)
+                      </h4>
+                      <div className="space-y-3">
+                        <button onClick={() => onExportXLS('obras')} className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl text-sm hover:border-indigo-300 transition-all">
+                          <span className="font-medium">Lista de Obras</span>
+                          <FileSpreadsheet size={18} className="text-emerald-500" />
+                        </button>
+                        <button onClick={() => onExportXLS('servicos')} className="w-full flex items-center justify-between p-3 bg-white border border-slate-200 rounded-xl text-sm hover:border-blue-300 transition-all">
+                          <span className="font-medium">Lista de Serviços</span>
+                          <FileSpreadsheet size={18} className="text-blue-500" />
+                        </button>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-6 rounded-2xl border border-slate-200">
+                      <h4 className="text-sm font-bold text-slate-700 mb-4 flex items-center gap-2">
+                        <PlusCircle size={18} /> Modelos de Importação
+                      </h4>
+                      <p className="text-xs text-slate-500 mb-4 font-medium italic">
+                        Use estes modelos para importar dados em massa.
+                      </p>
+                      <button 
+                        onClick={onDownloadTemplate}
+                        className="w-full flex items-center justify-center gap-2 p-3 bg-indigo-50 text-indigo-700 border border-indigo-100 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-all"
+                      >
+                        <Download size={18} /> Baixar Modelo Padrão
+                      </button>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-red-50 rounded-xl border border-red-100">
+                    <p className="text-[10px] text-red-700 font-bold uppercase tracking-widest flex items-center gap-2">
+                      <AlertTriangle size={14} /> Atenção
+                    </p>
+                    <p className="text-[11px] text-red-600 mt-1">
+                      A restauração de backup não apaga dados existentes, ela adiciona os registros do arquivo ao banco atual. Evite importar o mesmo backup múltiplas vezes para não gerar duplicidade.
+                    </p>
+                  </div>
+                </div>
+              ) : isAdding ? (
                 <form onSubmit={handleSave} className="space-y-6 max-w-md">
                   {activeTab === 'vendedores' && (
                     <FormField label="Nome do Vendedor">
