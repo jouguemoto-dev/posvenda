@@ -403,10 +403,11 @@ export default function App() {
   // Derived Values
   const stats = useMemo(() => {
     const total = obras.length;
-    const ativas = obras.filter(o => o.situacao !== 'Concluído').length;
+    const ativas = obras.filter(o => o.situacao === 'Em Andamento' || o.situacao === 'Pendente').length;
+    const emEspera = obras.filter(o => o.situacao === 'Em Espera').length;
     const concluidas = obras.filter(o => o.situacao === 'Concluído').length;
     const valorTotal = obras.reduce((sum, o) => sum + o.valorReceber, 0);
-    return { total, ativas, concluidas, valorTotal };
+    return { total, ativas, concluidas, emEspera, valorTotal };
   }, [obras]);
 
   const filteredObras = useMemo(() => {
@@ -621,6 +622,20 @@ export default function App() {
     if (selectedObras.length === 0) return;
 
     const doc = new jsPDF('landscape');
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header - CBC Energias Renováveis
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("CBC ENERGIAS RENOVÁVEIS - RELATÓRIO DE OBRAS", 14, 16);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - 14, 16, { align: 'right' });
+
     const tableColumn = ["Reg", "Situação", "Cliente", "Vendedor", "Local", "Equipe", "Data Obra", "Valor"];
     const tableRows: any[] = [];
 
@@ -638,19 +653,13 @@ export default function App() {
       tableRows.push(obraData);
     });
 
-    doc.setFontSize(18);
-    doc.text("Relatório de Obras Selecionadas", 14, 22);
-    doc.setFontSize(11);
-    doc.setTextColor(100);
-    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, 14, 30);
-
     autoTable(doc, {
       head: [tableColumn],
       body: tableRows,
       startY: 35,
-      theme: 'grid',
-      styles: { fontSize: 8 },
-      headStyles: { fillColor: [79, 70, 229] }
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
+      styles: { fontSize: 8 }
     });
 
     doc.save(`Relatorio_Obras_${new Date().toISOString().split('T')[0]}.pdf`);
@@ -1297,7 +1306,19 @@ export default function App() {
 
   const exportarPDF = () => {
     const doc = new jsPDF('l', 'mm', 'a4');
-    doc.text("Relatório de Obras", 14, 15);
+    const pageWidth = doc.internal.pageSize.getWidth();
+
+    // Header - CBC Energias Renováveis
+    doc.setFillColor(14, 165, 233);
+    doc.rect(0, 0, pageWidth, 25, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(16);
+    doc.setFont("helvetica", "bold");
+    doc.text("CBC ENERGIAS RENOVÁVEIS - RELATÓRIO GERAL DE OBRAS", 14, 16);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text(`Gerado em: ${new Date().toLocaleString('pt-BR')}`, pageWidth - 14, 16, { align: 'right' });
     
     const tableData = filteredObras.map(o => [
       o.numeroRegistro,
@@ -1314,12 +1335,13 @@ export default function App() {
     autoTable(doc, {
       head: [['Reg', 'Status', 'Prior', 'Cliente', 'Vendedor', 'Local', 'Contrato', 'Placas', 'Total']],
       body: tableData,
-      startY: 20,
-      theme: 'grid',
+      startY: 35,
+      theme: 'striped',
+      headStyles: { fillColor: [14, 165, 233] },
       styles: { fontSize: 8 }
     });
 
-    doc.save(`obras_${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`obras_geral_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
   const exportarIndividualTXT = (o: Obra) => {
@@ -1398,54 +1420,151 @@ export default function App() {
     const pageWidth = doc.internal.pageSize.getWidth();
     const contentWidth = pageWidth - (margin * 2);
     
-    // --- HEADER BOX ---
-    doc.setDrawColor(0);
-    doc.setLineWidth(0.5);
-    doc.rect(margin, margin, contentWidth, 25);
+    // --- COLORS ---
+    const primaryGreen = [45, 106, 79]; // Dark Green (#2D6A4F)
+    const lightGreen = [232, 245, 233]; // Very Light Green
+    const accentGreen = [64, 145, 108]; // Medium Green
+    const textGrey = [80, 80, 80];
+
+    // --- TOP LOGO & COMPANY INFO ---
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.setFontSize(28);
+    doc.text("CBC", margin, 25);
+    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.text("solaris", margin + 22, 25);
+
+    doc.setFontSize(8);
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.setFont("helvetica", "normal");
+    doc.text("Cbcsolaris Solar Projetos e Instalação de Sistemas Fotovoltaicos LTDA - 37.426.463/0001-20", margin, 32);
+    doc.text("Rua Itapagipe, 75 · Imbiribeira · Recife/PE · CEP 51150-690", margin, 36);
+    doc.text("cbc@energiasrenovaveis.com · +55 81 98101-1951", margin, 40);
+
+    // Separator Line
+    doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.setLineWidth(0.8);
+    doc.line(margin, 45, pageWidth - margin, 45);
+
+    // --- TITLE ---
+    doc.setFontSize(22);
+    doc.setFont("helvetica", "normal");
+    doc.text("RECIBO DE PRESTAÇÃO DE SERVIÇOS", pageWidth / 2, 60, { align: 'center', charSpace: 1 });
+
+    // --- SUB-HEADER BOX (Nº & DATE) ---
+    doc.setFillColor(lightGreen[0], lightGreen[1], lightGreen[2]);
+    doc.setDrawColor(200, 200, 200);
+    doc.setLineWidth(0.1);
+    doc.rect(margin, 70, contentWidth, 12, 'FD');
     
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(24);
-    doc.text("RECIBO", margin + 5, margin + 17);
-    
-    doc.setFontSize(12);
-    doc.text(`Nº: ${s.numeroRegistro}`, margin + contentWidth - 5, margin + 10, { align: 'right' });
-    doc.setFontSize(14);
-    doc.text(`VALOR: R$ ${Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, margin + contentWidth - 5, margin + 20, { align: 'right' });
-    
-    // --- BODY BOX ---
-    doc.rect(margin, margin + 25, contentWidth, 140);
-    
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
+    doc.setFontSize(11);
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.text(`Nº ${s.numeroRegistro || '2026-001'}`, margin + 5, 78);
     
     const today = new Date();
-    const dia = String(today.getDate()).padStart(2, '0');
-    const meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho", "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-    const mes = meses[today.getMonth()];
-    const ano = today.getFullYear();
+    const dataFormatada = today.toLocaleDateString('pt-BR');
+    doc.text(`Data do serviço: ${dataFormatada}`, pageWidth - margin - 5, 78, { align: 'right' });
+
+    // --- CLIENT INFO BOX ---
+    let y = 90;
+    doc.setDrawColor(200);
+    doc.rect(margin, y, contentWidth, 40);
     
-    const textoRecibo = `Declaro ter recebido nesta data a quantia de R$ ${Number(s.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} de ${s.cliente.toUpperCase()}, referente ao pagamento do serviço de ${s.servico ? s.servico.toUpperCase() : 'N/A'} realizado no local ${s.local ? s.local.toUpperCase() : 'N/A'}.`;
+    doc.setFontSize(10);
+    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.text("Cliente:", margin + 5, y + 10);
+    doc.setTextColor(0);
+    doc.text(String(s.cliente || "").toUpperCase(), margin + 25, y + 10);
     
-    const splitTexto = doc.splitTextToSize(textoRecibo, contentWidth - 20);
-    doc.text(splitTexto, margin + 10, margin + 50, { align: 'justify', lineHeightFactor: 1.5 });
+    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.text("CPF/CNPJ:", pageWidth / 2 + 10, y + 10);
+    doc.setTextColor(0);
+    doc.text("---.---.---/--", pageWidth / 2 + 40, y + 10); 
+
+    y += 18;
+    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.text("Endereço:", margin + 5, y);
+    doc.setTextColor(0);
+    const splitEndereco = doc.splitTextToSize(String(s.local || "N/A").toUpperCase(), contentWidth - 30);
+    doc.text(splitEndereco, margin + 25, y);
+
+    // --- SERVICE GRID ---
+    y = 150;
+    // Left Accent Bar
+    doc.setFillColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.rect(margin, y, 2.5, 25, 'F');
     
-    doc.text("E para maior clareza, afirmo o presente.", margin + 10, margin + 85);
+    // Background Light Box
+    doc.setFillColor(248, 250, 252);
+    doc.rect(margin + 2.5, y, contentWidth - 2.5, 25, 'F');
     
-    // City and Date
-    doc.text(`${s.local ? s.local.split(',')[0] : 'Brasil'}, ${dia} de ${mes} de ${ano}.`, pageWidth / 2, margin + 110, { align: 'center' });
-    
-    // Signature Line
-    doc.line(pageWidth / 2 - 40, margin + 135, pageWidth / 2 + 40, margin + 135);
+    doc.setFontSize(11);
+    doc.setTextColor(0);
     doc.setFont("helvetica", "bold");
-    doc.text("ASSINATURA", pageWidth / 2, margin + 142, { align: 'center' });
+    const descServico = String(s.servico || "VISITA TÉCNICA + MANUTENÇÃO").toUpperCase();
+    doc.text(descServico, margin + 10, y + 14);
+
+    // Value Box
+    const valorStr = Number(s.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    doc.setDrawColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.rect(pageWidth - margin - 45, y + 5, 40, 15);
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.setFontSize(16);
+    doc.text(valorStr, pageWidth - margin - 25, y + 15.5, { align: 'center' });
+
+    // --- TOTAL ---
+    y += 40;
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.setFontSize(11);
+    doc.text("TOTAL", pageWidth - margin - 65, y);
+    doc.setFontSize(18);
+    doc.setTextColor(0);
+    doc.text(`R$ ${valorStr}`, pageWidth - margin, y, { align: 'right' });
+
+    // --- PAYMENT METHOD ---
+    y += 15;
+    doc.setDrawColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.rect(margin, y, 90, 14);
+    doc.setFontSize(12);
+    doc.setFont("helvetica", "bold");
+    doc.text("Forma de pagamento: PIX", margin + 5, y + 9.5);
+
+    // --- SIGNATURE AREA ---
+    y = 245;
+    doc.setLineWidth(0.5);
+    doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.line(margin, y, margin + 85, y);
     
-    // Footer Info
+    // Hand-drawn style for "Júlio" (Simulated)
+    doc.setFont("times", "italic");
+    doc.setFontSize(22);
+    doc.setTextColor(0);
+    doc.text("Júlio", margin + 30, y - 5);
+    
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.text("CBC Solaris (responsável)", margin + 10, y + 6);
+    doc.setFont("helvetica", "normal");
     doc.setFontSize(8);
-    doc.setFont("helvetica", "italic");
-    doc.setTextColor(150);
-    doc.text(`Gerado pelo Sistema de Gestão de Obras - ${new Date().toLocaleString('pt-BR')}`, pageWidth / 2, 285, { align: 'center' });
-    
-    doc.save(`recibo_${s.numeroRegistro}_${s.cliente.replace(/\s+/g, '_')}.pdf`);
+    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.text("assinatura e carimbo", margin + 22, y + 12);
+
+    // Bottom Right Info
+    doc.setFontSize(8);
+    doc.text("cbc@energiasrenovaveis.com", pageWidth - margin, y - 10, { align: 'right' });
+    doc.text("+55 81 98101-1951", pageWidth - margin, y - 5, { align: 'right' });
+    doc.text("Recife/PE", pageWidth - margin, y, { align: 'right' });
+    doc.text(`Emissão: ${dataFormatada}`, pageWidth - margin, y + 5, { align: 'right' });
+
+    // Save PDF
+    doc.save(`Recibo_${s.numeroRegistro || 'S-N'}_${String(s.cliente || 'Cliente').replace(/\s+/g, '_')}.pdf`);
+  };
+
+  // Helper function for currency to text (simplified)
+  const valorPorExtenso = (valor: number) => {
+    return "conforme discriminado acima"; // In a real production app, we would use a library for this
   };
 
   const handleLogin = async () => {
@@ -1676,7 +1795,7 @@ export default function App() {
                 <option value="">Todas Situações</option>
                 <option value="Pendente">Pendente</option>
                 <option value="Em Andamento">Em Andamento</option>
-                <option value="Concluído">Concluído</option>
+                <option value="Em Espera">Em Espera</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -1840,7 +1959,11 @@ export default function App() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className={`hover:bg-indigo-50/50 transition-colors ${
-                              obra.situacao === 'Pendente' ? 'bg-amber-50/40 border-l-4 border-amber-400' : 'bg-blue-50/40 border-l-4 border-blue-400'
+                              obra.situacao === 'Pendente' 
+                                ? 'bg-amber-50/40 border-l-4 border-amber-400' 
+                                : obra.situacao === 'Em Espera'
+                                ? 'bg-slate-50/40 border-l-4 border-slate-400'
+                                : 'bg-blue-50/40 border-l-4 border-blue-400'
                             } ${selectedIds.has(obra.id) ? 'bg-indigo-100/50' : ''}`}
                           >
                             <td className="px-3 py-3">
@@ -1863,12 +1986,15 @@ export default function App() {
                                 className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
                                   obra.situacao === 'Pendente' 
                                     ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                    : obra.situacao === 'Em Espera'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
                                     : 'bg-blue-100 text-blue-700 border-blue-200'
                                 }`}
                               >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Em Andamento">Em Andamento</option>
                                 <option value="Concluído">Concluído</option>
+                                <option value="Em Espera">Em Espera</option>
                               </select>
                             </td>
                             <td className="px-3 py-3">
@@ -1961,12 +2087,12 @@ export default function App() {
               </div>
             </section>
 
-            {/* Section: Obras em Espera (Without Scheduled Date) */}
+            {/* Section: Obras Sem Agendamento (Without Scheduled Date) */}
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <h2 className="font-bold text-slate-700 flex items-center gap-2">
                   <Clock size={18} className="text-amber-500" />
-                  Obras em Espera (Sem Data Prevista)
+                  Obras Sem Data Prevista (Pendentes / Em Espera)
                 </h2>
                 <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
                   {unscheduledObras.length} obras
@@ -2078,7 +2204,11 @@ export default function App() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className={`hover:bg-slate-50 transition-colors ${
-                              obra.situacao === 'Pendente' ? 'bg-amber-50/60 border-l-4 border-amber-400' : 'bg-blue-50/60 border-l-4 border-blue-400'
+                              obra.situacao === 'Pendente' 
+                                ? 'bg-amber-50/60 border-l-4 border-amber-400' 
+                                : obra.situacao === 'Em Espera'
+                                ? 'bg-slate-50/60 border-l-4 border-slate-400'
+                                : 'bg-blue-50/60 border-l-4 border-blue-400'
                             } ${selectedIds.has(obra.id) ? 'bg-indigo-50/80' : ''}`}
                           >
                             <td className="px-3 py-3">
@@ -2101,12 +2231,15 @@ export default function App() {
                                 className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
                                   obra.situacao === 'Pendente' 
                                     ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                    : obra.situacao === 'Em Espera'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
                                     : 'bg-blue-100 text-blue-700 border-blue-200'
                                 }`}
                               >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Em Andamento">Em Andamento</option>
                                 <option value="Concluído">Concluído</option>
+                                <option value="Em Espera">Em Espera</option>
                               </select>
                             </td>
                             <td className="px-3 py-3">
@@ -2403,7 +2536,11 @@ export default function App() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors bg-blue-50/20 border-l-4 border-blue-400 ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
+                            className={`hover:bg-slate-50 transition-colors ${
+                              servico.situacao === 'Em Espera'
+                                ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
+                                : 'bg-blue-50/20 border-l-4 border-blue-400'
+                            } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
                             <td className="px-3 py-3 whitespace-nowrap">
                               <input 
@@ -2422,11 +2559,18 @@ export default function App() {
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
-                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all bg-blue-100 text-blue-700 border-blue-200"
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                  servico.situacao === 'Pendente' 
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                    : servico.situacao === 'Em Espera'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                    : 'bg-blue-100 text-blue-700 border-blue-200'
+                                }`}
                               >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Em Andamento">Em Andamento</option>
                                 <option value="Concluído">Concluído</option>
+                                <option value="Em Espera">Em Espera</option>
                               </select>
                             </td>
                             <td className="px-3 py-3">
@@ -2573,7 +2717,11 @@ export default function App() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors bg-amber-50/20 border-l-4 border-amber-400 ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
+                            className={`hover:bg-slate-50 transition-colors ${
+                              servico.situacao === 'Em Espera'
+                                ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
+                                : 'bg-amber-50/20 border-l-4 border-amber-400'
+                            } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
                             <td className="px-3 py-3 whitespace-nowrap">
                               <input 
@@ -2592,11 +2740,18 @@ export default function App() {
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
-                                className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all bg-amber-100 text-amber-700 border-amber-200"
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                  servico.situacao === 'Pendente' 
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                    : servico.situacao === 'Em Espera'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                    : 'bg-blue-100 text-blue-700 border-blue-200'
+                                }`}
                               >
                                 <option value="Pendente">Pendente</option>
                                 <option value="Em Andamento">Em Andamento</option>
                                 <option value="Concluído">Concluído</option>
+                                <option value="Em Espera">Em Espera</option>
                               </select>
                             </td>
                             <td className="px-3 py-3">
@@ -3044,6 +3199,7 @@ export default function App() {
                           <option value="Pendente">Pendente</option>
                           <option value="Em Andamento">Em Andamento</option>
                           <option value="Concluído">Concluído</option>
+                          <option value="Em Espera">Em Espera</option>
                         </select>
                       </FormField>
                       <FormField label="Prioridade">
@@ -3325,6 +3481,7 @@ export default function App() {
                           <option value="Pendente">Pendente</option>
                           <option value="Em Andamento">Em Andamento</option>
                           <option value="Concluído">Concluído</option>
+                          <option value="Em Espera">Em Espera</option>
                         </select>
                       </FormField>
                       <FormField label="Prioridade">

@@ -1,4 +1,4 @@
-export type Situacao = 'Pendente' | 'Em Andamento' | 'Concluído';
+export type Situacao = 'Pendente' | 'Em Andamento' | 'Concluído' | 'Em Espera';
 export type Prioridade = 'Alta' | 'Média' | 'Baixa';
 export type UserRole = 'Admin' | 'Manager' | 'Worker';
 

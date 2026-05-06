@@ -7,7 +7,7 @@
       "properties": {
         "id": { "type": "number", "description": "Timestamp único do registro." },
         "numeroRegistro": { "type": "string", "description": "Número sequencial do registro." },
-        "situacao": { "type": "string", "enum": ["Pendente", "Em Andamento", "Concluído"] },
+        "situacao": { "type": "string", "enum": ["Pendente", "Em Andamento", "Concluído", "Em Espera"] },
         "prioridade": { "type": "string", "enum": ["Alta", "Média", "Baixa"] },
         "cliente": { "type": "string" },
         "vendedor": { "type": "string" },
@@ -35,7 +35,7 @@
       "properties": {
         "id": { "type": "number" },
         "numeroRegistro": { "type": "string" },
-        "situacao": { "type": "string", "enum": ["Pendente", "Em Andamento", "Concluído"] },
+        "situacao": { "type": "string", "enum": ["Pendente", "Em Andamento", "Concluído", "Em Espera"] },
         "prioridade": { "type": "string", "enum": ["Alta", "Média", "Baixa"] },
         "dataAtendimento": { "type": "string", "format": "date" },
         "cliente": { "type": "string" },

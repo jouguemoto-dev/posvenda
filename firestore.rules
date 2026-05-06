@@ -45,19 +45,19 @@ service cloud.firestore {
 
     function isValidObra(data) {
       return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
-             data.situacao in ['Pendente', 'Em Andamento', 'Concluído'] &&
+             data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
              data.prioridade in ['Alta', 'Média', 'Baixa'] &&
-             data.numeroRegistro is string &&
-             data.valorReceber is number &&
-             data.quantidadePlacas is number;
+             (!('numeroRegistro' in data) || data.numeroRegistro is string) &&
+             (!('valorReceber' in data) || data.valorReceber is number) &&
+             (!('quantidadePlacas' in data) || data.quantidadePlacas is number);
     }
 
     function isValidServico(data) {
       return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
-             data.situacao in ['Pendente', 'Em Andamento', 'Concluído'] &&
+             data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
              data.prioridade in ['Alta', 'Média', 'Baixa'] &&
-             data.numeroRegistro is string &&
-             data.valor is number;
+             (!('numeroRegistro' in data) || data.numeroRegistro is string) &&
+             (!('valor' in data) || data.valor is number);
     }
 
     function isValidConfig(data) {

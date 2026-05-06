@@ -13,6 +13,7 @@ import {
   Users,
   Calendar,
   Check,
+  Clock,
   AlertCircle,
   ClipboardList,
   Wrench,
@@ -529,35 +530,63 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                         { (matchingObras.length > 0 || matchingServicos.length > 0) && (
                           <div className="mt-2 space-y-2 px-1 pb-2">
                             {matchingObras.map(o => (
-                              <div key={o.firebaseId || o.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-white text-indigo-700 border-indigo-100'}`}>
+                              <div key={o.firebaseId || o.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
+                                o.situacao === 'Em Espera' 
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200' 
+                                  : o.situacao === 'Concluído'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
+                                  : isDark 
+                                  ? 'bg-white/10 text-white border-white/20' 
+                                  : 'bg-white text-indigo-700 border-indigo-100'
+                              }`}>
                                 <div className="flex items-center justify-between mb-1.5">
                                   <div className="flex items-center gap-1.5">
                                     <ClipboardList size={12} className="opacity-70" />
-                                    <span className="uppercase tracking-widest text-[9px] opacity-60">Obra</span>
+                                    <span className="uppercase tracking-widest text-[9px] opacity-60">
+                                      {o.situacao === 'Em Espera' ? 'Pausado' : o.situacao === 'Concluído' ? 'Check' : 'Obra'}
+                                    </span>
                                   </div>
+                                  {o.situacao === 'Em Espera' && <Clock size={10} className="text-amber-500 animate-pulse" />}
+                                  {o.situacao === 'Concluído' && <Check size={10} className="text-emerald-500" />}
                                 </div>
-                                <span className="font-bold truncate mb-1 text-sm">{o.cliente}</span>
+                                <span className={`font-bold truncate mb-1 text-sm ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
                                 <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
                                   <span className="font-medium">{o.equipe}</span>
                                   {o.quantidadePlacas > 0 && (
-                                    <span className="bg-indigo-50 px-1.5 py-0.5 rounded-md font-black italic">{o.quantidadePlacas} pl</span>
+                                    <span className={`px-1.5 py-0.5 rounded-md font-black italic ${o.situacao === 'Concluído' ? 'bg-emerald-100' : 'bg-indigo-50'}`}>
+                                      {o.quantidadePlacas} pl
+                                    </span>
                                   )}
                                 </div>
                               </div>
                             ))}
                             {matchingServicos.map(s => (
-                              <div key={s.firebaseId || s.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${isDark ? 'bg-white/10 text-white border-white/20' : 'bg-white text-blue-700 border-blue-100'}`}>
+                              <div key={s.firebaseId || s.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
+                                s.situacao === 'Em Espera'
+                                  ? 'bg-slate-100 text-slate-500 border-slate-200'
+                                  : s.situacao === 'Concluído'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
+                                  : isDark 
+                                  ? 'bg-white/10 text-white border-white/20' 
+                                  : 'bg-white text-blue-700 border-blue-100'
+                              }`}>
                                 <div className="flex items-center justify-between mb-1.5">
                                   <div className="flex items-center gap-1.5">
                                     <Wrench size={12} className="opacity-70" />
-                                    <span className="uppercase tracking-widest text-[9px] opacity-60">Serviço</span>
+                                    <span className="uppercase tracking-widest text-[9px] opacity-60">
+                                      {s.situacao === 'Em Espera' ? 'Pausado' : s.situacao === 'Concluído' ? 'Check' : 'Serviço'}
+                                    </span>
                                   </div>
+                                  {s.situacao === 'Em Espera' && <Clock size={10} className="text-amber-500 animate-pulse" />}
+                                  {s.situacao === 'Concluído' && <Check size={10} className="text-emerald-500" />}
                                 </div>
-                                <span className="font-bold truncate mb-1 text-sm">{s.cliente}</span>
+                                <span className={`font-bold truncate mb-1 text-sm ${s.situacao === 'Concluído' ? 'line-through' : ''}`}>{s.cliente}</span>
                                 <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
                                   <span className="font-medium">{s.equipeServico || s.equipeInstalou || '---'}</span>
                                   {s.servico && (
-                                    <span className="bg-blue-50 px-1.5 py-0.5 rounded-md font-black truncate ml-2 text-[10px] uppercase">{s.servico}</span>
+                                    <span className={`px-1.5 py-0.5 rounded-md font-black truncate ml-2 text-[10px] uppercase ${s.situacao === 'Concluído' ? 'bg-emerald-100' : 'bg-blue-50'}`}>
+                                      {s.servico}
+                                    </span>
                                   )}
                                 </div>
                               </div>
