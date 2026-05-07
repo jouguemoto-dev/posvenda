@@ -2120,10 +2120,15 @@ export default function App() {
                               </select>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
-                              {obra.observacao && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacao}>
-                                  {obra.observacao}
+                              <div 
+                                onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
+                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {obra.cliente}
+                              </div>
+                              {obra.observacoes && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
+                                  {obra.observacoes}
                                 </div>
                               )}
                             </td>
@@ -2378,10 +2383,15 @@ export default function App() {
                               </select>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
-                              {obra.observacao && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacao}>
-                                  {obra.observacao}
+                              <div 
+                                onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
+                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {obra.cliente}
+                              </div>
+                              {obra.observacoes && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
+                                  {obra.observacoes}
                                 </div>
                               )}
                             </td>
@@ -2569,10 +2579,15 @@ export default function App() {
                               </span>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{obra.cliente}</div>
-                              {obra.observacao && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacao}>
-                                  {obra.observacao}
+                              <div 
+                                onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
+                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {obra.cliente}
+                              </div>
+                              {obra.observacoes && (
+                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
+                                  {obra.observacoes}
                                 </div>
                               )}
                             </td>
@@ -2744,7 +2759,12 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                              <div 
+                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
+                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {servico.cliente}
+                              </div>
                               {servico.observacao && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
                                   {servico.observacao}
@@ -2935,7 +2955,12 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                              <div 
+                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
+                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {servico.cliente}
+                              </div>
                               {servico.observacao && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
                                   {servico.observacao}
@@ -3132,7 +3157,12 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px]">{servico.cliente}</div>
+                              <div 
+                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
+                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
+                              >
+                                {servico.cliente}
+                              </div>
                               {servico.observacao && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
                                   {servico.observacao}
@@ -4251,6 +4281,8 @@ export default function App() {
         onClose={() => setIsPayrollOpen(false)}
         obras={obras}
         equipes={equipes}
+        onSelectObra={setSelectedObra}
+        onOpenDetails={setIsDetailsModalOpen}
       />
     </div>
   );
@@ -4481,7 +4513,7 @@ function SettingsModal({
 }
 
 // Payroll Modal Component
-function PayrollModal({ isOpen, onClose, obras, equipes }: any) {
+function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDetails }: any) {
   const [period, setPeriod] = useState('Mensal');
   const [selectedEquipe, setSelectedEquipe] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -4603,7 +4635,19 @@ function PayrollModal({ isOpen, onClose, obras, equipes }: any) {
                     {payrollData.map((obra: any) => (
                       <tr key={obra.id} className="hover:bg-white transition-colors">
                         <td className="px-6 py-3 text-sm text-slate-600">{formatDateBR(obra.dataConclusao || obra.dataObra)}</td>
-                        <td className="px-6 py-3 text-sm font-bold text-slate-900">{obra.cliente}</td>
+                        <td className="px-6 py-3">
+                          <div 
+                            onClick={() => { onSelectObra(obra); onOpenDetails(true); }}
+                            className="text-sm font-bold text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors"
+                          >
+                            {obra.cliente}
+                          </div>
+                          {obra.observacoes && (
+                            <div className="text-[10px] text-slate-500 mt-0.5 max-w-[300px] truncate" title={obra.observacoes}>
+                              {obra.observacoes}
+                            </div>
+                          )}
+                        </td>
                         <td className="px-6 py-3 text-sm text-slate-600">{obra.quantidadePlacas}</td>
                         <td className="px-6 py-3 text-sm text-slate-600">R$ {obra.valorMaoObra}</td>
                         <td className="px-6 py-3 text-sm font-bold text-slate-900 text-right">R$ {obra.valorReceber.toLocaleString('pt-BR')}</td>
