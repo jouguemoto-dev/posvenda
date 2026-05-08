@@ -145,168 +145,283 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
     }
   };
 
+  const valorPorExtenso = (valor: number): string => {
+    const unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+    const dezena1 = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+    const dezenas = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+    const centenas = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+    const getCentena = (n: number) => {
+      if (n === 100) return "cem";
+      let res = "";
+      const c = Math.floor(n / 100);
+      const d = Math.floor((n % 100) / 10);
+      const u = n % 10;
+      if (c > 0) res += centenas[c];
+      if (d > 0) {
+        if (res !== "") res += " e ";
+        if (d === 1) {
+          res += dezena1[u];
+          return res;
+        }
+        res += dezenas[d];
+      }
+      if (u > 0) {
+        if (res !== "") res += " e ";
+        res += unidades[u];
+      }
+      return res;
+    };
+
+    if (valor === 0) return "zero reais";
+    const inteiro = Math.floor(valor);
+    const centavos = Math.round((valor - inteiro) * 100);
+    let extenso = "";
+    if (inteiro > 0) {
+      if (inteiro < 1000) {
+        extenso = getCentena(inteiro);
+      } else if (inteiro < 1000000) {
+        const mil = Math.floor(inteiro / 1000);
+        const resto = inteiro % 1000;
+        extenso = (mil === 1 ? "" : getCentena(mil)) + " mil";
+        if (resto > 0) {
+          extenso += (resto < 100 || resto % 100 === 0 ? " e " : " ") + getCentena(resto);
+        }
+      }
+      extenso += inteiro === 1 ? " real" : " reais";
+    }
+    if (centavos > 0) {
+      if (extenso !== "") extenso += " e ";
+      extenso += getCentena(centavos) + (centavos === 1 ? " centavo" : " centavos");
+    }
+    return extenso;
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF();
     const pageWidth = doc.internal.pageSize.getWidth();
     const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
     
     // --- ESTILOS GERAIS ---
-    const primaryIndigo = [79, 70, 229];
-    const primaryEmerald = [16, 185, 129];
-    const slate800 = [30, 41, 59];
-    const slate400 = [148, 163, 184];
+    const primaryIndigo = [79, 70, 229]; // #4F46E5
+    const primaryEmerald = [16, 185, 129]; // #10B981
+    const textDark = [30, 41, 59];
+    const textLight = [100, 116, 139];
+    const separatorColor = [226, 232, 240];
     
-    if (activeTab === 'proposta') {
-      // --- HEADER PROPOSTA ---
-      doc.setFillColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
-      doc.rect(0, 0, pageWidth, 40, 'F');
-      
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
-      doc.setFont('helvetica', 'bold');
-      doc.text('PROPOSTA DE SERVIÇO DE PÓS-VENDA', pageWidth / 2, 25, { align: 'center' });
-      
-      // Detalhes da Empresa no Header
-      doc.setFontSize(8);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`${companyDetails.fullName} | CNPJ: ${companyDetails.cnpj}`, pageWidth / 2, 33, { align: 'center' });
-      
-      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
-      
-      // Seção: Dados do Cliente
-      doc.setFillColor(248, 250, 252); // slate-50
-      doc.rect(15, 45, pageWidth - 30, 30, 'F');
-      doc.setDrawColor(226, 232, 240); // slate-200
-      doc.rect(15, 45, pageWidth - 30, 30, 'D');
-      
-      doc.setFontSize(9);
-      doc.setTextColor(slate400[0], slate400[1], slate400[2]);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DADOS DO CLIENTE', 20, 52);
-      
-      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.text(`Nome: ${proposalData.nomeCliente}`, 20, 60);
-      doc.text(`Endereço: ${proposalData.endereco}`, 20, 66);
-      doc.text(`Número do Sistema: ${proposalData.numeroSistema}`, pageWidth - 20, 60, { align: 'right' });
+    const themeColor = activeTab === 'proposta' ? primaryIndigo : primaryEmerald;
+    const secondaryColor = activeTab === 'proposta' ? [238, 242, 255] : [240, 253, 244];
 
-      // Seção: Serviços
-      doc.setFontSize(9);
-      doc.setTextColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
-      doc.setFont('helvetica', 'bold');
-      doc.text('DESCRIÇÃO DOS SERVIÇOS OFERECIDOS', 20, 85);
-      doc.line(20, 87, pageWidth - 20, 87);
+    // --- TOP BAR ---
+    doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+    doc.rect(0, 0, pageWidth, 5, 'F');
+
+    // --- HEADER: LOGO & COMPANY INFO ---
+    let y = 20;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+    doc.setFontSize(32);
+    const cbcWidth = doc.getTextWidth("CBC");
+    doc.text("CBC", margin, y);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text("solaris", margin + cbcWidth + 1, y);
+
+    // Document Name
+    doc.setFontSize(10);
+    doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+    doc.text(activeTab === 'proposta' ? "PROPOSTA DE MANUTENÇÃO" : "RECIBO DE PAGAMENTO", pageWidth - margin, y - 5, { align: 'right' });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(activeTab === 'proposta' ? `#${proposalData.numeroSistema}` : `#${receiptData.numeroRecibo}`, pageWidth - margin, y + 2, { align: 'right' });
+
+    y += 10;
+    doc.setFontSize(8);
+    doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+    doc.setFont("helvetica", "normal");
+    doc.text(companyDetails.fullName, margin, y);
+    doc.text(`Data: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - margin, y, { align: 'right' });
+
+    y += 4;
+    doc.text(`CNPJ: ${companyDetails.cnpj} | ${companyDetails.address}`, margin, y);
+
+    y += 6;
+    doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+
+    if (activeTab === 'proposta') {
+      // --- PROPOSAL CONTENT ---
+      y += 15;
+      doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.roundedRect(margin, y, contentWidth, 30, 2, 2, 'F');
       
-      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
-      doc.setFont('helvetica', 'normal');
+      y += 8;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.text("DESTINATÁRIO", margin + 5, y);
+
+      y += 7;
       doc.setFontSize(10);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.text("CLIENTE:", margin + 5, y);
+      doc.setFont("helvetica", "normal");
+      doc.text(proposalData.nomeCliente.toUpperCase(), margin + 25, y);
+
+      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.text("ENDEREÇO:", margin + 5, y);
+      doc.setFont("helvetica", "normal");
+      const splitAdr = doc.splitTextToSize(proposalData.endereco.toUpperCase(), contentWidth - 35);
+      doc.text(splitAdr, margin + 30, y);
+
+      // Services List
+      y += (splitAdr.length * 5) + 12;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.text("DESCRIÇÃO DOS SERVIÇOS INCLUSOS", margin, y);
+      
+      y += 3;
+      doc.setDrawColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.setLineWidth(1);
+      doc.line(margin, y, margin + 40, y);
+
+      y += 10;
+      doc.setFontSize(10);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.setFont("helvetica", "normal");
       servicosInclusos.forEach((s, i) => {
         if (s.trim()) {
-          doc.circle(22, 94 + (i * 6), 1, 'F');
-          doc.text(s, 26, 95 + (i * 6));
+          doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+          doc.circle(margin + 2, y + (i * 6) - 1, 0.8, 'F');
+          doc.text(s, margin + 6, y + (i * 6));
         }
       });
 
-      // Seção: Valores em destaque
-      const boxY = 145;
-      doc.setFillColor(245, 247, 255); // indigo-50
-      doc.rect(15, boxY, (pageWidth - 40) / 2, 25, 'F');
-      doc.setDrawColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
-      doc.rect(15, boxY, (pageWidth - 40) / 2, 25, 'D');
+      // Values Box
+      y += (servicosInclusos.length * 6) + 15;
+      const bW = (contentWidth - 10) / 2;
       
-      doc.text('VALOR AVULSO', 20, boxY + 8);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`R$ ${(proposalData.valorAvulso || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 20, boxY + 18);
-      
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'normal');
-      doc.setFillColor(255, 255, 255);
-      doc.rect(15 + (pageWidth - 40) / 2 + 10, boxY, (pageWidth - 40) / 2, 25, 'F');
-      doc.setDrawColor(slate400[0], slate400[1], slate400[2]);
-      doc.rect(15 + (pageWidth - 40) / 2 + 10, boxY, (pageWidth - 40) / 2, 25, 'D');
-      
-      doc.text('PLANO ANUAL', 15 + (pageWidth - 40) / 2 + 15, boxY + 8);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`R$ ${(proposalData.valorPlanoAnual || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, 15 + (pageWidth - 40) / 2 + 15, boxY + 18);
+      // Box 1: Avulso
+      doc.setFillColor(248, 250, 252);
+      doc.roundedRect(margin, y, bW, 35, 2, 2, 'F');
+      doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(margin, y, bW, 35, 2, 2, 'D');
 
-      // Prazos e Termos
-      doc.setFontSize(9);
-      doc.setTextColor(slate400[0], slate400[1], slate400[2]);
-      doc.text(`Validade: ${proposalData.validade}  |  Prazo: ${proposalData.prazoExecucao}`, pageWidth / 2, 185, { align: 'center' });
-
-      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
       doc.setFontSize(8);
-      doc.setFont('helvetica', 'bold');
-      doc.text('TERMOS DE GARANTIA E RESPONSABILIDADE', 20, 200);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(100);
-      const splitTerms = doc.splitTextToSize(termosGarantia, pageWidth - 40);
-      doc.text(splitTerms, 20, 205);
+      doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+      doc.setFont("helvetica", "bold");
+      doc.text("OPÇÃO 1: SERVIÇO AVULSO", margin + 5, y + 8);
       
-      // Footer
+      doc.setFontSize(16);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      const valAvulso = (proposalData.valorAvulso || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      doc.text(valAvulso, margin + 5, y + 20);
       doc.setFontSize(7);
-      doc.setTextColor(slate400[0], slate400[1], slate400[2]);
-      doc.text(`Gerado em ${new Date().toLocaleString('pt-BR')} - ${companyDetails.address}`, pageWidth / 2, pageHeight - 10, { align: 'center' });
+      doc.setFont("helvetica", "normal");
+      doc.text("Pagamento único após execução", margin + 5, y + 28);
+
+      // Box 2: Anual
+      doc.setFillColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.roundedRect(margin + bW + 10, y, bW, 35, 2, 2, 'F');
+
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.text("OPÇÃO 2: PLANO ANUAL (2 VISITAS)", margin + bW + 15, y + 8);
+      
+      doc.setFontSize(16);
+      const valAnual = (proposalData.valorPlanoAnual || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+      doc.text(valAnual, margin + bW + 15, y + 20);
+      doc.setFontSize(7);
+      doc.setFont("helvetica", "normal");
+      doc.text("Mais economia e prevenção", margin + bW + 15, y + 28);
+
+      // Terms
+      y += 50;
+      doc.setFontSize(9);
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.text("CONDIÇÕES GERAIS", margin, y);
+      
+      y += 2;
+      doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+      doc.setLineWidth(0.1);
+      doc.line(margin, y, pageWidth - margin, y);
+
+      y += 8;
+      doc.setFontSize(8);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Validade da Proposta: ${proposalData.validade}  |  Prazo de Execução: ${proposalData.prazoExecucao}`, margin, y);
+      
+      y += 5;
+      const splitTerms = doc.splitTextToSize(`Garantia: ${termosGarantia}`, contentWidth);
+      doc.text(splitTerms, margin, y);
+
+      // Approval Line
+      y = pageHeight - 50;
+      doc.setDrawColor(textLight[0], textLight[1], textLight[2]);
+      doc.line(margin + 10, y, margin + 80, y);
+      doc.text("DE ACORDO (CLIENTE)", margin + 45, y + 8, { align: 'center' });
+      
+      doc.line(pageWidth - margin - 80, y, pageWidth - margin - 10, y);
+      doc.text("DATA DE APROVAÇÃO", pageWidth - margin - 45, y + 8, { align: 'center' });
 
       doc.save(`Proposta_PosVenda_${proposalData.nomeCliente.replace(/ /g, '_')}.pdf`);
     } else {
-      // --- HEADER RECIBO ---
-      doc.setFillColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
-      doc.rect(0, 0, pageWidth, 50, 'F');
+      // --- RECEIPT CONTENT ---
+      y += 15;
+      doc.setFillColor(secondaryColor[0], secondaryColor[1], secondaryColor[2]);
+      doc.roundedRect(margin, y, contentWidth, 25, 2, 2, 'F');
       
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(24);
-      doc.setFont('helvetica', 'bold');
-      doc.text('RECIBO', 20, 35);
+      const vStrValue = Number(receiptData.valor || 0);
+      const vStr = vStrValue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
       
+      y += 10;
       doc.setFontSize(10);
-      doc.text(`Nº ${receiptData.numeroRecibo}`, pageWidth - 20, 35, { align: 'right' });
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.text("VALOR RECEBIDO", margin + 5, y);
       
-      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
-      
-      // Box de Valor
-      doc.setFillColor(240, 253, 244); // emerald-50
-      doc.rect(pageWidth - 85, 60, 70, 20, 'F');
-      doc.setDrawColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
-      doc.rect(pageWidth - 85, 60, 70, 20, 'D');
-      
-      doc.setFontSize(8);
-      doc.setTextColor(primaryEmerald[0], primaryEmerald[1], primaryEmerald[2]);
-      doc.text('VALOR TOTAL', pageWidth - 80, 68);
-      doc.setFontSize(14);
-      doc.setFont('helvetica', 'bold');
-      doc.text(`R$ ${(receiptData.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - 80, 76);
-      
-      // Conteúdo principal
-      doc.setTextColor(slate800[0], slate800[1], slate800[2]);
+      doc.setFontSize(18);
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.text(vStr, pageWidth - margin - 5, y + 5, { align: 'right' });
+
+      y += 25;
       doc.setFontSize(11);
-      doc.setFont('helvetica', 'normal');
-      const corpoRecibo = `Recebemos de ${proposalData.nomeCliente.toUpperCase()}, a importância de R$ ${(receiptData.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${receiptData.formaPagamento}), referente à execução do serviço de ${receiptData.servicoRealizado}.`;
-      const splitCorpo = doc.splitTextToSize(corpoRecibo, pageWidth - 40);
-      doc.text(splitCorpo, 20, 100);
-
-      doc.setFontSize(10);
-      doc.text(`Data do Pagamento: ${new Date(receiptData.dataPagamento).toLocaleDateString('pt-BR')}`, 20, 130);
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
       
-      // Seção da empresa
-      doc.setFillColor(248, 250, 252);
-      doc.rect(15, 150, pageWidth - 30, 40, 'F');
-      doc.setFontSize(9);
-      doc.setFont('helvetica', 'bold');
-      doc.text('EMITIDO POR:', 20, 158);
-      doc.setFont('helvetica', 'normal');
-      doc.text(companyDetails.fullName, 20, 165);
-      doc.text(`CNPJ: ${companyDetails.cnpj}`, 20, 171);
-      doc.text(companyDetails.address, 20, 177);
+      const corpoRecibo = `Recebemos de ${proposalData.nomeCliente.toUpperCase()}, a importância de ${vStr} (${valorPorExtenso(vStrValue)}) por meio de ${receiptData.formaPagamento.toUpperCase()}, referente à manutenção preventiva: ${receiptData.servicoRealizado.toUpperCase()}.`;
+      const splitCorpo = doc.splitTextToSize(corpoRecibo, contentWidth);
+      doc.text(splitCorpo, margin, y);
 
-      // Assinatura
-      doc.line(pageWidth / 2 - 40, 240, pageWidth / 2 + 40, 240);
+      y += (splitCorpo.length * 7) + 5;
+      doc.setFontSize(10);
+      doc.text(`Data da Transação: ${new Date(receiptData.dataPagamento).toLocaleDateString('pt-BR')}`, margin, y);
+
+      // Signature area
+      y = 180;
+      doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+      doc.line(margin + 20, y, pageWidth - margin - 20, y);
+      
+      y += 6;
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(11);
+      doc.setTextColor(themeColor[0], themeColor[1], themeColor[2]);
+      doc.text("CBC SOLARIS", pageWidth / 2, y, { align: 'center' });
+      
+      y += 5;
       doc.setFontSize(8);
-      doc.text(companyDetails.name.toUpperCase(), pageWidth / 2, 246, { align: 'center' });
-      doc.text('ASSINATURA DO RESPONSÁVEL', pageWidth / 2, 252, { align: 'center' });
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+      doc.text("COMPROVANTE DE QUITAÇÃO DE SERVIÇO", pageWidth / 2, y, { align: 'center' });
 
       doc.save(`Recibo_PosVenda_${proposalData.nomeCliente.replace(/ /g, '_')}.pdf`);
     }

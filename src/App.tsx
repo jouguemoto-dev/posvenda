@@ -586,6 +586,9 @@ export default function App() {
         const obra = obras.find(o => o.id === id);
         if (obra?.firebaseId) {
           const updateData: any = { situacao: newStatus };
+          if (newStatus === 'Concluído') {
+            updateData.dataConclusao = new Date().toISOString().split('T')[0];
+          }
           await updateDoc(doc(db, 'obras', obra.firebaseId), updateData);
         }
       }
@@ -704,7 +707,9 @@ export default function App() {
       valorMaoObra: valorMaoObraFinal,
       valorReceber: valorReceberCalculado,
       dataObra: formData.dataObra || '',
-      dataConclusao: formData.dataConclusao || '',
+      dataConclusao: (formData.situacao === 'Concluído' && !formData.dataConclusao) 
+        ? new Date().toISOString().split('T')[0] 
+        : (formData.dataConclusao || ''),
       equipe: finalEquipe || '',
       inversor: formData.inversor || '',
       formaPagamento: formData.formaPagamento || '',
@@ -968,6 +973,10 @@ export default function App() {
     if (!obraToUpdate?.firebaseId) return;
 
     const updatedData: any = { [field]: value, updatedAt: serverTimestamp() };
+    
+    if (field === 'situacao' && value === 'Concluído') {
+      updatedData.dataConclusao = new Date().toISOString().split('T')[0];
+    }
 
     try {
       await updateDoc(doc(db, 'obras', obraToUpdate.firebaseId), updatedData);
@@ -1414,6 +1423,156 @@ export default function App() {
     doc.save(`obras_geral_${new Date().toISOString().split('T')[0]}.pdf`);
   };
 
+  const exportarIndividualPDF = (o: Obra) => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
+    const contentWidth = pageWidth - (margin * 2);
+    
+    // --- COLORS ---
+    const primaryIndigo = [67, 56, 202]; // #4338CA
+    const textDark = [30, 41, 59];
+    const textLight = [100, 116, 139];
+    const separatorColor = [226, 232, 240];
+
+    // --- TOP DECORATION ---
+    doc.setFillColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.rect(0, 0, pageWidth, 5, 'F');
+
+    // --- HEADER ---
+    let y = 20;
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.setFontSize(32);
+    const cbcWidth = doc.getTextWidth("CBC");
+    doc.text("CBC", margin, y);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text("solaris", margin + cbcWidth + 1, y);
+
+    doc.setFontSize(10);
+    doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+    doc.text("DETALHAMENTO DA OBRA", pageWidth - margin, y - 5, { align: 'right' });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(`#${o.numeroRegistro}`, pageWidth - margin, y + 2, { align: 'right' });
+
+    y += 10;
+    doc.setFontSize(8);
+    doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+    doc.text("CBC Energias Renováveis", margin, y);
+    doc.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, pageWidth - margin, y, { align: 'right' });
+
+    y += 6;
+    doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
+
+    // --- CLIENT SECTION ---
+    y += 15;
+    doc.setFillColor(248, 250, 252);
+    doc.roundedRect(margin, y, contentWidth, 35, 2, 2, 'F');
+    
+    y += 8;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.text("INFORMAÇÕES DO CLIENTE", margin + 5, y);
+
+    y += 7;
+    doc.setFontSize(10);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text("CLIENTE:", margin + 5, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(o.cliente.toUpperCase(), margin + 30, y);
+
+    y += 6;
+    doc.setFont("helvetica", "bold");
+    doc.text("LOCAL:", margin + 5, y);
+    doc.setFont("helvetica", "normal");
+    const splitLocal = doc.splitTextToSize(String(o.local || "---").toUpperCase(), contentWidth - 40);
+    doc.text(splitLocal, margin + 30, y);
+
+    y += (splitLocal.length * 5);
+    doc.setFont("helvetica", "bold");
+    doc.text("VENDEDOR:", margin + 5, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(o.vendedor || "---").toUpperCase(), margin + 30, y);
+
+    // --- TECHNICAL DETAILS ---
+    y += 20;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.text("DADOS TÉCNICOS & CRONOGRAMA", margin, y);
+    
+    y += 3;
+    doc.setDrawColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.setLineWidth(1);
+    doc.line(margin, y, margin + 40, y);
+
+    y += 10;
+    const technicalData = [
+      ["SITUAÇÃO:", o.situacao.toUpperCase(), "PRIORIDADE:", o.prioridade.toUpperCase()],
+      ["EQUIPE:", String(o.equipe || "---").toUpperCase(), "INVERSOR:", String(o.inversor || "---").toUpperCase()],
+      ["CONTRATO:", formatDateBR(o.dataContrato), "PLACAS (QTD):", String(o.quantidadePlacas)],
+      ["CHEGADA PLACAS:", o.dataChegadaPlacas ? formatDateBR(o.dataChegadaPlacas) : "---", "PREVISÃO OBRA:", o.dataObra ? formatDateBR(o.dataObra) : "---"],
+      ["CONCLUSÃO:", o.dataConclusao ? formatDateBR(o.dataConclusao) : "---", "PAGAMENTO:", String(o.formaPagamento || "---").toUpperCase()]
+    ];
+
+    doc.setFontSize(9);
+    technicalData.forEach((row, i) => {
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+      doc.text(row[0], margin, y + (i * 7));
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.text(row[1], margin + 30, y + (i * 7));
+
+      doc.setFont("helvetica", "bold");
+      doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+      doc.text(row[2], margin + (contentWidth/2) + 10, y + (i * 7));
+      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+      doc.text(row[3], margin + (contentWidth/2) + 40, y + (i * 7));
+    });
+
+    // --- OBSERVATIONS ---
+    y += (technicalData.length * 7) + 10;
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.text("OBSERVAÇÕES", margin, y);
+    
+    y += 5;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    const splitObs = doc.splitTextToSize(o.observacoes || "Nenhuma observação registrada.", contentWidth);
+    doc.text(splitObs, margin, y);
+
+    // --- FINANCIAL SUMMARY ---
+    y += (splitObs.length * 6) + 15;
+    doc.setFillColor(primaryIndigo[0], primaryIndigo[1], primaryIndigo[2]);
+    doc.roundedRect(pageWidth - margin - 80, y, 80, 25, 1, 1, 'F');
+    
+    doc.setFontSize(10);
+    doc.setTextColor(255, 255, 255);
+    doc.text("VALOR TOTAL A RECEBER", pageWidth - margin - 40, y + 8, { align: 'center' });
+    
+    doc.setFontSize(18);
+    doc.setFont("helvetica", "bold");
+    doc.text(`R$ ${o.valorReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y + 18, { align: 'center' });
+
+    // --- FOOTER ---
+    doc.setFontSize(7);
+    doc.setTextColor(textLight[0], textLight[1], textLight[2]);
+    doc.text("Gerado por CBC Solaris Cloud Management System", pageWidth / 2, pageHeight - 10, { align: 'center' });
+
+    doc.save(`Obra_${o.numeroRegistro}_${o.cliente.replace(/\s+/g, '_')}.pdf`);
+  };
+
   const exportarIndividualTXT = (o: Obra) => {
     let texto = `REGISTRO DE OBRA #${o.numeroRegistro}\n`;
     texto += "=".repeat(60) + "\n";
@@ -1484,192 +1643,275 @@ export default function App() {
     URL.revokeObjectURL(url);
   };
 
+  // Helper to convert number to currency string in words
+  const valorPorExtenso = (valor: number): string => {
+    const unidades = ["", "um", "dois", "três", "quatro", "cinco", "seis", "sete", "oito", "nove"];
+    const dezena1 = ["dez", "onze", "doze", "treze", "quatorze", "quinze", "dezesseis", "dezessete", "dezoito", "dezenove"];
+    const dezenas = ["", "", "vinte", "trinta", "quarenta", "cinquenta", "sessenta", "setenta", "oitenta", "noventa"];
+    const centenas = ["", "cento", "duzentos", "trezentos", "quatrocentos", "quinhentos", "seiscentos", "setecentos", "oitocentos", "novecentos"];
+
+    const getCentena = (n: number) => {
+      if (n === 100) return "cem";
+      let res = "";
+      const c = Math.floor(n / 100);
+      const d = Math.floor((n % 100) / 10);
+      const u = n % 10;
+
+      if (c > 0) res += centenas[c];
+      if (d > 0) {
+        if (res !== "") res += " e ";
+        if (d === 1) {
+          res += dezena1[u];
+          return res;
+        }
+        res += dezenas[d];
+      }
+      if (u > 0) {
+        if (res !== "") res += " e ";
+        res += unidades[u];
+      }
+      return res;
+    };
+
+    if (valor === 0) return "zero reais";
+    
+    const inteiro = Math.floor(valor);
+    const centavos = Math.round((valor - inteiro) * 100);
+
+    let extenso = "";
+    
+    if (inteiro > 0) {
+      if (inteiro < 1000) {
+        extenso = getCentena(inteiro);
+      } else if (inteiro < 1000000) {
+        const mil = Math.floor(inteiro / 1000);
+        const resto = inteiro % 1000;
+        extenso = (mil === 1 ? "" : getCentena(mil)) + " mil";
+        if (resto > 0) {
+          extenso += (resto < 100 || resto % 100 === 0 ? " e " : " ") + getCentena(resto);
+        }
+      }
+      extenso += inteiro === 1 ? " real" : " reais";
+    }
+
+    if (centavos > 0) {
+      if (extenso !== "") extenso += " e ";
+      extenso += getCentena(centavos) + (centavos === 1 ? " centavo" : " centavos");
+    }
+
+    return extenso;
+  };
+
   const gerarReciboServicoPDF = (s: any) => {
     const doc = new jsPDF();
-    const margin = 15;
     const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 20;
     const contentWidth = pageWidth - (margin * 2);
     
     // --- COLORS ---
     const primaryGreen = [45, 106, 79]; // Dark Green (#2D6A4F)
-    const lightGreen = [232, 245, 233]; // Very Light Green
-    const accentGreen = [64, 145, 108]; // Medium Green
-    const textGrey = [80, 80, 80];
+    const midGreen = [64, 145, 108];    // Mid Green (#40916C)
+    const lightGreen = [240, 248, 245]; // Neutral background (#F0F8F5)
+    const accentGrey = [108, 117, 125]; // Secondary text
+    const textDark = [33, 37, 41];     // Main text
+    const separatorColor = [200, 200, 200];
 
-    // --- TOP LOGO & COMPANY INFO ---
+    // --- INITIAL Y POSITION ---
+    let y = 15;
+
+    // --- HEADER: BRANDING ---
+    doc.setFillColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.rect(0, 0, pageWidth, 5, 'F'); // Top accent bar
+
+    y = 25;
     doc.setFont("helvetica", "bold");
     doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setFontSize(32);
+    doc.setFontSize(36);
     const cbcWidth = doc.getTextWidth("CBC");
-    doc.text("CBC", margin, 25);
-    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.text("solaris", margin + cbcWidth + 1, 25);
+    doc.text("CBC", margin, y);
+    doc.setTextColor(midGreen[0], midGreen[1], midGreen[2]);
+    doc.text("solaris", margin + cbcWidth + 1, y);
 
+    // Document Type Label
+    doc.setFontSize(10);
+    doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("COMPROVANTE DE RECIBO", pageWidth - margin, y - 5, { align: 'right' });
+    
+    doc.setFontSize(14);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(`REGISTRO #${s.numeroRegistro || '---'}`, pageWidth - margin, y + 2, { align: 'right' });
+
+    y += 12;
+    // Company Subtitle
     doc.setFontSize(8.5);
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
+    doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
     doc.setFont("helvetica", "normal");
-    doc.text("Cbcsolaris Solar Projetos e Instalação de Sistemas Fotovoltaicos LTDA - 37.426.463/0001-20", margin, 32);
-    doc.text("Rua Itapagipe, 75 · Imbiribeira · Recife/PE · CEP 51150-690", margin, 36.5);
-    doc.text("cbc@energiasrenovaveis.com · +55 81 98101-1951", margin, 41);
+    doc.text("Cbcsolaris Solar Projetos e Instalação de Sistemas Fotovoltaicos LTDA", margin, y);
+    doc.text(`Emitido em: ${new Date().toLocaleDateString('pt-BR')} às ${new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`, pageWidth - margin, y, { align: 'right' });
 
-    // Separator Line
-    doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setLineWidth(1.2);
-    doc.line(margin, 46, pageWidth - margin, 46);
+    y += 4.5;
+    doc.text("CNPJ: 37.426.463/0001-20 | Rua Itapagipe, 75 · Recife/PE · CEP 51150-690", margin, y);
+    
+    y += 4.5;
+    doc.text("Central de Atendimento: cbc@energiasrenovaveis.com · +55 81 98101-1951", margin, y);
 
-    // --- TITLE ---
-    doc.setFontSize(24);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.text("RECIBO DE PRESTAÇÃO DE SERVIÇOS", pageWidth / 2, 65, { align: 'center', charSpace: 2.5 });
+    // Horizontal line after header
+    y += 8;
+    doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+    doc.setLineWidth(0.5);
+    doc.line(margin, y, pageWidth - margin, y);
 
-    // --- SUB-HEADER BOX (Nº & DATE) ---
-    doc.setFillColor(lightGreen[0], lightGreen[1], lightGreen[2]);
-    doc.setDrawColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setLineWidth(0.2);
-    doc.rect(margin, 75, contentWidth, 14, 'FD');
-    
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(12);
-    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.text(`Nº REGISTRO: ${s.numeroRegistro || '---'}`, margin + 5, 84);
-    
-    const today = new Date();
-    const dataFormatada = today.toLocaleDateString('pt-BR');
-    doc.text(`DATA DE EMISSÃO: ${dataFormatada}`, pageWidth - margin - 5, 84, { align: 'right' });
-
-    // --- CLIENT INFO SECTION ---
-    let y = 100;
-    doc.setFontSize(10);
-    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("DADOS DO CLIENTE", margin, y);
-    
-    doc.setDrawColor(230);
-    doc.line(margin, y + 2, pageWidth - margin, y + 2);
-    
-    y += 10;
-    doc.setFontSize(10);
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("CLIENTE:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0);
-    doc.text(String(s.cliente || "---").toUpperCase(), margin + 25, y);
-    
-    y += 7;
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("LOCAL:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0);
-    const splitEndereco = doc.splitTextToSize(String(s.local || "---").toUpperCase(), contentWidth - 25);
-    doc.text(splitEndereco, margin + 25, y);
-    
-    y += (splitEndereco.length * 5) + 2;
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("VENDEDOR:", margin, y);
-    doc.setFont("helvetica", "normal");
-    doc.setTextColor(0);
-    doc.text(String(s.vendedor || "---").toUpperCase(), margin + 25, y);
-
-    // --- SERVICE DESCRIPTION SECTION ---
+    // --- SECTION: CLIENT DATA ---
     y += 15;
-    doc.setFontSize(10);
-    doc.setTextColor(accentGreen[0], accentGreen[1], accentGreen[2]);
+    doc.setFillColor(lightGreen[0], lightGreen[1], lightGreen[2]);
+    doc.roundedRect(margin, y, contentWidth, 38, 2, 2, 'F');
+    
+    y += 8;
+    doc.setFontSize(9);
     doc.setFont("helvetica", "bold");
-    doc.text("DESCRIÇÃO DO SERVIÇO", margin, y);
-    doc.setDrawColor(230);
-    doc.line(margin, y + 2, pageWidth - margin, y + 2);
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.text("DADOS DO DESTINATÁRIO", margin + 5, y);
+
+    y += 8;
+    doc.setFontSize(10);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text("NOME DO CLIENTE:", margin + 5, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(s.cliente || "---").toUpperCase(), margin + 45, y);
+
+    y += 6.5;
+    doc.setFont("helvetica", "bold");
+    doc.text("LOCAL DA EXECUÇÃO:", margin + 5, y);
+    doc.setFont("helvetica", "normal");
+    const splitEndereco = doc.splitTextToSize(String(s.local || "---").toUpperCase(), contentWidth - 55);
+    doc.text(splitEndereco, margin + 45, y);
+
+    y += (splitEndereco.length * 5) + 1.5;
+    doc.setFont("helvetica", "bold");
+    doc.text("CONSULTOR RESP.:", margin + 5, y);
+    doc.setFont("helvetica", "normal");
+    doc.text(String(s.vendedor || "---").toUpperCase(), margin + 45, y);
+
+    // --- SECTION: SERVICE DESCRIPTION ---
+    y += 20;
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.text("DESCRIÇÃO DETALHADA DO SERVIÇO", margin, y);
+    
+    y += 3;
+    doc.setDrawColor(midGreen[0], midGreen[1], midGreen[2]);
+    doc.setLineWidth(1);
+    doc.line(margin, y, margin + 50, y);
 
     y += 10;
-    // Service Box
-    doc.setFillColor(252, 252, 252);
-    doc.setDrawColor(240);
-    doc.rect(margin, y, contentWidth, 40, 'F');
-    
-    doc.setFontSize(11);
-    doc.setTextColor(20);
-    doc.setFont("helvetica", "bold");
-    const splitServico = doc.splitTextToSize(String(s.servico || "SERVIÇO NÃO ESPECIFICADO").toUpperCase(), contentWidth - 10);
-    doc.text(splitServico, margin + 5, y + 10);
+    // Main Service Box
+    doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+    doc.setLineWidth(0.1);
+    doc.rect(margin, y, contentWidth, 65); 
 
-    // Observation
+    let textY = y + 10;
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    const splitServico = doc.splitTextToSize(String(s.servico || "SERVIÇO NÃO DEFINIDO").toUpperCase(), contentWidth - 10);
+    doc.text(splitServico, margin + 5, textY);
+
+    textY += (splitServico.length * 6) + 6;
     if (s.observacao) {
-      doc.setFontSize(8);
-      doc.setTextColor(100);
+      doc.setFontSize(9);
+      doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
+      doc.setFont("helvetica", "bold");
+      doc.text("RESCALVADOS / OBSERVAÇÕES:", margin + 5, textY);
+      
+      textY += 5;
       doc.setFont("helvetica", "italic");
-      doc.text("OBSERVAÇÕES:", margin + 5, y + 25);
-      doc.setFont("helvetica", "normal");
+      doc.setTextColor(textDark[0], textDark[1], textDark[2]);
       const splitObs = doc.splitTextToSize(s.observacao, contentWidth - 15);
-      doc.text(splitObs, margin + 5, y + 29);
+      doc.text(splitObs, margin + 5, textY);
     }
 
-    // --- FINANCIAL SUMMARY ---
-    y += 55;
-    doc.setFillColor(lightGreen[0], lightGreen[1], lightGreen[2]);
-    doc.rect(pageWidth - margin - 70, y, 70, 25, 'F');
+    // --- SECTION: FINANCIAL SUMMARY ---
+    y += 85;
+    const boxWidth = 90;
+    const boxX = pageWidth - margin - boxWidth;
     
-    const valorStr = Number(s.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+    // Total Box
+    doc.setFillColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.roundedRect(boxX, y, boxWidth, 28, 1, 1, 'F');
     
-    doc.setFontSize(9);
-    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("VALOR TOTAL", pageWidth - margin - 35, y + 8, { align: 'center' });
-    
-    doc.setFontSize(18);
-    doc.text(`R$ ${valorStr}`, pageWidth - margin - 35, y + 18, { align: 'center' });
-
-    // Payment Method
-    doc.setFontSize(10);
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.setFont("helvetica", "bold");
-    doc.text("FORMA DE PAGAMENTO:", margin, y + 10);
+    doc.setFontSize(11);
+    doc.setTextColor(255, 255, 255);
     doc.setFont("helvetica", "normal");
-    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.setFontSize(12);
-    doc.text(String(s.formaPagamento || "---").toUpperCase(), margin, y + 18);
-
-    // --- FOOTER AND SIGNATURE ---
-    y = 240;
-    doc.setDrawColor(200);
-    doc.line(margin + 5, y, margin + 85, y);
+    doc.text("VALOR TOTAL LIQUIDADO", boxX + boxWidth/2, y + 9, { align: 'center' });
     
-    doc.setFont("times", "italic");
-    doc.setFontSize(24);
-    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
-    doc.text("Júlio", margin + 45, y - 5, { align: 'center' });
-    
+    doc.setFontSize(22);
     doc.setFont("helvetica", "bold");
+    const valorNum = Number(s.valor || 0);
+    const valorStr = valorNum.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    doc.text(valorStr, boxX + boxWidth/2, y + 20, { align: 'center' });
+
+    // Method Box
+    y += 6;
+    doc.setFontSize(9);
+    doc.setTextColor(midGreen[0], midGreen[1], midGreen[2]);
+    doc.setFont("helvetica", "bold");
+    doc.text("MÉTODO DE PAGAMENTO:", margin, y);
+    
+    y += 7;
+    doc.setFontSize(13);
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(String(s.formaPagamento || "---").toUpperCase(), margin, y);
+
+    // --- DECLARATION ---
+    y += 30;
     doc.setFontSize(10);
-    doc.setTextColor(0);
-    doc.text("CBC SOLARIS", margin + 45, y + 6, { align: 'center' });
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.setFont("helvetica", "normal");
+    const fullDate = new Date().toLocaleDateString('pt-BR', { day: 'numeric', month: 'long', year: 'numeric' });
+    const declaracao = `Confirmamos que em ${fullDate}, recebemos a quantia de ${valorStr} (${valorPorExtenso(valorNum)}), quitando integralmente os custos relativos aos serviços técnicos acima descritos, operados sob a responsabilidade da CBC Solaris.`;
+    const splitDecl = doc.splitTextToSize(declaracao, contentWidth);
+    doc.text(splitDecl, margin, y);
+
+    // --- SIGNATURES ---
+    y = pageHeight - 65;
+    doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
+    doc.setLineWidth(0.5);
+    
+    // Left: Company
+    doc.line(margin, y, margin + 70, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(primaryGreen[0], primaryGreen[1], primaryGreen[2]);
+    doc.text("CBC SOLARIS", margin + 35, y + 6, { align: 'center' });
     doc.setFontSize(8);
-    doc.setTextColor(textGrey[0], textGrey[1], textGrey[2]);
-    doc.text("Responsável Local", margin + 45, y + 11, { align: 'center' });
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
+    doc.text("Departamento de Operações", margin + 35, y + 11, { align: 'center' });
 
-    // Right Side Info
-    const signatureDate = `RECEBEMOS O VALOR ACIMA EM ${dataFormatada}`;
-    doc.setFontSize(7);
-    doc.text(signatureDate, pageWidth - margin, y - 5, { align: 'right' });
-    doc.setDrawColor(200);
-    doc.line(pageWidth - margin - 80, y, pageWidth - margin, y);
-    doc.text("ASSINATURA DO CLIENTE", pageWidth - margin - 40, y + 6, { align: 'center' });
+    // Right: Client
+    doc.line(pageWidth - margin - 70, y, pageWidth - margin, y);
+    doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setTextColor(textDark[0], textDark[1], textDark[2]);
+    doc.text(String(s.cliente || "ASSINATURA").toUpperCase(), pageWidth - margin - 35, y + 6, { align: 'center' });
+    doc.setFontSize(8);
+    doc.setFont("helvetica", "normal");
+    doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
+    doc.text("Cliente Certificador", pageWidth - margin - 35, y + 11, { align: 'center' });
 
-    // Bottom info
-    doc.setFontSize(7);
-    doc.setTextColor(150);
-    const generatedInfo = `Documento gerado eletronicamente em ${new Date().toLocaleString('pt-BR')}`;
-    doc.text(generatedInfo, pageWidth / 2, 285, { align: 'center' });
+    // --- FOOTER ---
+    doc.setFontSize(7.5);
+    doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
+    doc.text("Este recibo é emitido eletronicamente e tem validade como comprovante de serviço e quitação.", pageWidth / 2, pageHeight - 18, { align: 'center' });
+    doc.setFont("helvetica", "bold");
+    doc.text("CBC SOLARIS · ENERGIA QUE TRANSFORMA · www.cbcsolaris.com.br", pageWidth / 2, pageHeight - 13, { align: 'center' });
 
-    // Save PDF
-    doc.save(`Recibo_${s.numeroRegistro || 'S-N'}_${String(s.cliente || 'Cliente').replace(/\s+/g, '_')}.pdf`);
-  };
-
-  // Helper function for currency to text (simplified)
-  const valorPorExtenso = (valor: number) => {
-    return "conforme discriminado acima"; // In a real production app, we would use a library for this
+    // --- FILENAME & DOWNLOAD ---
+    const fileName = `Recibo_${s.numeroRegistro || 'S-N'}_${String(s.cliente || 'Cliente').replace(/\s+/g, '_')}`;
+    doc.save(`${fileName}.pdf`);
   };
 
   const handleLogin = async () => {
@@ -4223,13 +4465,22 @@ export default function App() {
               <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 shrink-0">
                 <div className="flex items-center gap-2">
                   {selectedObra && (
-                    <button 
-                      onClick={() => exportarIndividualTXT(selectedObra)}
-                      className="flex items-center gap-2 text-xs font-bold text-emerald-600 hover:bg-emerald-100 px-4 py-2.5 rounded-xl transition-all border border-emerald-200"
-                    >
-                      <FileText size={16} />
-                      Exportar TXT
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        onClick={() => exportarIndividualPDF(selectedObra)}
+                        className="flex items-center gap-2 text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-100"
+                      >
+                        <Download size={16} />
+                        Exportar PDF
+                      </button>
+                      <button 
+                        onClick={() => exportarIndividualTXT(selectedObra)}
+                        className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition-all border border-slate-200"
+                      >
+                        <FileText size={16} />
+                        TXT
+                      </button>
+                    </div>
                   )}
                 </div>
                 <div className="flex items-center gap-3">
