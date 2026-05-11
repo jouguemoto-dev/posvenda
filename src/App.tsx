@@ -54,7 +54,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Obra, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule } from './types';
+import { Obra, Servico, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule } from './types';
 import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
@@ -256,8 +256,20 @@ export default function App() {
     direction: 'asc'
   });
 
+  const [sortConfigServicos, setSortConfigServicos] = useState<{ key: string; direction: 'asc' | 'desc' }>({
+    key: 'id',
+    direction: 'asc'
+  });
+
   const handleSort = (key: keyof Obra) => {
     setSortConfig(prev => ({
+      key,
+      direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
+    }));
+  };
+
+  const handleSortServicos = (key: string) => {
+    setSortConfigServicos(prev => ({
       key,
       direction: prev.key === key && prev.direction === 'asc' ? 'desc' : 'asc'
     }));
@@ -463,11 +475,18 @@ export default function App() {
       if (filtros.vendedor && !servico.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
       return true;
     }).sort((a, b) => {
-      if (a.prioridade === 'Alta' && b.prioridade !== 'Alta') return -1;
-      if (a.prioridade !== 'Alta' && b.prioridade === 'Alta') return 1;
-      return a.id - b.id;
+      const { key, direction } = sortConfigServicos;
+      let valA = a[key] ?? '';
+      let valB = b[key] ?? '';
+
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
     });
-  }, [servicos, filtros]);
+  }, [servicos, filtros, sortConfigServicos]);
 
   const activeServicos = useMemo(() => {
     return filteredServicos
@@ -475,21 +494,11 @@ export default function App() {
   }, [filteredServicos]);
 
   const inProgressServicos = useMemo(() => {
-    return activeServicos.filter(s => s.situacao === 'Em Andamento')
-      .sort((a, b) => {
-        if (a.prioridade === 'Alta' && b.prioridade !== 'Alta') return -1;
-        if (a.prioridade !== 'Alta' && b.prioridade === 'Alta') return 1;
-        return a.id - b.id;
-      });
+    return activeServicos.filter(s => s.situacao === 'Em Andamento');
   }, [activeServicos]);
 
   const pendingServicos = useMemo(() => {
-    return activeServicos.filter(s => s.situacao === 'Pendente')
-      .sort((a, b) => {
-        if (a.prioridade === 'Alta' && b.prioridade !== 'Alta') return -1;
-        if (a.prioridade !== 'Alta' && b.prioridade === 'Alta') return 1;
-        return a.id - b.id;
-      });
+    return activeServicos.filter(s => s.situacao === 'Pendente');
   }, [activeServicos]);
   
   const archivedServicos = useMemo(() => {
@@ -498,8 +507,19 @@ export default function App() {
       if (filtrosArquivados.cliente && !s.cliente.toLowerCase().includes(filtrosArquivados.cliente.toLowerCase())) return false;
       if (filtrosArquivados.vendedor && !s.vendedor.toLowerCase().includes(filtrosArquivados.vendedor.toLowerCase())) return false;
       return true;
-    }).sort((a, b) => b.id - a.id);
-  }, [servicos, filtrosArquivados]);
+    }).sort((a, b) => {
+      const { key, direction } = sortConfigServicos;
+      let valA = a[key as keyof Servico] ?? '';
+      let valB = b[key as keyof Servico] ?? '';
+
+      if (typeof valA === 'string') valA = valA.toLowerCase();
+      if (typeof valB === 'string') valB = valB.toLowerCase();
+
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [servicos, filtrosArquivados, sortConfigServicos]);
 
   const valorReceberCalculado = useMemo(() => {
     const valorUnitario = formData.valorMaoObra === 0 ? parseFloat(valorMaoObraOutros) || 0 : formData.valorMaoObra || 0;
@@ -2906,20 +2926,118 @@ export default function App() {
                           onChange={() => toggleSelectAll(inProgressServicos)}
                         />
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Serviço</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Instalou</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          N° {sortConfigServicos.key === 'numeroRegistro' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('situacao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Situação {sortConfigServicos.key === 'situacao' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('prioridade')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Prioridade {sortConfigServicos.key === 'prioridade' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Atendimento {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Dias {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('cliente')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Cliente {sortConfigServicos.key === 'cliente' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('local')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Local {sortConfigServicos.key === 'local' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('vendedor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Vendedor {sortConfigServicos.key === 'vendedor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Equipe {sortConfigServicos.key === 'equipeServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('servico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Serviço {sortConfigServicos.key === 'servico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('valor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Valor {sortConfigServicos.key === 'valor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeInstalou')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Instalou {sortConfigServicos.key === 'equipeInstalou' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('formaPagamento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Financ. {sortConfigServicos.key === 'formaPagamento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
@@ -3103,19 +3221,110 @@ export default function App() {
                           onChange={() => toggleSelectAll(pendingServicos)}
                         />
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Serviço</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Instalou</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          N° {sortConfigServicos.key === 'numeroRegistro' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('situacao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Situação {sortConfigServicos.key === 'situacao' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('prioridade')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Prioridade {sortConfigServicos.key === 'prioridade' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Atendimento {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Dias {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('cliente')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Cliente {sortConfigServicos.key === 'cliente' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('local')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Local {sortConfigServicos.key === 'local' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('vendedor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Vendedor {sortConfigServicos.key === 'vendedor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Equipe {sortConfigServicos.key === 'equipeServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('servico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Serviço {sortConfigServicos.key === 'servico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('valor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Valor {sortConfigServicos.key === 'valor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeInstalou')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Instalou {sortConfigServicos.key === 'equipeInstalou' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
@@ -3333,19 +3542,110 @@ export default function App() {
                           onChange={() => toggleSelectAll(archivedServicos)}
                         />
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Dias</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Equipe</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Serviço</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Instalou</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          N° {sortConfigServicos.key === 'numeroRegistro' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('situacao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Situação {sortConfigServicos.key === 'situacao' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('prioridade')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Prioridade {sortConfigServicos.key === 'prioridade' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Atendimento {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Dias {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('cliente')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Cliente {sortConfigServicos.key === 'cliente' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('local')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Local {sortConfigServicos.key === 'local' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('vendedor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Vendedor {sortConfigServicos.key === 'vendedor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Equipe {sortConfigServicos.key === 'equipeServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('servico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Serviço {sortConfigServicos.key === 'servico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('valor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Valor {sortConfigServicos.key === 'valor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeInstalou')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Instalou {sortConfigServicos.key === 'equipeInstalou' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
                     </tr>
                   </thead>
