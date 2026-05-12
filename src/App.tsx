@@ -34,6 +34,8 @@ import {
   Settings,
   Wallet,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   Printer,
   Activity,
   Cpu,
@@ -250,6 +252,8 @@ export default function App() {
     cliente: '',
     vendedor: ''
   });
+  const [showArchivedServicos, setShowArchivedServicos] = useState(false);
+  const [showArchivedObras, setShowArchivedObras] = useState(false);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Obra; direction: 'asc' | 'desc' }>({
     key: 'id',
@@ -1706,7 +1710,7 @@ export default function App() {
       } else if (inteiro < 1000000) {
         const mil = Math.floor(inteiro / 1000);
         const resto = inteiro % 1000;
-        extenso = (mil === 1 ? "" : getCentena(mil)) + " mil";
+        extenso = (mil === 1 ? "mil" : getCentena(mil) + " mil");
         if (resto > 0) {
           extenso += (resto < 100 || resto % 100 === 0 ? " e " : " ") + getCentena(resto);
         }
@@ -1827,16 +1831,24 @@ export default function App() {
     doc.line(margin, y, margin + 50, y);
 
     y += 10;
-    // Main Service Box
+    // Main Service Box - DYNAMIC HEIGHT
+    const splitServico = doc.splitTextToSize(String(s.servico || "SERVIÇO NÃO DEFINIDO").toUpperCase(), contentWidth - 10);
+    const splitObs = s.observacao ? doc.splitTextToSize(s.observacao, contentWidth - 15) : [];
+    
+    let estimatedHeight = (splitServico.length * 6) + 10;
+    if (s.observacao) {
+      estimatedHeight += (splitObs.length * 5) + 15;
+    }
+    const boxHeight = Math.max(estimatedHeight, 35);
+
     doc.setDrawColor(separatorColor[0], separatorColor[1], separatorColor[2]);
     doc.setLineWidth(0.1);
-    doc.rect(margin, y, contentWidth, 65); 
+    doc.rect(margin, y, contentWidth, boxHeight); 
 
     let textY = y + 10;
     doc.setFontSize(11);
     doc.setFont("helvetica", "bold");
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-    const splitServico = doc.splitTextToSize(String(s.servico || "SERVIÇO NÃO DEFINIDO").toUpperCase(), contentWidth - 10);
     doc.text(splitServico, margin + 5, textY);
 
     textY += (splitServico.length * 6) + 6;
@@ -1844,17 +1856,16 @@ export default function App() {
       doc.setFontSize(9);
       doc.setTextColor(accentGrey[0], accentGrey[1], accentGrey[2]);
       doc.setFont("helvetica", "bold");
-      doc.text("RESCALVADOS / OBSERVAÇÕES:", margin + 5, textY);
+      doc.text("RESSALVAS / OBSERVAÇÕES:", margin + 5, textY);
       
       textY += 5;
       doc.setFont("helvetica", "italic");
       doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-      const splitObs = doc.splitTextToSize(s.observacao, contentWidth - 15);
       doc.text(splitObs, margin + 5, textY);
     }
 
     // --- SECTION: FINANCIAL SUMMARY ---
-    y += 85;
+    y += boxHeight + 10;
     const boxWidth = 90;
     const boxX = pageWidth - margin - boxWidth;
     
@@ -1874,19 +1885,17 @@ export default function App() {
     doc.text(valorStr, boxX + boxWidth/2, y + 20, { align: 'center' });
 
     // Method Box
-    y += 6;
     doc.setFontSize(9);
     doc.setTextColor(midGreen[0], midGreen[1], midGreen[2]);
     doc.setFont("helvetica", "bold");
-    doc.text("MÉTODO DE PAGAMENTO:", margin, y);
+    doc.text("MÉTODO DE PAGAMENTO:", margin, y + 8);
     
-    y += 7;
     doc.setFontSize(13);
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
-    doc.text(String(s.formaPagamento || "---").toUpperCase(), margin, y);
+    doc.text(String(s.formaPagamento || "---").toUpperCase(), margin, y + 18);
 
     // --- DECLARATION ---
-    y += 30;
+    y += 40;
     doc.setFontSize(10);
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
     doc.setFont("helvetica", "normal");
@@ -2739,47 +2748,62 @@ export default function App() {
                 <div className="flex items-center gap-2">
                   <h2 className="font-bold text-slate-700 flex items-center gap-2">
                     <CheckCircle2 size={18} className="text-emerald-500" />
-                    Registros Arquivados (Concluídos)
+                    Obras Concluídas
                   </h2>
                   <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
                     {archivedObras.length} obras
                   </span>
+                  <button
+                    onClick={() => setShowArchivedObras(!showArchivedObras)}
+                    className={`ml-2 px-2 py-1 rounded-lg border flex items-center gap-1 text-[10px] font-bold transition-all duration-200 ${
+                      showArchivedObras 
+                        ? 'bg-slate-200 text-slate-700 border-slate-300' 
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {showArchivedObras ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {showArchivedObras ? 'OCULTAR' : 'CLIQUE PARA VISUALIZAR'}
+                  </button>
                 </div>
                 
                 {/* Local Filters for Archive */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative">
-                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Filtrar cliente..."
-                      value={filtrosArquivados.cliente}
-                      onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, cliente: e.target.value }))}
-                      className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-40"
-                    />
+                {showArchivedObras && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Filtrar cliente..."
+                        value={filtrosArquivados.cliente}
+                        onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, cliente: e.target.value }))}
+                        className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-40"
+                      />
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="Filtrar vendedor..."
+                        value={filtrosArquivados.vendedor}
+                        onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, vendedor: e.target.value }))}
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-32"
+                      />
+                    </div>
+                    {(filtrosArquivados.cliente || filtrosArquivados.vendedor) && (
+                      <button 
+                        onClick={() => setFiltrosArquivados({ cliente: '', vendedor: '' })}
+                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Limpar Filtros"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Filtrar vendedor..."
-                      value={filtrosArquivados.vendedor}
-                      onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, vendedor: e.target.value }))}
-                      className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-32"
-                    />
-                  </div>
-                  {(filtrosArquivados.cliente || filtrosArquivados.vendedor) && (
-                    <button 
-                      onClick={() => setFiltrosArquivados({ cliente: '', vendedor: '' })}
-                      className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Limpar Filtros"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-              <div className="overflow-x-auto scrollbar-hide">
-                <table className="w-full text-left border-collapse">
+              
+              {showArchivedObras && (
+                <div className="overflow-x-auto scrollbar-hide">
+                  <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
                       <th className="px-3 py-3 w-10">
@@ -2899,6 +2923,7 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
+            )}
             </section>
           </div>
         ) : (
@@ -3496,42 +3521,57 @@ export default function App() {
                   <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
                     {archivedServicos.length} serviços
                   </span>
+                  <button
+                    onClick={() => setShowArchivedServicos(!showArchivedServicos)}
+                    className={`ml-2 px-2 py-1 rounded-lg border flex items-center gap-1 text-[10px] font-bold transition-all duration-200 ${
+                      showArchivedServicos 
+                        ? 'bg-slate-200 text-slate-700 border-slate-300' 
+                        : 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {showArchivedServicos ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    {showArchivedServicos ? 'OCULTAR' : 'CLIQUE PARA VISUALIZAR'}
+                  </button>
                 </div>
 
                 {/* Local Filters for Archive */}
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="relative">
-                    <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
-                    <input 
-                      type="text" 
-                      placeholder="Filtrar cliente..."
-                      value={filtrosArquivados.cliente}
-                      onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, cliente: e.target.value }))}
-                      className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-40"
-                    />
+                {showArchivedServicos && (
+                  <div className="flex flex-wrap items-center gap-2">
+                    <div className="relative">
+                      <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                      <input 
+                        type="text" 
+                        placeholder="Filtrar cliente..."
+                        value={filtrosArquivados.cliente}
+                        onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, cliente: e.target.value }))}
+                        className="bg-white border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-40"
+                      />
+                    </div>
+                    <div className="relative">
+                      <input 
+                        type="text" 
+                        placeholder="Filtrar vendedor..."
+                        value={filtrosArquivados.vendedor}
+                        onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, vendedor: e.target.value }))}
+                        className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-32"
+                      />
+                    </div>
+                    {(filtrosArquivados.cliente || filtrosArquivados.vendedor) && (
+                      <button 
+                        onClick={() => setFiltrosArquivados({ cliente: '', vendedor: '' })}
+                        className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
+                        title="Limpar Filtros"
+                      >
+                        <X size={14} />
+                      </button>
+                    )}
                   </div>
-                  <div className="relative">
-                    <input 
-                      type="text" 
-                      placeholder="Filtrar vendedor..."
-                      value={filtrosArquivados.vendedor}
-                      onChange={(e) => setFiltrosArquivados(prev => ({ ...prev, vendedor: e.target.value }))}
-                      className="bg-white border border-slate-200 rounded-lg px-3 py-1.5 text-[10px] focus:ring-2 focus:ring-emerald-500 outline-none w-32"
-                    />
-                  </div>
-                  {(filtrosArquivados.cliente || filtrosArquivados.vendedor) && (
-                    <button 
-                      onClick={() => setFiltrosArquivados({ cliente: '', vendedor: '' })}
-                      className="p-1.5 text-slate-400 hover:text-red-500 transition-colors"
-                      title="Limpar Filtros"
-                    >
-                      <X size={14} />
-                    </button>
-                  )}
-                </div>
+                )}
               </div>
-              <div className="overflow-x-auto scrollbar-hide">
-                <table className="w-full text-left border-collapse">
+              
+              {showArchivedServicos && (
+                <div className="overflow-x-auto scrollbar-hide">
+                  <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
                       <th className="px-3 py-3 w-10">
@@ -3749,6 +3789,7 @@ export default function App() {
                   </tbody>
                 </table>
               </div>
+            )}
             </section>
           </>
         )}
