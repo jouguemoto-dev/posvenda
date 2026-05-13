@@ -2434,7 +2434,7 @@ export default function App() {
                                 <div className="flex items-center gap-1.5 text-[10px] font-bold">
                                   <Calendar size={10} /> {formatDateBR(obra.dataObra)}
                                 </div>
-                                <div className="text-[8px] font-black uppercase opacity-70 mt-0.5">
+                                <div className="text-[12px] font-black uppercase opacity-80 mt-0.5">
                                   {getDayOfWeek(obra.dataObra)}
                                 </div>
                               </div>
@@ -2697,7 +2697,7 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               <div className="flex flex-col">
                                 <span className="font-bold">{formatDateBR(obra.dataContrato)}</span>
-                                <span className="text-[8px] uppercase font-black opacity-60 mt-0.5">{getDayOfWeek(obra.dataContrato)}</span>
+                                <span className="text-[12px] uppercase font-black opacity-80 mt-0.5">{getDayOfWeek(obra.dataContrato)}</span>
                               </div>
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
@@ -2897,7 +2897,7 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
                               <div className="flex flex-col">
                                 <span className="font-bold">{formatDateBR(obra.dataConclusao)}</span>
-                                <span className="text-[8px] uppercase font-black opacity-60 mt-0.5">{getDayOfWeek(obra.dataConclusao)}</span>
+                                <span className="text-[12px] uppercase font-black opacity-80 mt-0.5">{getDayOfWeek(obra.dataConclusao)}</span>
                               </div>
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
@@ -5123,6 +5123,36 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState(new Date().toISOString().split('T')[0]);
 
+  useEffect(() => {
+    const today = new Date();
+    let start = new Date();
+    let end = new Date();
+
+    if (period === 'Diário') {
+      start = new Date(today);
+      end = new Date(today);
+    } else if (period === 'Semanal') {
+      const day = today.getDay();
+      const diff = today.getDate() - day + (day === 0 ? -6 : 1);
+      start = new Date(today.getFullYear(), today.getMonth(), diff);
+      end = new Date(today.getFullYear(), today.getMonth(), diff + 6);
+    } else if (period === 'Quinzenal') {
+      if (today.getDate() <= 15) {
+        start = new Date(today.getFullYear(), today.getMonth(), 1);
+        end = new Date(today.getFullYear(), today.getMonth(), 15);
+      } else {
+        start = new Date(today.getFullYear(), today.getMonth(), 16);
+        end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      }
+    } else if (period === 'Mensal') {
+      start = new Date(today.getFullYear(), today.getMonth(), 1);
+      end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+    }
+
+    setStartDate(start.toISOString().split('T')[0]);
+    setEndDate(end.toISOString().split('T')[0]);
+  }, [period]);
+
   const payrollData = useMemo(() => {
     if (!selectedEquipe) return [];
     
@@ -5211,6 +5241,7 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
               <select value={period} onChange={e => setPeriod(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500">
                 <option value="Diário">Diário</option>
                 <option value="Semanal">Semanal</option>
+                <option value="Quinzenal">Quinzenal</option>
                 <option value="Mensal">Mensal</option>
               </select>
             </FormField>

@@ -344,9 +344,9 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   };
 
   return (
-    <div className="min-h-full bg-[#eef2f7] p-4 md:p-6 font-sans text-base text-[#1e2f3e]">
+    <div className="h-screen flex flex-col bg-[#eef2f7] p-2 md:p-4 font-sans text-base text-[#1e2f3e] overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col md:flex-row justify-between items-center mb-6 gap-4">
+      <div className="flex-none flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
         <div className="flex items-center gap-4">
           {onBack && (
             <button 
@@ -421,14 +421,14 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
       </div>
 
       {/* Main Table */}
-      <div className="bg-white rounded-3xl shadow-xl border border-slate-200 overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full border-collapse">
-            <thead>
+      <div className="flex-1 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
+        <div className="overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+          <table className="w-full border-collapse table-fixed min-w-[1200px]">
+            <thead className="sticky top-0 z-30">
               <tr className="bg-[#1e2f3e] text-white">
-                <th className="p-4 text-left font-bold border-r border-white/10 w-48 text-sm">Dia / Data</th>
+                <th className="p-2 text-left font-bold border-r border-white/10 w-28 text-xs">Dia / Data</th>
                 {teams.map((team, tIdx) => (
-                  <th key={team.id} className="p-4 text-center font-bold border-r border-white/10 min-w-[220px] text-sm relative group/header">
+                  <th key={team.id} className="p-2 text-center font-bold border-r border-white/10 text-xs relative group/header">
                     <div className="flex items-center justify-center gap-3">
                       <button 
                         onClick={() => moveTeam(tIdx, 'left')}
@@ -460,15 +460,15 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                 const isToday = weekDatesFull[dayIdx] === todayStr;
                 return (
                   <tr key={day} className={`border-b border-slate-200 last:border-0 ${isToday ? 'bg-indigo-50/40' : ''}`}>
-                    <td className={`p-4 border-r border-slate-200 w-48 min-w-[180px] transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
-                      <div className="mb-2">
-                        <div className="flex items-center gap-2">
-                          <p className="font-bold text-[#1e2f3e] text-sm">{day}</p>
+                    <td className={`p-2 border-r border-slate-200 w-28 transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
+                      <div className="flex flex-col">
+                        <div className="flex items-center gap-1">
+                          <p className="font-bold text-[#1e2f3e] text-xs">{day}</p>
                           {isToday && (
-                            <span className="px-2 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
+                            <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
                           )}
                         </div>
-                        <p className="text-sm text-slate-500 font-medium">{weekDates[dayIdx]}</p>
+                        <p className="text-[10px] text-slate-500 font-medium">{weekDates[dayIdx]}</p>
                       </div>
                     </td>
                   {teams.map(team => {
@@ -507,7 +507,7 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                     return (
                       <td 
                         key={team.id} 
-                        className="p-2 border-r border-slate-200 relative group min-h-[120px] align-top"
+                        className="p-1 border-r border-slate-200 relative group min-h-[80px] h-24 align-top overflow-hidden"
                         style={{ backgroundColor: cellData.color }}
                       >
                         <textarea 
@@ -523,14 +523,14 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                             updateCell(day, team.id, e.target.value);
                           }}
                           placeholder="..."
-                          className={`w-full h-20 p-2 bg-transparent resize-none outline-none font-medium text-sm transition-colors ${isDark ? 'text-white placeholder:text-white/40' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
+                          className={`w-full h-12 p-1 bg-transparent resize-none outline-none font-medium text-[10px] leading-tight transition-colors ${isDark ? 'text-white placeholder:text-white/40' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
                         />
 
                         {/* Automatic Items Display */}
                         { (matchingObras.length > 0 || matchingServicos.length > 0) && (
-                          <div className="mt-2 space-y-2 px-1 pb-2">
+                          <div className="mt-1 space-y-1 px-0.5 pb-1 max-h-[calc(100%-3rem)] overflow-y-auto scrollbar-hide">
                             {matchingObras.map(o => (
-                              <div key={o.firebaseId || o.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
+                              <div key={o.firebaseId || o.id} className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
                                 o.situacao === 'Em Espera' 
                                   ? 'bg-slate-100 text-slate-500 border-slate-200' 
                                   : o.situacao === 'Concluído'
@@ -539,29 +539,19 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                   ? 'bg-white/10 text-white border-white/20' 
                                   : 'bg-white text-indigo-700 border-indigo-100'
                               }`}>
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <ClipboardList size={12} className="opacity-70" />
-                                    <span className="uppercase tracking-widest text-[9px] opacity-60">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <ClipboardList size={10} className="opacity-70" />
+                                    <span className="uppercase tracking-widest text-[7px] opacity-60">
                                       {o.situacao === 'Em Espera' ? 'Pausado' : o.situacao === 'Concluído' ? 'Check' : 'Obra'}
                                     </span>
                                   </div>
-                                  {o.situacao === 'Em Espera' && <Clock size={10} className="text-amber-500 animate-pulse" />}
-                                  {o.situacao === 'Concluído' && <Check size={10} className="text-emerald-500" />}
                                 </div>
-                                <span className={`font-bold truncate mb-1 text-sm ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
-                                <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
-                                  <span className="font-medium">{o.equipe}</span>
-                                  {o.quantidadePlacas > 0 && (
-                                    <span className={`px-1.5 py-0.5 rounded-md font-black italic ${o.situacao === 'Concluído' ? 'bg-emerald-100' : 'bg-indigo-50'}`}>
-                                      {o.quantidadePlacas} pl
-                                    </span>
-                                  )}
-                                </div>
+                                <span className={`font-bold truncate text-[10px] ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
                               </div>
                             ))}
                             {matchingServicos.map(s => (
-                              <div key={s.firebaseId || s.id} className={`text-[11px] font-bold py-2 px-3 rounded-xl flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
+                              <div key={s.firebaseId || s.id} className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
                                 s.situacao === 'Em Espera'
                                   ? 'bg-slate-100 text-slate-500 border-slate-200'
                                   : s.situacao === 'Concluído'
@@ -570,25 +560,15 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                   ? 'bg-white/10 text-white border-white/20' 
                                   : 'bg-white text-blue-700 border-blue-100'
                               }`}>
-                                <div className="flex items-center justify-between mb-1.5">
-                                  <div className="flex items-center gap-1.5">
-                                    <Wrench size={12} className="opacity-70" />
-                                    <span className="uppercase tracking-widest text-[9px] opacity-60">
+                                <div className="flex items-center justify-between mb-0.5">
+                                  <div className="flex items-center gap-1">
+                                    <Wrench size={10} className="opacity-70" />
+                                    <span className="uppercase tracking-widest text-[7px] opacity-60">
                                       {s.situacao === 'Em Espera' ? 'Pausado' : s.situacao === 'Concluído' ? 'Check' : 'Serviço'}
                                     </span>
                                   </div>
-                                  {s.situacao === 'Em Espera' && <Clock size={10} className="text-amber-500 animate-pulse" />}
-                                  {s.situacao === 'Concluído' && <Check size={10} className="text-emerald-500" />}
                                 </div>
-                                <span className={`font-bold truncate mb-1 text-sm ${s.situacao === 'Concluído' ? 'line-through' : ''}`}>{s.cliente}</span>
-                                <div className="flex items-center justify-between text-[11px] opacity-70 mt-1">
-                                  <span className="font-medium">{s.equipeServico || s.equipeInstalou || '---'}</span>
-                                  {s.servico && (
-                                    <span className={`px-1.5 py-0.5 rounded-md font-black truncate ml-2 text-[10px] uppercase ${s.situacao === 'Concluído' ? 'bg-emerald-100' : 'bg-blue-50'}`}>
-                                      {s.servico}
-                                    </span>
-                                  )}
-                                </div>
+                                <span className={`font-bold truncate text-[10px] ${s.situacao === 'Concluído' ? 'line-through' : ''}`}>{s.cliente}</span>
                               </div>
                             ))}
                           </div>
