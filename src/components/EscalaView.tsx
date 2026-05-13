@@ -546,6 +546,9 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                       {o.situacao === 'Em Espera' ? 'Pausado' : o.situacao === 'Concluído' ? 'Check' : 'Obra'}
                                     </span>
                                   </div>
+                                  {o.quantidadePlacas > 0 && (
+                                    <span className="text-[9px] font-black italic opacity-90 text-indigo-900 bg-indigo-50/50 px-1 rounded">{o.quantidadePlacas} PL</span>
+                                  )}
                                 </div>
                                 <span className={`font-bold truncate text-[10px] ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
                               </div>

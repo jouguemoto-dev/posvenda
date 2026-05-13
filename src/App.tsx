@@ -248,6 +248,7 @@ export default function App() {
   const [importText, setImportText] = useState('');
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editandoServicoId, setEditandoServicoId] = useState<number | null>(null);
+  const [editingPayment, setEditingPayment] = useState<{ id: string; type: 'obra' | 'servico' } | null>(null);
   const [filtros, setFiltros] = useState<Filtros>({
     situacao: '',
     prioridade: '',
@@ -2443,9 +2444,37 @@ export default function App() {
                               <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                               <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
                                 <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
-                                {obra.formaPagamento && (
-                                  <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">{obra.formaPagamento}</span>
-                                )}
+                                <div 
+                                  className="cursor-pointer hover:scale-105 transition-transform"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingPayment({ id: obra.id.toString(), type: 'obra' });
+                                  }}
+                                >
+                                  {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
+                                    <select
+                                      autoFocus
+                                      className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                      value={obra.formaPagamento || ''}
+                                      onBlur={() => setEditingPayment(null)}
+                                      onChange={(e) => {
+                                        updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
+                                        setEditingPayment(null);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <option value="">Selecione</option>
+                                      {formasPagamento.filter(f => f.ativo).map(f => (
+                                        <option key={f.id} value={f.nome}>{f.nome}</option>
+                                      ))}
+                                      <option value="Outros">Outros</option>
+                                    </select>
+                                  ) : (
+                                    <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
+                                      {obra.formaPagamento || 'DEFINIR PGTO'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-3 text-right">
@@ -2704,9 +2733,37 @@ export default function App() {
                               <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                               <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
                                 <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
-                                {obra.formaPagamento && (
-                                  <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">{obra.formaPagamento}</span>
-                                )}
+                                <div 
+                                  className="cursor-pointer hover:scale-105 transition-transform"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingPayment({ id: obra.id.toString(), type: 'obra' });
+                                  }}
+                                >
+                                  {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
+                                    <select
+                                      autoFocus
+                                      className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                      value={obra.formaPagamento || ''}
+                                      onBlur={() => setEditingPayment(null)}
+                                      onChange={(e) => {
+                                        updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
+                                        setEditingPayment(null);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <option value="">Selecione</option>
+                                      {formasPagamento.filter(f => f.ativo).map(f => (
+                                        <option key={f.id} value={f.nome}>{f.nome}</option>
+                                      ))}
+                                      <option value="Outros">Outros</option>
+                                    </select>
+                                  ) : (
+                                    <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
+                                      {obra.formaPagamento || 'DEFINIR PGTO'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-3 text-right">
@@ -2902,9 +2959,37 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              {obra.formaPagamento && (
-                                <div className="text-[10px] text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm mt-1 inline-block uppercase">{obra.formaPagamento}</div>
-                              )}
+                              <div 
+                                className="cursor-pointer hover:scale-105 transition-transform"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPayment({ id: obra.id.toString(), type: 'obra' });
+                                }}
+                              >
+                                {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
+                                  <select
+                                    autoFocus
+                                    className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                    value={obra.formaPagamento || ''}
+                                    onBlur={() => setEditingPayment(null)}
+                                    onChange={(e) => {
+                                      updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
+                                      setEditingPayment(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <option value="">Selecione</option>
+                                    {formasPagamento.filter(f => f.ativo).map(f => (
+                                      <option key={f.id} value={f.nome}>{f.nome}</option>
+                                    ))}
+                                    <option value="Outros">Outros</option>
+                                  </select>
+                                ) : (
+                                  <div className="text-[10px] text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm mt-1 inline-block uppercase">
+                                    {obra.formaPagamento || 'PGTO'}
+                                  </div>
+                                )}
+                              </div>
                             </td>
                             <td className="px-3 py-3 text-right">
                               <div className="flex items-center justify-end gap-1">
@@ -3182,8 +3267,36 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
-                                {servico.formaPagamento || '---'}
+                              <div 
+                                className="cursor-pointer hover:scale-105 transition-transform inline-block"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPayment({ id: servico.id.toString(), type: 'servico' });
+                                }}
+                              >
+                                {editingPayment?.id === servico.id.toString() && editingPayment.type === 'servico' ? (
+                                  <select
+                                    autoFocus
+                                    className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                    value={servico.formaPagamento || ''}
+                                    onBlur={() => setEditingPayment(null)}
+                                    onChange={(e) => {
+                                      updateServicoQuick(servico.id, 'formaPagamento', e.target.value);
+                                      setEditingPayment(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <option value="">Selecione</option>
+                                    {formasPagamento.filter(f => f.ativo).map(f => (
+                                      <option key={f.id} value={f.nome}>{f.nome}</option>
+                                    ))}
+                                    <option value="Outros">Outros</option>
+                                  </select>
+                                ) : (
+                                  <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
+                                    {servico.formaPagamento || 'DEFINIR PGTO'}
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="px-3 py-3 text-right">
@@ -3469,8 +3582,36 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
-                                {servico.formaPagamento || '---'}
+                              <div 
+                                className="cursor-pointer hover:scale-105 transition-transform inline-block"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPayment({ id: servico.id.toString(), type: 'servico' });
+                                }}
+                              >
+                                {editingPayment?.id === servico.id.toString() && editingPayment.type === 'servico' ? (
+                                  <select
+                                    autoFocus
+                                    className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                    value={servico.formaPagamento || ''}
+                                    onBlur={() => setEditingPayment(null)}
+                                    onChange={(e) => {
+                                      updateServicoQuick(servico.id, 'formaPagamento', e.target.value);
+                                      setEditingPayment(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <option value="">Selecione</option>
+                                    {formasPagamento.filter(f => f.ativo).map(f => (
+                                      <option key={f.id} value={f.nome}>{f.nome}</option>
+                                    ))}
+                                    <option value="Outros">Outros</option>
+                                  </select>
+                                ) : (
+                                  <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
+                                    {servico.formaPagamento || 'DEFINIR PGTO'}
+                                  </div>
+                                )}
                               </div>
                             </td>
                             <td className="px-3 py-3 text-right">
