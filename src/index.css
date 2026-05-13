@@ -7,21 +7,25 @@
 
 @layer base {
   html {
-    font-size: 21px;
+    font-size: 18px;
   }
   body {
     @apply antialiased;
   }
   
-  /* Scale hardcoded Tailwind font size classes by 5px */
-  [class*="text-[10px]"] { font-size: 15px !important; }
-  [class*="text-[11px]"] { font-size: 16px !important; }
-  [class*="text-[12px]"] { font-size: 17px !important; }
-  [class*="text-[13px]"] { font-size: 18px !important; }
-  [class*="text-[14px]"] { font-size: 19px !important; }
-  [class*="text-[20px]"] { font-size: 25px !important; }
-  [class*="text-[24px]"] { font-size: 29px !important; }
-  [class*="text-[32px]"] { font-size: 37px !important; }
+  /* Scale hardcoded Tailwind font size classes by ~3px */
+  [class*="text-[9px]"] { font-size: 12px !important; }
+  [class*="text-[10px]"] { font-size: 13px !important; }
+  [class*="text-[11px]"] { font-size: 14px !important; }
+  [class*="text-[12px]"] { font-size: 15px !important; }
+  [class*="text-[13px]"] { font-size: 16px !important; }
+  [class*="text-[14px]"] { font-size: 17px !important; }
+  [class*="text-xs"] { font-size: 15px !important; }
+  [class*="text-sm"] { font-size: 17px !important; }
+  [class*="text-base"] { font-size: 19px !important; }
+  [class*="text-[20px]"] { font-size: 23px !important; }
+  [class*="text-[24px]"] { font-size: 27px !important; }
+  [class*="text-[32px]"] { font-size: 35px !important; }
 }
 
 @layer utilities {

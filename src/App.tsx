@@ -193,6 +193,13 @@ const formatDateBR = (dateStr: string | undefined | null): string => {
   return `${d}/${m}/${y}`;
 };
 
+const getDayOfWeek = (dateStr: string | undefined | null): string => {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  return dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+};
+
 const getDaysDiff = (dateStr: string | undefined | null): number => {
   if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return 0;
   const [y, m, d] = dateStr.split('-').map(Number);
@@ -2423,19 +2430,21 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="flex items-center gap-1.5 text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200">
-                                <Calendar size={10} /> {formatDateBR(obra.dataObra)}
+                              <div className="flex flex-col text-indigo-700 bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                  <Calendar size={10} /> {formatDateBR(obra.dataObra)}
+                                </div>
+                                <div className="text-[8px] font-black uppercase opacity-70 mt-0.5">
+                                  {getDayOfWeek(obra.dataObra)}
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter flex items-center gap-1">
-                                <span>{obra.quantidadePlacas} Placas</span>
+                              <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
+                              <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
+                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
                                 {obra.formaPagamento && (
-                                  <>
-                                    <span className="text-slate-300">|</span>
-                                    <span className="text-indigo-600 font-bold">{obra.formaPagamento}</span>
-                                  </>
+                                  <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">{obra.formaPagamento}</span>
                                 )}
                               </div>
                             </td>
@@ -2686,17 +2695,17 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              {formatDateBR(obra.dataContrato)}
+                              <div className="flex flex-col">
+                                <span className="font-bold">{formatDateBR(obra.dataContrato)}</span>
+                                <span className="text-[8px] uppercase font-black opacity-60 mt-0.5">{getDayOfWeek(obra.dataContrato)}</span>
+                              </div>
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[9px] text-slate-500 uppercase tracking-tighter flex items-center gap-1">
-                                <span>{obra.quantidadePlacas} Placas</span>
+                              <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
+                              <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
+                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
                                 {obra.formaPagamento && (
-                                  <>
-                                    <span className="text-slate-300">|</span>
-                                    <span className="text-indigo-600 font-bold">{obra.formaPagamento}</span>
-                                  </>
+                                  <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">{obra.formaPagamento}</span>
                                 )}
                               </div>
                             </td>
@@ -2886,12 +2895,15 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 font-medium">{obra.equipe || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              {formatDateBR(obra.dataConclusao)}
+                              <div className="flex flex-col">
+                                <span className="font-bold">{formatDateBR(obra.dataConclusao)}</span>
+                                <span className="text-[8px] uppercase font-black opacity-60 mt-0.5">{getDayOfWeek(obra.dataConclusao)}</span>
+                              </div>
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-xs font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
+                              <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                               {obra.formaPagamento && (
-                                <div className="text-[9px] text-indigo-600 font-bold uppercase tracking-tighter mt-0.5">{obra.formaPagamento}</div>
+                                <div className="text-[10px] text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm mt-1 inline-block uppercase">{obra.formaPagamento}</div>
                               )}
                             </td>
                             <td className="px-3 py-3 text-right">
@@ -3166,11 +3178,11 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[80px]">
+                              <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
                                 {servico.formaPagamento || '---'}
                               </div>
                             </td>
@@ -3453,11 +3465,11 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
                             <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-[9px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-0.5 rounded border border-indigo-100 truncate max-w-[80px]">
+                              <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
                                 {servico.formaPagamento || '---'}
                               </div>
                             </td>
@@ -3761,7 +3773,7 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-xs font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-sm font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 min-w-[80px]">{servico.equipeInstalou || '---'}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
                             <td className="px-3 py-3 text-right">
