@@ -250,6 +250,7 @@ export default function App() {
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editandoServicoId, setEditandoServicoId] = useState<number | null>(null);
   const [editingPayment, setEditingPayment] = useState<{ id: string; type: 'obra' | 'servico' } | null>(null);
+  const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
   const [filtros, setFiltros] = useState<Filtros>({
     situacao: '',
     prioridade: '',
@@ -263,6 +264,10 @@ export default function App() {
   });
   const [showArchivedServicos, setShowArchivedServicos] = useState(false);
   const [showArchivedObras, setShowArchivedObras] = useState(false);
+  const [hideScheduledObras, setHideScheduledObras] = useState(false);
+  const [hideUnscheduledObras, setHideUnscheduledObras] = useState(false);
+  const [hideScheduledServicos, setHideScheduledServicos] = useState(false);
+  const [hideUnscheduledServicos, setHideUnscheduledServicos] = useState(false);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Obra; direction: 'asc' | 'desc' }>({
     key: 'id',
@@ -461,8 +466,15 @@ export default function App() {
   }, [obras, filtros, sortConfig]);
 
   const activeObras = useMemo(() => filteredObras.filter(o => o.situacao !== 'Concluído'), [filteredObras]);
-  const scheduledObras = useMemo(() => activeObras.filter(o => o.dataObra && o.dataObra !== ''), [activeObras]);
-  const unscheduledObras = useMemo(() => activeObras.filter(o => !o.dataObra || o.dataObra === ''), [activeObras]);
+  const scheduledObras = useMemo(() => {
+    if (hideScheduledObras) return [];
+    return activeObras.filter(o => o.dataObra && o.dataObra !== '');
+  }, [activeObras, hideScheduledObras]);
+
+  const unscheduledObras = useMemo(() => {
+    if (hideUnscheduledObras) return [];
+    return activeObras.filter(o => !o.dataObra || o.dataObra === '');
+  }, [activeObras, hideUnscheduledObras]);
   
   const archivedObras = useMemo(() => {
     return obras.filter(o => {
@@ -506,6 +518,16 @@ export default function App() {
     return filteredServicos
       .filter(s => s.situacao !== 'Concluído');
   }, [filteredServicos]);
+
+  const scheduledServicosList = useMemo(() => {
+    if (hideScheduledServicos) return [];
+    return activeServicos.filter(s => s.dataServico && s.dataServico !== '');
+  }, [activeServicos, hideScheduledServicos]);
+
+  const unscheduledServicosList = useMemo(() => {
+    if (hideUnscheduledServicos) return [];
+    return activeServicos.filter(s => !s.dataServico || s.dataServico === '');
+  }, [activeServicos, hideUnscheduledServicos]);
 
   const inProgressServicos = useMemo(() => {
     return activeServicos.filter(s => s.situacao === 'Em Andamento');
@@ -2243,597 +2265,651 @@ export default function App() {
               />
             </div>
           </div>
+          {activeTab === 'obras' && (
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Visualização:</span>
+              <button 
+                onClick={() => setHideScheduledObras(!hideScheduledObras)}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideScheduledObras ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${hideScheduledObras ? 'bg-slate-300' : 'bg-indigo-500 animate-pulse'}`} />
+                Obras Agendadas
+              </button>
+              <button 
+                onClick={() => setHideUnscheduledObras(!hideUnscheduledObras)}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideUnscheduledObras ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${hideUnscheduledObras ? 'bg-slate-300' : 'bg-orange-500 animate-pulse'}`} />
+                Sem Data Prevista
+              </button>
+            </div>
+          )}
+          {activeTab === 'servicos' && (
+            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
+              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Visualização:</span>
+              <button 
+                onClick={() => setHideScheduledServicos(!hideScheduledServicos)}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideScheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${hideScheduledServicos ? 'bg-slate-300' : 'bg-indigo-500 animate-pulse'}`} />
+                Serviços Agendados
+              </button>
+              <button 
+                onClick={() => setHideUnscheduledServicos(!hideUnscheduledServicos)}
+                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideUnscheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}
+              >
+                <div className={`w-1.5 h-1.5 rounded-full ${hideUnscheduledServicos ? 'bg-slate-300' : 'bg-orange-500 animate-pulse'}`} />
+                Serviços Sem Data
+              </button>
+            </div>
+          )}
         </section>
 
         {/* Main Content - Obras or Servicos */}
         {activeTab === 'obras' ? (
           <div className="space-y-8">
             {/* Section: Obras Agendadas (Highlighted) */}
-            <section className="bg-white rounded-2xl shadow-lg border-2 border-indigo-500 overflow-hidden relative">
-              <div className="absolute top-0 right-0">
-                <div className="bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-widest shadow-sm">
-                  Agendadas
+            {!hideScheduledObras && (
+              <section className="bg-white rounded-2xl shadow-lg border-2 border-indigo-500 overflow-hidden relative">
+                <div className="absolute top-0 right-0">
+                  <div className="bg-indigo-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl uppercase tracking-widest shadow-sm">
+                    Agendadas
+                  </div>
                 </div>
-              </div>
-              <div className="px-6 py-4 bg-indigo-50/50 border-b border-indigo-100 flex items-center justify-between">
-                <h2 className="font-bold text-indigo-900 flex items-center gap-2">
-                  <Calendar size={18} className="text-indigo-600" />
-                  Obras Agendadas
-                </h2>
-                <span className="text-xs font-bold text-indigo-600 bg-white px-2 py-1 rounded-lg border border-indigo-200 shadow-sm">
-                  {scheduledObras.length} obras
-                </span>
-              </div>
-              <div className="overflow-x-auto scrollbar-hide">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-indigo-50/30 border-b border-indigo-100">
-                      <th className="px-1.5 py-3 w-10">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                          checked={scheduledObras.length > 0 && scheduledObras.every(o => selectedIds.has(o.id))}
-                          onChange={() => toggleSelectAll(scheduledObras)}
-                        />
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('numeroRegistro')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Reg. {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('situacao')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Status {sortConfig.key === 'situacao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('prioridade')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Prior. {sortConfig.key === 'prioridade' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('cliente')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Cliente {sortConfig.key === 'cliente' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-center cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('dataContrato')}
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          Dias {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('local')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Local {sortConfig.key === 'local' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('vendedor')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Vend. {sortConfig.key === 'vendedor' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('equipe')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Equipe {sortConfig.key === 'equipe' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('dataObra')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Previsão {sortConfig.key === 'dataObra' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
-                        onClick={() => handleSort('formaPagamento')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-indigo-50">
-                    <AnimatePresence mode="popLayout">
-                      {scheduledObras.length > 0 ? (
-                        scheduledObras.map((obra) => (
-                          <motion.tr 
-                            key={obra.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className={`hover:bg-indigo-50/50 transition-colors ${
-                              obra.situacao === 'Pendente' 
-                                ? 'bg-amber-50/40 border-l-4 border-amber-400' 
-                                : obra.situacao === 'Em Espera'
-                                ? 'bg-slate-50/40 border-l-4 border-slate-400'
-                                : 'bg-blue-50/40 border-l-4 border-blue-400'
-                            } ${selectedIds.has(obra.id) ? 'bg-indigo-100/50' : ''}`}
-                          >
-                            <td className="px-3 py-3">
-                              <input 
-                                type="checkbox" 
-                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                checked={selectedIds.has(obra.id)}
-                                onChange={() => toggleSelect(obra.id)}
-                              />
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-white px-1.5 py-1 rounded border border-indigo-100">
-                                #{obra.numeroRegistro}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">
-                              <select 
-                                value={obra.situacao}
-                                onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
-                                  obra.situacao === 'Pendente' 
-                                    ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                                    : obra.situacao === 'Em Espera'
-                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                    : 'bg-blue-100 text-blue-700 border-blue-200'
-                                }`}
-                              >
-                                <option value="Pendente">Pendente</option>
-                                <option value="Em Andamento">Em Andamento</option>
-                                <option value="Concluído">Concluído</option>
-                                <option value="Em Espera">Em Espera</option>
-                              </select>
-                            </td>
-                            <td className="px-3 py-3">
-                              <select 
-                                value={obra.prioridade}
-                                onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
-                                  obra.prioridade === 'Alta' 
-                                    ? 'bg-red-50 text-red-700 border-red-100' 
-                                    : obra.prioridade === 'Média'
-                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                }`}
-                              >
-                                <option value="Alta">Alta</option>
-                                <option value="Média">Média</option>
-                                <option value="Baixa">Baixa</option>
-                              </select>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div 
-                                onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
-                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
-                              >
-                                {obra.cliente}
-                              </div>
-                              {obra.observacoes && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
-                                  {obra.observacoes}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
-                                (() => {
-                                  const dias = getDaysDiff(obra.dataContrato);
-                                  return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
-                                })()
-                              }`}>
-                                {getDaysDiff(obra.dataContrato)} d
-                              </div>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
-                            </td>
-                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] whitespace-nowrap">
-                              <div className="font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                {obra.equipe || '---'}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="flex flex-col text-indigo-700 bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200">
-                                <div className="flex items-center gap-1.5 text-[10px] font-bold">
-                                  <Calendar size={10} /> {formatDateBR(obra.dataObra)}
-                                </div>
-                                <div className="text-[12px] font-black uppercase opacity-80 mt-0.5">
-                                  {getDayOfWeek(obra.dataObra)}
-                                </div>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
-                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
-                                <div 
-                                  className="cursor-pointer hover:scale-105 transition-transform"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingPayment({ id: obra.id.toString(), type: 'obra' });
-                                  }}
+                <div className="px-6 py-4 bg-indigo-50/50 border-b border-indigo-100 flex items-center justify-between">
+                  <h2 className="font-bold text-indigo-900 flex items-center gap-2">
+                    <Calendar size={18} className="text-indigo-600" />
+                    Obras Agendadas
+                  </h2>
+                  <span className="text-xs font-bold text-indigo-600 bg-white px-2 py-1 rounded-lg border border-indigo-200 shadow-sm">
+                    {scheduledObras.length} obras
+                  </span>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-indigo-50/30 border-b border-indigo-100">
+                        <th className="px-1.5 py-3 w-10">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                            checked={scheduledObras.length > 0 && scheduledObras.every(o => selectedIds.has(o.id))}
+                            onChange={() => toggleSelectAll(scheduledObras)}
+                          />
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('numeroRegistro')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Reg. {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('situacao')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Status {sortConfig.key === 'situacao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('prioridade')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Prior. {sortConfig.key === 'prioridade' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('cliente')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Cliente {sortConfig.key === 'cliente' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-center cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('dataContrato')}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            Dias {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('local')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Local {sortConfig.key === 'local' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('vendedor')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Vend. {sortConfig.key === 'vendedor' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('equipe')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Equipe {sortConfig.key === 'equipe' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('dataObra')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Previsão {sortConfig.key === 'dataObra' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider cursor-pointer hover:bg-indigo-100/50 transition-colors"
+                          onClick={() => handleSort('formaPagamento')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-indigo-50">
+                      <AnimatePresence mode="popLayout">
+                        {scheduledObras.length > 0 ? (
+                          scheduledObras.map((obra) => (
+                            <motion.tr 
+                              key={obra.id}
+                              layout
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className={`hover:bg-indigo-50/50 transition-colors ${
+                                obra.situacao === 'Pendente' 
+                                  ? 'bg-amber-50/40 border-l-4 border-amber-400' 
+                                  : obra.situacao === 'Em Espera'
+                                  ? 'bg-slate-50/40 border-l-4 border-slate-400'
+                                  : 'bg-blue-50/40 border-l-4 border-blue-400'
+                              } ${selectedIds.has(obra.id) ? 'bg-indigo-100/50' : ''}`}
+                            >
+                              <td className="px-3 py-3">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                  checked={selectedIds.has(obra.id)}
+                                  onChange={() => toggleSelect(obra.id)}
+                                />
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <span className="font-mono text-[10px] font-bold text-indigo-600 bg-white px-1.5 py-1 rounded border border-indigo-100">
+                                  #{obra.numeroRegistro}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3">
+                                <select 
+                                  value={obra.situacao}
+                                  onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                    obra.situacao === 'Pendente' 
+                                      ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                      : obra.situacao === 'Em Espera'
+                                      ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                      : 'bg-blue-100 text-blue-700 border-blue-200'
+                                  }`}
                                 >
-                                  {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
-                                    <select
-                                      autoFocus
-                                      className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
-                                      value={obra.formaPagamento || ''}
-                                      onBlur={() => setEditingPayment(null)}
-                                      onChange={(e) => {
-                                        updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
-                                        setEditingPayment(null);
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
+                                  <option value="Pendente">Pendente</option>
+                                  <option value="Em Andamento">Em Andamento</option>
+                                  <option value="Concluído">Concluído</option>
+                                  <option value="Em Espera">Em Espera</option>
+                                </select>
+                              </td>
+                              <td className="px-3 py-3">
+                                <select 
+                                  value={obra.prioridade}
+                                  onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
+                                    obra.prioridade === 'Alta' 
+                                      ? 'bg-red-50 text-red-700 border-red-100' 
+                                      : obra.prioridade === 'Média'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  }`}
+                                >
+                                  <option value="Alta">Alta</option>
+                                  <option value="Média">Média</option>
+                                  <option value="Baixa">Baixa</option>
+                                </select>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                  <span onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                                  {obra.txtFile && (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
+                                      className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                      title="Ver TXT"
                                     >
-                                      <option value="">Selecione</option>
-                                      {formasPagamento.filter(f => f.ativo).map(f => (
-                                        <option key={f.id} value={f.nome}>{f.nome}</option>
-                                      ))}
-                                      <option value="Outros">Outros</option>
-                                    </select>
-                                  ) : (
-                                    <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
-                                      {obra.formaPagamento || 'DEFINIR PGTO'}
-                                    </span>
+                                      <FileText size={14} />
+                                    </button>
                                   )}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button 
-                                  onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
-                                  title="Ver Detalhes"
-                                >
-                                  <Eye size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => handleEdit(obra)}
-                                  className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
-                                  title="Editar"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                {canDelete && (
-                                  <button 
-                                    onClick={() => handleDelete(obra.id)}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
-                                    title="Excluir"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
+                                {obra.observacoes && (
+                                  <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
+                                    {obra.observacoes}
+                                  </div>
                                 )}
-                              </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
+                                  (() => {
+                                    const dias = getDaysDiff(obra.dataContrato);
+                                    return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+                                  })()
+                                }`}>
+                                  {getDaysDiff(obra.dataContrato)} d
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
+                              </td>
+                              <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
+                              <td className="px-3 py-3 text-[10px] whitespace-nowrap">
+                                <div className="font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
+                                  {obra.equipe || '---'}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="flex flex-col text-indigo-700 bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                    <Calendar size={10} /> {formatDateBR(obra.dataObra)}
+                                  </div>
+                                  <div className="text-[12px] font-black uppercase opacity-80 mt-0.5">
+                                    {getDayOfWeek(obra.dataObra)}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
+                                <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
+                                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
+                                  <div 
+                                    className="cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingPayment({ id: obra.id.toString(), type: 'obra' });
+                                    }}
+                                  >
+                                    {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
+                                      <select
+                                        autoFocus
+                                        className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                        value={obra.formaPagamento || ''}
+                                        onBlur={() => setEditingPayment(null)}
+                                        onChange={(e) => {
+                                          updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
+                                          setEditingPayment(null);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <option value="">Selecione</option>
+                                        {formasPagamento.filter(f => f.ativo).map(f => (
+                                          <option key={f.id} value={f.nome}>{f.nome}</option>
+                                        ))}
+                                        <option value="Outros">Outros</option>
+                                      </select>
+                                    ) : (
+                                      <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
+                                        {obra.formaPagamento || 'DEFINIR PGTO'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button 
+                                    onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
+                                    className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
+                                    title="Ver Detalhes"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleEdit(obra)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
+                                    title="Editar"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                  {canDelete && (
+                                    <button 
+                                      onClick={() => handleDelete(obra.id)}
+                                      className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                                      title="Excluir"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={12} className="px-6 py-8 text-center text-slate-400">
+                              <p className="text-sm">Nenhuma obra agendada no momento.</p>
                             </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={12} className="px-6 py-8 text-center text-slate-400">
-                            <p className="text-sm">Nenhuma obra agendada no momento.</p>
-                          </td>
-                        </tr>
-                      )}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                          </tr>
+                        )}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
 
             {/* Section: Obras Sem Agendamento (Without Scheduled Date) */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                  <Clock size={18} className="text-amber-500" />
-                  Obras Sem Data Prevista (Pendentes / Em Espera)
-                </h2>
-                <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
-                  {unscheduledObras.length} obras
-                </span>
-              </div>
-              <div className="overflow-x-auto scrollbar-hide">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-200">
-                      <th className="px-1.5 py-3 w-10">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                          checked={unscheduledObras.length > 0 && unscheduledObras.every(o => selectedIds.has(o.id))}
-                          onChange={() => toggleSelectAll(unscheduledObras)}
-                        />
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('numeroRegistro')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Reg. {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('situacao')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Status {sortConfig.key === 'situacao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('prioridade')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Prior. {sortConfig.key === 'prioridade' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('cliente')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Cliente {sortConfig.key === 'cliente' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('dataContrato')}
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          Dias {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('local')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Local {sortConfig.key === 'local' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('vendedor')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Vend. {sortConfig.key === 'vendedor' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('equipe')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Equipe {sortConfig.key === 'equipe' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('dataContrato')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Contrato {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSort('formaPagamento')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <AnimatePresence mode="popLayout">
-                      {unscheduledObras.length > 0 ? (
-                        unscheduledObras.map((obra) => (
-                          <motion.tr 
-                            key={obra.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors ${
-                              obra.situacao === 'Pendente' 
-                                ? 'bg-amber-50/60 border-l-4 border-amber-400' 
-                                : obra.situacao === 'Em Espera'
-                                ? 'bg-slate-50/60 border-l-4 border-slate-400'
-                                : 'bg-blue-50/60 border-l-4 border-blue-400'
-                            } ${selectedIds.has(obra.id) ? 'bg-indigo-50/80' : ''}`}
-                          >
-                            <td className="px-3 py-3">
-                              <input 
-                                type="checkbox" 
-                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                checked={selectedIds.has(obra.id)}
-                                onChange={() => toggleSelect(obra.id)}
-                              />
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
-                                #{obra.numeroRegistro}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3">
-                              <select 
-                                value={obra.situacao}
-                                onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
-                                  obra.situacao === 'Pendente' 
-                                    ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                                    : obra.situacao === 'Em Espera'
-                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                    : 'bg-blue-100 text-blue-700 border-blue-200'
-                                }`}
-                              >
-                                <option value="Pendente">Pendente</option>
-                                <option value="Em Andamento">Em Andamento</option>
-                                <option value="Concluído">Concluído</option>
-                                <option value="Em Espera">Em Espera</option>
-                              </select>
-                            </td>
-                            <td className="px-3 py-3">
-                              <select 
-                                value={obra.prioridade}
-                                onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
-                                  obra.prioridade === 'Alta' 
-                                    ? 'bg-red-50 text-red-700 border-red-100' 
-                                    : obra.prioridade === 'Média'
-                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                }`}
-                              >
-                                <option value="Alta">Alta</option>
-                                <option value="Média">Média</option>
-                                <option value="Baixa">Baixa</option>
-                              </select>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div 
-                                onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
-                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
-                              >
-                                {obra.cliente}
-                              </div>
-                              {obra.observacoes && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
-                                  {obra.observacoes}
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
-                                (() => {
-                                  const dias = getDaysDiff(obra.dataContrato);
-                                  return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
-                                })()
-                              }`}>
-                                {getDaysDiff(obra.dataContrato)} d
-                              </div>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
-                            </td>
-                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                {obra.equipe || '---'}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <span className="font-bold">{formatDateBR(obra.dataContrato)}</span>
-                                <span className="text-[12px] uppercase font-black opacity-80 mt-0.5">{getDayOfWeek(obra.dataContrato)}</span>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
-                                <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
-                                <div 
-                                  className="cursor-pointer hover:scale-105 transition-transform"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setEditingPayment({ id: obra.id.toString(), type: 'obra' });
-                                  }}
+            {!hideUnscheduledObras && (
+              <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+                <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                  <h2 className="font-bold text-slate-700 flex items-center gap-2">
+                    <Clock size={18} className="text-amber-500" />
+                    Obras Sem Data Prevista (Pendentes / Em Espera)
+                  </h2>
+                  <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
+                    {unscheduledObras.length} obras
+                  </span>
+                </div>
+                <div className="overflow-x-auto scrollbar-hide">
+                  <table className="w-full text-left border-collapse">
+                    <thead>
+                      <tr className="bg-slate-50/50 border-b border-slate-200">
+                        <th className="px-1.5 py-3 w-10">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                            checked={unscheduledObras.length > 0 && unscheduledObras.every(o => selectedIds.has(o.id))}
+                            onChange={() => toggleSelectAll(unscheduledObras)}
+                          />
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('numeroRegistro')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Reg. {sortConfig.key === 'numeroRegistro' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('situacao')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Status {sortConfig.key === 'situacao' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('prioridade')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Prior. {sortConfig.key === 'prioridade' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('cliente')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Cliente {sortConfig.key === 'cliente' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('dataContrato')}
+                        >
+                          <div className="flex items-center justify-center gap-1">
+                            Dias {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('local')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Local {sortConfig.key === 'local' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('vendedor')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Vend. {sortConfig.key === 'vendedor' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('equipe')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Equipe {sortConfig.key === 'equipe' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('dataContrato')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Contrato {sortConfig.key === 'dataContrato' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th 
+                          className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                          onClick={() => handleSort('formaPagamento')}
+                        >
+                          <div className="flex items-center gap-1">
+                            Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                          </div>
+                        </th>
+                        <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      <AnimatePresence mode="popLayout">
+                        {unscheduledObras.length > 0 ? (
+                          unscheduledObras.map((obra) => (
+                            <motion.tr 
+                              key={obra.id}
+                              layout
+                              initial={{ opacity: 0 }}
+                              animate={{ opacity: 1 }}
+                              exit={{ opacity: 0 }}
+                              className={`hover:bg-slate-50 transition-colors ${
+                                obra.situacao === 'Pendente' 
+                                  ? 'bg-amber-50/60 border-l-4 border-amber-400' 
+                                  : obra.situacao === 'Em Espera'
+                                  ? 'bg-slate-50/60 border-l-4 border-slate-400'
+                                  : 'bg-blue-50/60 border-l-4 border-blue-400'
+                              } ${selectedIds.has(obra.id) ? 'bg-indigo-50/80' : ''}`}
+                            >
+                              <td className="px-3 py-3">
+                                <input 
+                                  type="checkbox" 
+                                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                  checked={selectedIds.has(obra.id)}
+                                  onChange={() => toggleSelect(obra.id)}
+                                />
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
+                                  #{obra.numeroRegistro}
+                                </span>
+                              </td>
+                              <td className="px-3 py-3">
+                                <select 
+                                  value={obra.situacao}
+                                  onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                    obra.situacao === 'Pendente' 
+                                      ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                      : obra.situacao === 'Em Espera'
+                                      ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                      : 'bg-blue-100 text-blue-700 border-blue-200'
+                                  }`}
                                 >
-                                  {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
-                                    <select
-                                      autoFocus
-                                      className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
-                                      value={obra.formaPagamento || ''}
-                                      onBlur={() => setEditingPayment(null)}
-                                      onChange={(e) => {
-                                        updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
-                                        setEditingPayment(null);
-                                      }}
-                                      onClick={(e) => e.stopPropagation()}
+                                  <option value="Pendente">Pendente</option>
+                                  <option value="Em Andamento">Em Andamento</option>
+                                  <option value="Concluído">Concluído</option>
+                                  <option value="Em Espera">Em Espera</option>
+                                </select>
+                              </td>
+                              <td className="px-3 py-3">
+                                <select 
+                                  value={obra.prioridade}
+                                  onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
+                                  className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
+                                    obra.prioridade === 'Alta' 
+                                      ? 'bg-red-50 text-red-700 border-red-100' 
+                                      : obra.prioridade === 'Média'
+                                      ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                      : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                  }`}
+                                >
+                                  <option value="Alta">Alta</option>
+                                  <option value="Média">Média</option>
+                                  <option value="Baixa">Baixa</option>
+                                </select>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                  <span onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                                  {obra.txtFile && (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
+                                      className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                      title="Ver TXT"
                                     >
-                                      <option value="">Selecione</option>
-                                      {formasPagamento.filter(f => f.ativo).map(f => (
-                                        <option key={f.id} value={f.nome}>{f.nome}</option>
-                                      ))}
-                                      <option value="Outros">Outros</option>
-                                    </select>
-                                  ) : (
-                                    <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
-                                      {obra.formaPagamento || 'DEFINIR PGTO'}
-                                    </span>
+                                      <FileText size={14} />
+                                    </button>
                                   )}
                                 </div>
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-right">
-                              <div className="flex items-center justify-end gap-1">
-                                <button 
-                                  onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
-                                  title="Ver Detalhes"
-                                >
-                                  <Eye size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => handleEdit(obra)}
-                                  className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
-                                  title="Editar"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                {canDelete && (
-                                  <button 
-                                    onClick={() => handleDelete(obra.id)}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
-                                    title="Excluir"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
+                                {obra.observacoes && (
+                                  <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
+                                    {obra.observacoes}
+                                  </div>
                                 )}
-                              </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
+                                  (() => {
+                                    const dias = getDaysDiff(obra.dataContrato);
+                                    return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+                                  })()
+                                }`}>
+                                  {getDaysDiff(obra.dataContrato)} d
+                                </div>
+                              </td>
+                              <td className="px-3 py-3">
+                                <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
+                              </td>
+                              <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
+                              <td className="px-3 py-3">
+                                <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
+                                  {obra.equipe || '---'}
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
+                                <div className="flex flex-col">
+                                  <span className="font-bold">{formatDateBR(obra.dataContrato)}</span>
+                                  <span className="text-[12px] uppercase font-black opacity-80 mt-0.5">{getDayOfWeek(obra.dataContrato)}</span>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
+                                <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
+                                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
+                                  <div 
+                                    className="cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingPayment({ id: obra.id.toString(), type: 'obra' });
+                                    }}
+                                  >
+                                    {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
+                                      <select
+                                        autoFocus
+                                        className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                        value={obra.formaPagamento || ''}
+                                        onBlur={() => setEditingPayment(null)}
+                                        onChange={(e) => {
+                                          updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
+                                          setEditingPayment(null);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <option value="">Selecione</option>
+                                        {formasPagamento.filter(f => f.ativo).map(f => (
+                                          <option key={f.id} value={f.nome}>{f.nome}</option>
+                                        ))}
+                                        <option value="Outros">Outros</option>
+                                      </select>
+                                    ) : (
+                                      <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
+                                        {obra.formaPagamento || 'DEFINIR PGTO'}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+                              <td className="px-3 py-3 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <button 
+                                    onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
+                                    className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
+                                    title="Ver Detalhes"
+                                  >
+                                    <Eye size={16} />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleEdit(obra)}
+                                    className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
+                                    title="Editar"
+                                  >
+                                    <Edit size={16} />
+                                  </button>
+                                  {canDelete && (
+                                    <button 
+                                      onClick={() => handleDelete(obra.id)}
+                                      className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                                      title="Excluir"
+                                    >
+                                      <Trash2 size={16} />
+                                    </button>
+                                  )}
+                                </div>
+                              </td>
+                            </motion.tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan={12} className="px-6 py-8 text-center text-slate-400">
+                              <p className="text-sm">Nenhuma obra em espera encontrada.</p>
                             </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={12} className="px-6 py-8 text-center text-slate-400">
-                            <p className="text-sm">Nenhuma obra em espera encontrada.</p>
-                          </td>
-                        </tr>
-                      )}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </div>
-            </section>
+                          </tr>
+                        )}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            )}
 
             {/* Archived Obras - Spreadsheet Table */}
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -2958,11 +3034,17 @@ export default function App() {
                               </span>
                             </td>
                             <td className="px-3 py-3">
-                              <div 
-                                onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
-                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
-                              >
-                                {obra.cliente}
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                <span onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                                {obra.txtFile && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
+                                    className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                    title="Ver TXT"
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
                               </div>
                               {obra.observacoes && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
@@ -3048,19 +3130,20 @@ export default function App() {
                 </table>
               </div>
             )}
-            </section>
-          </div>
-        ) : (
-          <>
-            {/* Section: Em Andamento */}
+          </section>
+        </div>
+      ) : (
+        <div className="space-y-8">
+          {/* Section: Serviços Agendados */}
+          {!hideScheduledServicos && (
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-              <div className="px-6 py-4 bg-blue-50 border-b border-blue-100 flex items-center justify-between">
-                <h2 className="font-bold text-blue-700 flex items-center gap-2">
-                  <Play size={18} className="fill-blue-600" />
-                  Serviços em Andamento
+              <div className="px-6 py-4 bg-indigo-50 border-b border-indigo-100 flex items-center justify-between">
+                <h2 className="font-bold text-indigo-700 flex items-center gap-2">
+                  <Calendar size={18} className="text-indigo-600" />
+                  Serviços Agendados
                 </h2>
-                <span className="text-xs font-bold text-blue-600 bg-white px-2 py-1 rounded-lg border border-blue-200 shadow-sm">
-                  {inProgressServicos.length} ativos
+                <span className="text-xs font-bold text-indigo-600 bg-white px-2 py-1 rounded-lg border border-indigo-200 shadow-sm">
+                  {scheduledServicosList.length} registros
                 </span>
               </div>
               <div className="overflow-x-auto scrollbar-hide">
@@ -3071,8 +3154,8 @@ export default function App() {
                         <input 
                           type="checkbox" 
                           className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                          checked={inProgressServicos.length > 0 && inProgressServicos.every(s => selectedIds.has(s.id))}
-                          onChange={() => toggleSelectAll(inProgressServicos)}
+                          checked={scheduledServicosList.length > 0 && scheduledServicosList.every(s => selectedIds.has(s.id))}
+                          onChange={() => toggleSelectAll(scheduledServicosList)}
                         />
                       </th>
                       <th 
@@ -3192,8 +3275,8 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     <AnimatePresence mode="popLayout">
-                      {inProgressServicos.length > 0 ? (
-                        inProgressServicos.map((servico) => (
+                      {scheduledServicosList.length > 0 ? (
+                        scheduledServicosList.map((servico) => (
                           <motion.tr 
                             key={servico.id}
                             layout
@@ -3203,6 +3286,8 @@ export default function App() {
                             className={`hover:bg-slate-50 transition-colors ${
                               servico.situacao === 'Em Espera'
                                 ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
+                                : servico.situacao === 'Pendente'
+                                ? 'bg-amber-50/20 border-l-4 border-amber-400'
                                 : 'bg-blue-50/20 border-l-4 border-blue-400'
                             } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
@@ -3268,11 +3353,17 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div 
-                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
-                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
-                              >
-                                {servico.cliente}
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                <span onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{servico.cliente}</span>
+                                {servico.txtFile && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
+                                    className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                    title="Ver TXT"
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
                               </div>
                               {servico.observacao && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
@@ -3292,7 +3383,10 @@ export default function App() {
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
                             <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap font-bold">
+                              {formatDateBR(servico.dataServico)}
+                              <div className="text-[12px] uppercase font-black opacity-80">{getDayOfWeek(servico.dataServico)}</div>
+                            </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div 
                                 className="cursor-pointer hover:scale-105 transition-transform inline-block"
@@ -3364,8 +3458,8 @@ export default function App() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={15} className="px-6 py-10 text-center text-slate-400">
-                            Nenhum serviço em andamento.
+                          <td colSpan={16} className="px-6 py-10 text-center text-slate-400">
+                            Nenhum serviço agendado.
                           </td>
                         </tr>
                       )}
@@ -3374,6 +3468,8 @@ export default function App() {
                 </table>
               </div>
             </section>
+          )}
+
 
             {/* Section: Pendentes */}
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
@@ -3583,11 +3679,17 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div 
-                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
-                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
-                              >
-                                {servico.cliente}
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                <span onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{servico.cliente}</span>
+                                {servico.txtFile && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
+                                    className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                    title="Ver TXT"
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
                               </div>
                               {servico.observacao && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
@@ -3919,11 +4021,17 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div 
-                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
-                                className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors"
-                              >
-                                {servico.cliente}
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                <span onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{servico.cliente}</span>
+                                {servico.txtFile && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
+                                    className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                    title="Ver TXT"
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
                               </div>
                               {servico.observacao && (
                                 <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
@@ -3971,8 +4079,8 @@ export default function App() {
               </div>
             )}
             </section>
-          </>
-        )}
+        </div>
+      )}
 
 
         {/* Footer Actions */}
@@ -5093,6 +5201,40 @@ export default function App() {
                           icon={<FileText size={14} />}
                         />
                       </div>
+
+                      <hr className="border-slate-100" />
+
+                      {/* Section: Arquivo TXT Display */}
+                      {selectedServico.txtFile && (
+                        <div className="space-y-4">
+                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
+                            <FileText size={14} /> Arquivo TXT: {selectedServico.txtFile.name}
+                          </h3>
+                          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm transition-all hover:shadow-md">
+                            <pre className="text-slate-700 font-mono text-xs leading-relaxed overflow-x-auto max-h-[400px] whitespace-pre-wrap">
+                              {selectedServico.txtFile.content}
+                            </pre>
+                            <div className="mt-4 flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const blob = new Blob([selectedServico.txtFile!.content], { type: 'text/plain' });
+                                  const url = URL.createObjectURL(blob);
+                                  const a = document.createElement('a');
+                                  a.href = url;
+                                  a.download = selectedServico.txtFile!.name;
+                                  a.click();
+                                  URL.revokeObjectURL(url);
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100"
+                              >
+                                <Download size={14} />
+                                Baixar Arquivo .txt
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : null}
                 </div>
@@ -5171,7 +5313,66 @@ export default function App() {
         equipes={equipes}
         onSelectObra={setSelectedObra}
         onOpenDetails={setIsDetailsModalOpen}
+        setViewingTxt={setViewingTxt}
       />
+
+      {/* TXT View Modal */}
+      <AnimatePresence>
+        {viewingTxt && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setViewingTxt(null)}
+              className="absolute inset-0 bg-[#1e2f3e]/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 bg-indigo-600 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText size={24} />
+                  <div>
+                    <h2 className="text-xl font-bold leading-tight">{viewingTxt.name}</h2>
+                    <p className="text-[10px] uppercase font-black tracking-widest opacity-70">Visualização de Documento</p>
+                  </div>
+                </div>
+                <button onClick={() => setViewingTxt(null)} className="hover:bg-white/10 p-2 rounded-xl transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
+                <pre className="text-slate-700 font-mono text-sm leading-relaxed whitespace-pre-wrap p-4 bg-white rounded-2xl border border-slate-200 shadow-inner">
+                  {viewingTxt.content}
+                </pre>
+              </div>
+
+              <div className="p-4 bg-white border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => {
+                    const blob = new Blob([viewingTxt.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = viewingTxt.name;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100"
+                >
+                  <Download size={18} />
+                  Baixar Arquivo .txt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -5401,7 +5602,7 @@ function SettingsModal({
 }
 
 // Payroll Modal Component
-function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDetails }: any) {
+function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDetails, setViewingTxt }: any) {
   const [period, setPeriod] = useState('Mensal');
   const [selectedEquipe, setSelectedEquipe] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -5555,11 +5756,17 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
                       <tr key={obra.id} className="hover:bg-white transition-colors">
                         <td className="px-6 py-3 text-sm text-slate-600">{formatDateBR(obra.dataConclusao || obra.dataObra)}</td>
                         <td className="px-6 py-3">
-                          <div 
-                            onClick={() => { onSelectObra(obra); onOpenDetails(true); }}
-                            className="text-sm font-bold text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors"
-                          >
-                            {obra.cliente}
+                          <div className="text-sm font-bold text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                            <span onClick={() => { onSelectObra(obra); onOpenDetails(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                            {obra.txtFile && (
+                              <button 
+                                onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
+                                className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                title="Ver TXT"
+                              >
+                                <FileText size={14} />
+                              </button>
+                            )}
                           </div>
                           {obra.observacoes && (
                             <div className="text-[10px] text-slate-500 mt-0.5 max-w-[300px] truncate" title={obra.observacoes}>

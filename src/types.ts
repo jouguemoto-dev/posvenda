@@ -55,6 +55,10 @@ export interface Servico {
   observacao: string;
   createdBy?: string;
   createdAt?: any;
+  txtFile?: {
+    name: string;
+    content: string;
+  };
 }
 
 export interface Vendedor {

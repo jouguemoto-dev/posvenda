@@ -17,7 +17,8 @@ import {
   AlertCircle,
   ClipboardList,
   Wrench,
-  UserPlus
+  UserPlus,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -92,6 +93,7 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   const [toasts, setToasts] = useState<{id: number, message: string}[]>([]);
   const [activeCell, setActiveCell] = useState<{day: string, teamId: string} | null>(null);
   const [addingClientTo, setAddingClientTo] = useState<{day: string, teamId: string} | null>(null);
+  const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -550,7 +552,18 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                     <span className="text-[9px] font-black italic opacity-90 text-indigo-900 bg-indigo-50/50 px-1 rounded">{o.quantidadePlacas} PL</span>
                                   )}
                                 </div>
-                                <span className={`font-bold truncate text-[10px] ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
+                                <div className="flex items-center gap-1 overflow-hidden">
+                                  <span className={`font-bold truncate text-[10px] flex-1 ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
+                                  {o.txtFile && (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
+                                      className="p-0.5 text-indigo-500 hover:text-indigo-700 transition-colors flex-none"
+                                      title="Ver TXT"
+                                    >
+                                      <FileText size={10} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             ))}
                             {matchingServicos.map(s => (
@@ -571,7 +584,18 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                     </span>
                                   </div>
                                 </div>
-                                <span className={`font-bold truncate text-[10px] ${s.situacao === 'Concluído' ? 'line-through' : ''}`}>{s.cliente}</span>
+                                <div className="flex items-center gap-1 overflow-hidden">
+                                  <span className={`font-bold truncate text-[10px] flex-1 ${s.situacao === 'Concluído' ? 'line-through' : ''}`}>{s.cliente}</span>
+                                  {s.txtFile && (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
+                                      className="p-0.5 text-blue-500 hover:text-blue-700 transition-colors flex-none"
+                                      title="Ver TXT"
+                                    >
+                                      <FileText size={10} />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
                             ))}
                           </div>
@@ -786,6 +810,64 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
           ))}
         </AnimatePresence>
       </div>
+
+      {/* TXT View Modal */}
+      <AnimatePresence>
+        {viewingTxt && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setViewingTxt(null)}
+              className="absolute inset-0 bg-[#1e2f3e]/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+            >
+              <div className="p-6 bg-indigo-600 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText size={24} />
+                  <div>
+                    <h2 className="text-xl font-bold leading-tight">{viewingTxt.name}</h2>
+                    <p className="text-[10px] uppercase font-black tracking-widest opacity-70">Visualização de Documento</p>
+                  </div>
+                </div>
+                <button onClick={() => setViewingTxt(null)} className="hover:bg-white/10 p-2 rounded-xl transition-colors">
+                  <X size={24} />
+                </button>
+              </div>
+              
+              <div className="p-6 overflow-y-auto bg-slate-50 flex-1">
+                <pre className="text-slate-700 font-mono text-sm leading-relaxed whitespace-pre-wrap p-4 bg-white rounded-2xl border border-slate-200 shadow-inner">
+                  {viewingTxt.content}
+                </pre>
+              </div>
+
+              <div className="p-4 bg-white border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => {
+                    const blob = new Blob([viewingTxt.content], { type: 'text/plain' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = viewingTxt.name;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                  }}
+                  className="flex items-center gap-2 px-6 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-sm hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100"
+                >
+                  <Download size={18} />
+                  Baixar Arquivo .txt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
