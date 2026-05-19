@@ -18,7 +18,16 @@ import {
   ClipboardList,
   Wrench,
   UserPlus,
-  FileText
+  FileText,
+  MapPin,
+  Phone,
+  DollarSign,
+  Briefcase,
+  Layers,
+  LayoutDashboard,
+  Hash,
+  Activity,
+  Zap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -94,6 +103,7 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   const [activeCell, setActiveCell] = useState<{day: string, teamId: string} | null>(null);
   const [addingClientTo, setAddingClientTo] = useState<{day: string, teamId: string} | null>(null);
   const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
+  const [selectedDetails, setSelectedDetails] = useState<{type: 'obra' | 'servico', item: Obra | Servico} | null>(null);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -553,7 +563,12 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
-                                  <span className={`font-bold truncate text-[10px] flex-1 ${o.situacao === 'Concluído' ? 'line-through' : ''}`}>{o.cliente}</span>
+                                  <span 
+                                    onClick={() => setSelectedDetails({ type: 'obra', item: o })}
+                                    className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-indigo-600 transition-colors ${o.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                  >
+                                    {o.cliente}
+                                  </span>
                                   {o.txtFile && (
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
@@ -585,7 +600,12 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
-                                  <span className={`font-bold truncate text-[10px] flex-1 ${s.situacao === 'Concluído' ? 'line-through' : ''}`}>{s.cliente}</span>
+                                  <span 
+                                    onClick={() => setSelectedDetails({ type: 'servico', item: s })}
+                                    className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-blue-600 transition-colors ${s.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                  >
+                                    {s.cliente}
+                                  </span>
                                   {s.txtFile && (
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
@@ -810,6 +830,224 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
           ))}
         </AnimatePresence>
       </div>
+
+      {/* Client Details Modal */}
+      <AnimatePresence>
+        {selectedDetails && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedDetails(null)}
+              className="absolute inset-0 bg-[#0f172a]/40 backdrop-blur-[2px]"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.98, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.98, y: 10 }}
+              className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-slate-200"
+            >
+              {/* Minimal Header */}
+              <div className="p-6 pb-4 border-b border-slate-100 flex items-start justify-between">
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
+                    {selectedDetails.type === 'obra' ? 'Ficha de Obra' : 'Ficha de Serviço'}
+                  </p>
+                  <h2 className="text-xl font-bold text-slate-900 leading-tight">
+                    {selectedDetails.item.cliente}
+                  </h2>
+                </div>
+                <button 
+                  onClick={() => setSelectedDetails(null)} 
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-1"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+              
+              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
+                {/* Section: Identificação */}
+                <div className="space-y-4">
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Registro</span>
+                    <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">#{selectedDetails.item.numeroRegistro}</span>
+                  </div>
+
+                  <div>
+                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Localização</span>
+                    <span className="text-sm font-medium text-slate-700 leading-relaxed">
+                      {selectedDetails.item.local || 'Não informado'}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Vendedor</span>
+                      <span className="text-sm font-medium text-slate-700">{selectedDetails.item.vendedor}</span>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Valor Total</span>
+                      <span className="text-sm font-black text-slate-900 uppercase">
+                        R$ {selectedDetails.type === 'obra' 
+                          ? (selectedDetails.item as Obra).valorReceber?.toLocaleString('pt-BR') 
+                          : (selectedDetails.item as Servico).valor?.toLocaleString('pt-BR')}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100" />
+
+                {/* Section: Detalhes Técnicos */}
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">Especificações</h3>
+                  
+                  <div className="space-y-3">
+                    {selectedDetails.type === 'obra' ? (
+                      <>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500">Inversor</span>
+                          <span className="font-semibold text-slate-700">{(selectedDetails.item as Obra).inversor || '---'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500">Módulos</span>
+                          <span className="font-semibold text-slate-700">{(selectedDetails.item as Obra).quantidadePlacas || 0} unidades</span>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex flex-col gap-1">
+                          <span className="text-[10px] text-slate-400 font-bold uppercase">Serviço</span>
+                          <span className="text-sm font-medium text-slate-700">{(selectedDetails.item as Servico).servico || '---'}</span>
+                        </div>
+                        <div className="flex justify-between items-center text-sm">
+                          <span className="text-slate-500">Equipe de Instalação</span>
+                          <span className="font-semibold text-slate-700">{(selectedDetails.item as Servico).equipeInstalou || '---'}</span>
+                        </div>
+                      </>
+                    )}
+                    
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500">Equipe Responsável</span>
+                      <span className="text-indigo-600 font-bold uppercase text-xs tracking-wide">
+                        {selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).equipe : (selectedDetails.item as Servico).equipeServico}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-sm">
+                      <span className="text-slate-500">Status Atual</span>
+                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
+                        selectedDetails.item.situacao === 'Concluído' ? 'text-emerald-600' :
+                        selectedDetails.item.situacao === 'Em Andamento' ? 'text-blue-600' :
+                        'text-amber-600'
+                      }`}>
+                        {selectedDetails.item.situacao}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="h-px bg-slate-100" />
+
+                {/* Section: Cronograma */}
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">Cronograma</h3>
+                  
+                  <div className="grid grid-cols-2 gap-y-4 gap-x-4">
+                    <div>
+                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Agendado</span>
+                      <span className="text-sm font-semibold text-slate-700">
+                        {(() => {
+                          const dateStr = selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).dataObra : (selectedDetails.item as Servico).dataServico;
+                          return dateStr ? new Date(dateStr).toLocaleDateString('pt-BR') : '---';
+                        })()}
+                      </span>
+                    </div>
+
+                    {selectedDetails.type === 'obra' && (
+                      <>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Chegada</span>
+                          <span className="text-sm font-semibold text-slate-700">
+                            {(selectedDetails.item as Obra).dataChegadaPlacas ? new Date((selectedDetails.item as Obra).dataChegadaPlacas).toLocaleDateString('pt-BR') : '---'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contrato</span>
+                          <span className="text-sm font-semibold text-slate-700">
+                            {(selectedDetails.item as Obra).dataContrato ? new Date((selectedDetails.item as Obra).dataContrato).toLocaleDateString('pt-BR') : '---'}
+                          </span>
+                        </div>
+                        <div>
+                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Conclusão</span>
+                          <span className="text-sm font-semibold text-slate-700">
+                            {(selectedDetails.item as Obra).dataConclusao ? new Date((selectedDetails.item as Obra).dataConclusao).toLocaleDateString('pt-BR') : '---'}
+                          </span>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Section: Financeiro (Obra) */}
+                {selectedDetails.type === 'obra' && (
+                  <>
+                    <div className="h-px bg-slate-100" />
+                    <div className="space-y-3">
+                      <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">Financeiro</h3>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500">Mão de Obra</span>
+                        <span className="font-semibold text-slate-700">R$ {(selectedDetails.item as Obra).valorMaoObra?.toLocaleString('pt-BR')}</span>
+                      </div>
+                      <div className="flex justify-between items-center text-sm">
+                        <span className="text-slate-500">Pagamento</span>
+                        <span className="font-semibold text-slate-700 uppercase text-xs">{(selectedDetails.item as Obra).formaPagamento || '---'}</span>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Observation */}
+                {(selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).observacoes : (selectedDetails.item as Servico).observacao) && (
+                  <>
+                    <div className="h-px bg-slate-100" />
+                    <div className="space-y-2">
+                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notas Adicionais</span>
+                       <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-amber-200 pl-3">
+                         {selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).observacoes : (selectedDetails.item as Servico).observacao}
+                       </p>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* Minimal Actions */}
+              <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+                <button
+                  onClick={() => setSelectedDetails(null)}
+                  className="px-4 py-2 text-slate-400 hover:text-slate-600 transition-colors font-bold text-xs uppercase tracking-widest"
+                >
+                  Fechar
+                </button>
+                
+                {selectedDetails.item.txtFile && (
+                  <button
+                    onClick={() => {
+                      setViewingTxt(selectedDetails.item.txtFile || null);
+                      setSelectedDetails(null);
+                    }}
+                    className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg shadow-slate-200 uppercase tracking-widest"
+                  >
+                    <FileText size={16} />
+                    Ver Detalhamento
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* TXT View Modal */}
       <AnimatePresence>
