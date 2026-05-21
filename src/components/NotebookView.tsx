@@ -17,7 +17,7 @@ import {
   UserPlus
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { 
   collection, 
   addDoc, 
@@ -93,7 +93,7 @@ const NotebookView: React.FC<{
     try {
       await addDoc(collection(db, 'notes'), {
         ...newNote,
-        userId: user.id,
+        userId: auth.currentUser?.uid || user.id,
         userName: user.name,
         createdAt: serverTimestamp()
       });
@@ -380,7 +380,7 @@ const NotebookView: React.FC<{
 
                 <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                   <button 
-                    onClick={() => setNoteToDelete(note.firebaseId!)}
+                    onClick={() => setNoteToDelete(note.firebaseId || note.id)}
                     className="p-1.5 hover:bg-red-100 text-red-500 rounded-lg transition-all"
                     title="Excluir"
                   >
@@ -399,7 +399,23 @@ const NotebookView: React.FC<{
                 <div className="flex flex-col">
                   <div className="flex items-center gap-1.5 text-slate-500">
                     <CalendarIcon size={12} />
-                    <span className="text-[10px] font-bold">{new Date(note.date).toLocaleDateString('pt-BR')}</span>
+                    <span className="text-[10px] font-bold">
+                      {(() => {
+                        if (!note.date) return '---';
+                        try {
+                          if (typeof note.date === 'string' && note.date.includes('-')) {
+                            const parts = note.date.split('-');
+                            if (parts.length === 3) {
+                              return `${parts[2]}/${parts[1]}/${parts[0]}`;
+                            }
+                          }
+                          const d = new Date(note.date);
+                          return isNaN(d.getTime()) ? '---' : d.toLocaleDateString('pt-BR');
+                        } catch (e) {
+                          return '---';
+                        }
+                      })()}
+                    </span>
                   </div>
                   <div className="text-[10px] text-slate-400 font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
                     Atendente: <span className="text-slate-600 font-bold">{note.atendente || note.userName}</span>
@@ -408,21 +424,21 @@ const NotebookView: React.FC<{
 
                 <div className="flex bg-white/40 p-1 rounded-xl gap-1">
                   <button 
-                    onClick={() => handleUpdateStatus(note.firebaseId!, 'Pendente')}
+                    onClick={() => handleUpdateStatus(note.firebaseId || note.id, 'Pendente')}
                     className={`p-1 rounded-lg transition-all ${note.status === 'Pendente' ? 'bg-white shadow-sm text-yellow-600' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Marcar como Pendente"
                   >
                     <Clock size={16} />
                   </button>
                   <button 
-                    onClick={() => handleUpdateStatus(note.firebaseId!, 'Em Andamento')}
+                    onClick={() => handleUpdateStatus(note.firebaseId || note.id, 'Em Andamento')}
                     className={`p-1 rounded-lg transition-all ${note.status === 'Em Andamento' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Marcar em Andamento"
                   >
                     <Activity size={16} />
                   </button>
                   <button 
-                    onClick={() => handleUpdateStatus(note.firebaseId!, 'Concluído')}
+                    onClick={() => handleUpdateStatus(note.firebaseId || note.id, 'Concluído')}
                     className={`p-1 rounded-lg transition-all ${note.status === 'Concluído' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Marcar como Concluído"
                   >

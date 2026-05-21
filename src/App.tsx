@@ -62,6 +62,8 @@ import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
 import NotebookView from './components/NotebookView';
+import MobilePWAInstall from './components/MobilePWAInstall';
+import PeriodoRelatorioModal from './components/PeriodoRelatorioModal';
 import { 
   collection, 
   addDoc, 
@@ -264,6 +266,7 @@ export default function App() {
   });
   const [showArchivedServicos, setShowArchivedServicos] = useState(false);
   const [showArchivedObras, setShowArchivedObras] = useState(false);
+  const [isSelectPeriodModalOpen, setIsSelectPeriodModalOpen] = useState(false);
   const [hideScheduledObras, setHideScheduledObras] = useState(false);
   const [hideUnscheduledObras, setHideUnscheduledObras] = useState(false);
   const [hideScheduledServicos, setHideScheduledServicos] = useState(false);
@@ -1117,6 +1120,136 @@ export default function App() {
     link.href = url;
     link.download = `relatorio_obras_${new Date().toISOString().split('T')[0]}.txt`;
     link.click();
+  };
+
+  const imprimirRelatorioConcluidos = (startDate?: string, endDate?: string) => {
+    let concluidas = obras.filter(o => o.situacao === 'Concluído');
+    
+    if (startDate) {
+      concluidas = concluidas.filter(o => {
+        const d = o.dataConclusao || o.dataObra;
+        return d && d >= startDate;
+      });
+    }
+    if (endDate) {
+      concluidas = concluidas.filter(o => {
+        const d = o.dataConclusao || o.dataObra;
+        return d && d <= endDate;
+      });
+    }
+
+    const formatDateBRLocal = (dateStr?: string) => {
+      if (!dateStr) return '';
+      const parts = dateStr.split('-');
+      if (parts.length === 3) {
+        return `${parts[2]}/${parts[1]}/${parts[0]}`;
+      }
+      return dateStr;
+    };
+
+    let periodoText = 'Todo o Período';
+    if (startDate || endDate) {
+      periodoText = `${startDate ? formatDateBRLocal(startDate) : 'Início'} até ${endDate ? formatDateBRLocal(endDate) : 'Fim'}`;
+    }
+    
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Por favor, ative os pop-ups para abrir o relatório de obras concluídas.');
+      return;
+    }
+    
+    const rowsHtml = concluidas.map((o, idx) => `
+      <tr style="border-bottom: 1px solid #e2e8f0;">
+        <td style="padding: 12px 16px; font-weight: bold; font-size: 13px; color: #1e293b; width: 10%; text-align: left;">#${idx + 1}</td>
+        <td style="padding: 12px 16px; font-size: 13px; color: #334155; font-weight: 600; text-align: left;">${o.cliente}</td>
+        <td style="padding: 12px 16px; font-size: 13px; color: #475569; font-weight: 500; text-align: left;">${o.vendedor || '<span style="color: #94a3b8; font-style: italic;">Sem Vendedor</span>'}</td>
+      </tr>
+    `).join('');
+
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html lang="pt-BR">
+        <head>
+          <meta charset="UTF-8" />
+          <title>Relatório de Obras Concluídas</title>
+          <style>
+            body { 
+              font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; 
+              padding: 40px; 
+              color: #1e293b; 
+              background-color: #ffffff; 
+              margin: 0;
+            }
+            .header {
+              border-bottom: 2px solid #6366f1;
+              padding-bottom: 15px;
+              margin-bottom: 30px;
+            }
+            h1 { 
+              font-size: 22px; 
+              color: #4f46e5; 
+              margin: 0 0 6px 0; 
+              font-weight: 800;
+              letter-spacing: -0.5px;
+            }
+            .meta { 
+              font-size: 12px; 
+              color: #64748b; 
+              margin: 0; 
+              font-weight: 500;
+            }
+            table { 
+              width: 100%; 
+              border-collapse: collapse; 
+              margin-top: 15px; 
+            }
+            th { 
+              text-align: left; 
+              background-color: #f8fafc; 
+              padding: 12px 16px; 
+              font-size: 11px; 
+              text-transform: uppercase; 
+              color: #64748b; 
+              font-weight: 700;
+              border-bottom: 2px solid #e2e8f0; 
+              letter-spacing: 0.5px;
+            }
+            tr:hover {
+              background-color: #f8fafc;
+            }
+            @media print {
+              body { padding: 20px; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>Relatório de Obras Concluídas</h1>
+            <p class="meta">Clientes e Vendedores | Período: ${periodoText} | Gerado em: ${new Date().toLocaleString('pt-BR')} | Total de Obras: ${concluidas.length}</p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th style="width: 10%">Nº</th>
+                <th style="width: 50%">Nome do Cliente</th>
+                <th style="width: 40%">Vendedor Responsável</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rowsHtml || '<tr><td colspan="3" style="text-align: center; padding: 40px; color: #94a3b8; font-style: italic; font-size: 13px;">Nenhuma obra concluída encontrada nesse período.</td></tr>'}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+            };
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.write(htmlContent);
+    printWindow.document.close();
   };
 
   const exportarJSON = () => {
@@ -2066,6 +2199,7 @@ export default function App() {
 
   return (
     <div className="h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
+      <MobilePWAInstall />
       <main className="flex-1 overflow-y-auto p-2 md:p-4 scrollbar-hide">
         <div className="w-full space-y-4">
           {activeTab === 'notebook' ? (
@@ -2933,6 +3067,16 @@ export default function App() {
                     {showArchivedObras ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                     {showArchivedObras ? 'OCULTAR' : 'CLIQUE PARA VISUALIZAR'}
                   </button>
+                  {archivedObras.length > 0 && (
+                    <button
+                      onClick={() => setIsSelectPeriodModalOpen(true)}
+                      className="ml-2 px-3 py-1 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white border border-indigo-750 rounded-lg flex items-center gap-1.5 text-[10px] font-extrabold transition-all shadow-sm cursor-pointer"
+                      title="Gerar Relatório de Clientes e Vendedores"
+                    >
+                      <FileText size={12} />
+                      GERAR RELATÓRIO DETALHADO (CLIENTE x VENDEDOR)
+                    </button>
+                  )}
                 </div>
                 
                 {/* Local Filters for Archive */}
@@ -5371,6 +5515,20 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Period Selection for Report */}
+      <AnimatePresence>
+        {isSelectPeriodModalOpen && (
+          <PeriodoRelatorioModal 
+            isOpen={isSelectPeriodModalOpen}
+            onClose={() => setIsSelectPeriodModalOpen(false)}
+            onConfirm={(startDate, endDate) => {
+              setIsSelectPeriodModalOpen(false);
+              imprimirRelatorioConcluidos(startDate, endDate);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

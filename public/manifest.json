@@ -1,0 +1,25 @@
+{
+  "name": "Sistema de Gestão de Obras",
+  "short_name": "Gestão Obras",
+  "description": "Sistema completo para agendamento, acompanhamento e gestão financeira de obras.",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "logo.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}

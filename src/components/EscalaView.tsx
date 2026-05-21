@@ -104,6 +104,27 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
   const [addingClientTo, setAddingClientTo] = useState<{day: string, teamId: string} | null>(null);
   const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<{type: 'obra' | 'servico', item: Obra | Servico} | null>(null);
+  const [tempDate, setTempDate] = useState('');
+  const [tempTeam, setTempTeam] = useState('');
+
+  useEffect(() => {
+    if (selectedDetails) {
+      const { type, item } = selectedDetails;
+      const dateStr = type === 'obra' 
+        ? (item as Obra).dataObra 
+        : (item as Servico).dataServico;
+      const datePart = dateStr ? dateStr.split('T')[0] : '';
+      setTempDate(datePart);
+
+      const teamName = type === 'obra'
+        ? (item as Obra).equipe
+        : (item as Servico).equipeServico;
+      setTempTeam(teamName || '');
+    } else {
+      setTempDate('');
+      setTempTeam('');
+    }
+  }, [selectedDetails]);
 
   const todayStr = useMemo(() => {
     const d = new Date();
@@ -236,6 +257,80 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
     end.setDate(end.getDate() + 6);
     return `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
   }, [weekOffset]);
+
+  const handleUpdateSchedule = async () => {
+    if (!selectedDetails) return;
+    const { type, item } = selectedDetails;
+    if (!item.firebaseId) {
+      addToast("Erro: ID no Firebase não encontrado.");
+      return;
+    }
+    
+    try {
+      const docRef = doc(db, type === 'obra' ? 'obras' : 'servicos', item.firebaseId);
+      if (type === 'obra') {
+        await updateDoc(docRef, {
+          dataObra: tempDate,
+          equipe: tempTeam
+        });
+      } else {
+        await updateDoc(docRef, {
+          dataServico: tempDate,
+          equipeServico: tempTeam
+        });
+      }
+      addToast("Agendamento alterado com sucesso!");
+      setSelectedDetails(null);
+    } catch (e) {
+      console.error("Erro ao alterar agendamento", e);
+      addToast("Erro ao alterar agendamento.");
+    }
+  };
+
+  const handleDuplicateItem = async () => {
+    if (!selectedDetails) return;
+    const { type, item } = selectedDetails;
+    
+    try {
+      const collectionName = type === 'obra' ? 'obras' : 'servicos';
+      
+      if (type === 'obra') {
+        const originalObra = item as Obra;
+        const duplicatedObra: Omit<Obra, 'firebaseId'> = {
+          ...originalObra,
+          id: Date.now(),
+          numeroRegistro: originalObra.numeroRegistro + ' (Cópia)',
+          dataObra: tempDate,
+          equipe: tempTeam,
+          createdAt: serverTimestamp() as any
+        };
+        // Clean firebaseId if it was in the spread
+        delete (duplicatedObra as any).firebaseId;
+        
+        await addDoc(collection(db, collectionName), duplicatedObra);
+      } else {
+        const originalServico = item as Servico;
+        const duplicatedServico: Omit<Servico, 'firebaseId'> = {
+          ...originalServico,
+          id: Date.now(),
+          numeroRegistro: originalServico.numeroRegistro + ' (Cópia)',
+          dataServico: tempDate,
+          equipeServico: tempTeam,
+          createdAt: serverTimestamp() as any
+        };
+        // Clean firebaseId if it was in the spread
+        delete (duplicatedServico as any).firebaseId;
+        
+        await addDoc(collection(db, collectionName), duplicatedServico);
+      }
+      
+      addToast("Agendamento duplicado com sucesso!");
+      setSelectedDetails(null);
+    } catch (e) {
+      console.error("Erro ao duplicar agendamento", e);
+      addToast("Erro ao duplicar agendamento.");
+    }
+  };
 
   const handleAddTeam = async () => {
     if (!newTeamName.trim()) return;
@@ -1020,6 +1115,61 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                     </div>
                   </>
                 )}
+
+                {/* Section: Reschedule / Duplicate */}
+                <div className="h-px bg-slate-100" />
+                <div className="space-y-4">
+                  <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">
+                    Ações de Escala
+                  </h3>
+                  
+                  <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Alterar Data
+                      </label>
+                      <input 
+                        type="date" 
+                        value={tempDate}
+                        onChange={(e) => setTempDate(e.target.value)}
+                        className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
+                        Alterar Equipe
+                      </label>
+                      <select 
+                        value={tempTeam}
+                        onChange={(e) => setTempTeam(e.target.value)}
+                        className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none"
+                      >
+                        <option value="">Nenhuma equipe</option>
+                        {teams.map(t => (
+                          <option key={t.id} value={t.name}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 pt-1.5">
+                      <button
+                        onClick={handleUpdateSchedule}
+                        className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-lg transition-all active:scale-95 shadow-sm"
+                      >
+                        <Calendar size={12} />
+                        Reagendar
+                      </button>
+                      <button
+                        onClick={handleDuplicateItem}
+                        className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-lg transition-all active:scale-95 shadow-sm"
+                      >
+                        <Zap size={12} />
+                        Duplicar
+                      </button>
+                    </div>
+                  </div>
+                </div>
               </div>
 
               {/* Minimal Actions */}
