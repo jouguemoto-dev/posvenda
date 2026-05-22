@@ -27,6 +27,7 @@ export interface Obra {
   equipe: string;
   inversor: string;
   formaPagamento: string;
+  situacaoPagamento?: string;
   observacoes: string;
   createdBy?: string;
   createdAt?: any;
@@ -52,6 +53,7 @@ export interface Servico {
   equipeInstalou: string;
   dataServico: string;
   formaPagamento: string;
+  situacaoPagamento?: string;
   observacao: string;
   createdBy?: string;
   createdAt?: any;

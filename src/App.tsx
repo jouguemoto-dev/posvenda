@@ -249,6 +249,44 @@ export default function App() {
   const [selectedObra, setSelectedObra] = useState<Obra | null>(null);
   const [selectedServico, setSelectedServico] = useState<any | null>(null);
   const [importText, setImportText] = useState('');
+  const parsedPreviewRows = useMemo(() => {
+    if (!importText.trim()) return [];
+    const lines = importText.trim().split('\n');
+    const list: any[] = [];
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      if (!line.trim() || line.includes('Situação') || line.includes('Registro') || line.includes('Cliente')) continue;
+      
+      let cols = line.split('\t');
+      if (cols.length <= 1) cols = line.split(';');
+      if (cols.length <= 1) cols = line.split(',');
+      
+      if (activeTab === 'obras') {
+        list.push({
+          situacao: cols[0] || 'Pendente',
+          prioridade: cols[1] || 'Média',
+          cliente: cols[2] || 'Importado',
+          vendedor: cols[3] || '',
+          local: cols[4] || '',
+          qtdPlacas: cols[7] || '0',
+          dataObra: cols[9] || ''
+        });
+      } else {
+        list.push({
+          situacao: cols[0] || 'Pendente',
+          prioridade: cols[1] || 'Média',
+          dataAtendimento: cols[2] || '',
+          cliente: cols[3] || 'Importado',
+          local: cols[4] || '',
+          servico: cols[7] || '',
+          valor: cols[8] || '0'
+        });
+      }
+      if (list.length >= 8) break; // limit to 8 rows for preview
+    }
+    return list;
+  }, [importText, activeTab]);
   const [editandoId, setEditandoId] = useState<number | null>(null);
   const [editandoServicoId, setEditandoServicoId] = useState<number | null>(null);
   const [editingPayment, setEditingPayment] = useState<{ id: string; type: 'obra' | 'servico' } | null>(null);
@@ -312,6 +350,7 @@ export default function App() {
     equipe: '',
     inversor: '',
     formaPagamento: '',
+    situacaoPagamento: '',
     observacoes: '',
     txtFile: undefined
   });
@@ -329,6 +368,7 @@ export default function App() {
     equipeInstalou: '',
     dataServico: '',
     formaPagamento: '',
+    situacaoPagamento: '',
     observacao: ''
   });
 
@@ -795,6 +835,7 @@ export default function App() {
       equipe: finalEquipe || '',
       inversor: formData.inversor || '',
       formaPagamento: formData.formaPagamento || '',
+      situacaoPagamento: formData.situacaoPagamento || '',
       observacoes: formData.observacoes || '',
       txtFile: formData.txtFile || null,
       updatedAt: serverTimestamp(),
@@ -845,6 +886,7 @@ export default function App() {
       equipeInstalou: finalEquipeInstalou || '',
       dataServico: servicoFormData.dataServico || '',
       formaPagamento: servicoFormData.formaPagamento || '',
+      situacaoPagamento: servicoFormData.situacaoPagamento || '',
       observacao: servicoFormData.observacao || '',
       updatedAt: serverTimestamp(),
     };
@@ -911,6 +953,7 @@ export default function App() {
       equipe: '',
       inversor: '',
       formaPagamento: '',
+      situacaoPagamento: '',
       observacoes: '',
       txtFile: undefined
     });
@@ -934,6 +977,7 @@ export default function App() {
       equipeInstalou: '',
       dataServico: '',
       formaPagamento: '',
+      situacaoPagamento: '',
       observacao: ''
     });
     setEquipeServicoOutros('');
@@ -1431,29 +1475,31 @@ export default function App() {
     if (activeTab === 'obras') {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.trim() || line.includes('Situação') || line.includes('Registro')) continue;
+        if (!line.trim() || line.includes('Situação') || line.includes('Registro') || line.includes('Cliente')) continue;
         
-        const cols = line.split('\t'); // Tab separated (Excel/Sheets)
+        let cols = line.split('\t'); // Tab separated (Excel/Sheets)
+        if (cols.length <= 1) cols = line.split(';');
+        if (cols.length <= 1) cols = line.split(',');
         
         const obraData = {
           id: Date.now() + i,
           numeroRegistro: String(obras.length + count + 1).padStart(3, '0'),
-          situacao: (cols[0] as Situacao) || 'Pendente',
-          prioridade: (cols[1] as Prioridade) || 'Média',
-          cliente: cols[2] || 'Importado',
-          vendedor: cols[3] || '',
-          local: cols[4] || '',
-          dataChegadaPlacas: normalizeDate(cols[5]),
-          dataContrato: normalizeDate(cols[6]) || new Date().toISOString().split('T')[0],
-          quantidadePlacas: Number(cols[7]) || 0,
-          valorMaoObra: Number(cols[8]) || 60,
-          valorReceber: (Number(cols[7]) || 0) * (Number(cols[8]) || 0),
-          dataObra: normalizeDate(cols[9]),
-          dataConclusao: normalizeDate(cols[10]),
-          equipe: cols[11] || '',
-          inversor: cols[12] || '',
-          formaPagamento: cols[14] || '',
-          observacoes: cols[13] || '',
+          situacao: (cols[0]?.trim() as Situacao) || 'Pendente',
+          prioridade: (cols[1]?.trim() as Prioridade) || 'Média',
+          cliente: cols[2]?.trim() || 'Importado',
+          vendedor: cols[3]?.trim() || '',
+          local: cols[4]?.trim() || '',
+          dataChegadaPlacas: normalizeDate(cols[5]?.trim()),
+          dataContrato: normalizeDate(cols[6]?.trim()) || new Date().toISOString().split('T')[0],
+          quantidadePlacas: Number(cols[7]?.trim()) || 0,
+          valorMaoObra: Number(cols[8]?.trim()) || 60,
+          valorReceber: (Number(cols[7]?.trim()) || 0) * (Number(cols[8]?.trim()) || 0),
+          dataObra: normalizeDate(cols[9]?.trim()),
+          dataConclusao: normalizeDate(cols[10]?.trim()),
+          equipe: cols[11]?.trim() || '',
+          inversor: cols[12]?.trim() || '',
+          formaPagamento: cols[14]?.trim() || '',
+          observacoes: cols[13]?.trim() || '',
           createdBy: user.uid,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -1472,26 +1518,28 @@ export default function App() {
     } else {
       for (let i = 0; i < lines.length; i++) {
         const line = lines[i];
-        if (!line.trim() || line.includes('Situação') || line.includes('Registro')) continue;
+        if (!line.trim() || line.includes('Situação') || line.includes('Registro') || line.includes('Cliente')) continue;
         
-        const cols = line.split('\t');
+        let cols = line.split('\t');
+        if (cols.length <= 1) cols = line.split(';');
+        if (cols.length <= 1) cols = line.split(',');
         
         const servicoData = {
           id: Date.now() + i,
           numeroRegistro: String(servicos.length + count + 1).padStart(3, '0'),
-          situacao: (cols[0] as Situacao) || 'Pendente',
-          prioridade: (cols[1] as Prioridade) || 'Média',
-          dataAtendimento: normalizeDate(cols[2]) || new Date().toISOString().split('T')[0],
-          cliente: cols[3] || 'Importado',
-          local: cols[4] || '',
-          vendedor: cols[5] || '',
-          equipeServico: cols[6] || '',
-          servico: cols[7] || '',
-          valor: Number(cols[8]) || 0,
-          equipeInstalou: cols[9] || '',
-          dataServico: normalizeDate(cols[10]),
-          formaPagamento: cols[11] || '',
-          observacao: cols[12] || '',
+          situacao: (cols[0]?.trim() as Situacao) || 'Pendente',
+          prioridade: (cols[1]?.trim() as Prioridade) || 'Média',
+          dataAtendimento: normalizeDate(cols[2]?.trim()) || new Date().toISOString().split('T')[0],
+          cliente: cols[3]?.trim() || 'Importado',
+          local: cols[4]?.trim() || '',
+          vendedor: cols[5]?.trim() || '',
+          equipeServico: cols[6]?.trim() || '',
+          servico: cols[7]?.trim() || '',
+          valor: Number(cols[8]?.trim()) || 0,
+          equipeInstalou: cols[9]?.trim() || '',
+          dataServico: normalizeDate(cols[10]?.trim()),
+          formaPagamento: cols[11]?.trim() || '',
+          observacao: cols[12]?.trim() || '',
           createdBy: user.uid,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
@@ -1568,6 +1616,106 @@ export default function App() {
       XLSX.utils.book_append_sheet(wb, ws, "Modelo Importação Serviços");
       XLSX.writeFile(wb, "modelo_importacao_servicos.xlsx");
     }
+  };
+
+  const downloadImportTemplatePDF = () => {
+    const doc = new jsPDF();
+    const pageWidth = doc.internal.pageSize.getWidth();
+    
+    // Header
+    doc.setFillColor(79, 70, 229); // indigo-600
+    doc.rect(0, 0, pageWidth, 28, 'F');
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(14);
+    doc.text(`CBC - MODELO DE IMPORTAÇÃO DE ${activeTab === 'obras' ? 'OBRAS' : 'SERVIÇOS'}`, 14, 18);
+    
+    doc.setFontSize(9);
+    doc.setFont("helvetica", "normal");
+    doc.text("Instruções e Estrutura de Colunas para Importação", 14, 24);
+    
+    // Core Instructions
+    doc.setTextColor(30, 41, 59);
+    doc.setFontSize(11);
+    doc.setFont("helvetica", "bold");
+    doc.text("Instruções Gerais:", 14, 40);
+    
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(9);
+    const instructions = activeTab === 'obras' ? [
+      "1. A planilha deve conter as colunas exatamente na ordem descrita abaixo.",
+      "2. Evite cabeçalhos ao copiar e colar. Copie apenas as linhas de dados se for usar 'Colar Dados'.",
+      "3. Datas devem estar no formato DD/MM/AAAA (ex: 25/12/2026).",
+      "4. Situação aceita valores como: 'Pendente', 'Em Andamento', 'Concluído'.",
+      "5. Prioridade aceita valores como: 'Alta', 'Média', 'Baixa'.",
+      "6. Você também pode copiar tabelas de PDFs, Excel ou Google Sheets e colar diretamente na caixa de texto!"
+    ] : [
+      "1. A planilha deve conter as colunas exatamente na ordem descrita abaixo.",
+      "2. Ao copiar e colar, não inclua o cabeçalho. Copie apenas as células com dados.",
+      "3. Datas devem estar no formato DD/MM/AAAA (ex: 15/08/2026).",
+      "4. Situação aceita: 'Pendente', 'Em Andamento', 'Concluído'.",
+      "5. Prioridade aceita: 'Alta', 'Média', 'Baixa'.",
+      "6. Copie as células do seu documento e cole diretamente na caixa de importação."
+    ];
+    
+    let y = 46;
+    instructions.forEach(ins => {
+      doc.text(ins, 14, y);
+      y += 5.5;
+    });
+    
+    // Columns details
+    y += 5;
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(11);
+    doc.text("Estrutura das Colunas & Exemplo de Dados:", 14, y);
+    
+    const headers = [
+      ['Nº', 'Coluna', 'Tipo', 'Exemplo / Descrição']
+    ];
+    
+    const columnsInfo = activeTab === 'obras' ? [
+      ['1', 'Situação', 'Texto', 'Pendente, Em Andamento, Concluído'],
+      ['2', 'Prioridade', 'Texto', 'Alta, Média, Baixa'],
+      ['3', 'Cliente', 'Texto', 'Ex: João Silva da Rocha'],
+      ['4', 'Vendedor', 'Texto', 'Ex: Rodrigo Prado'],
+      ['5', 'Local', 'Texto', 'Ex: Av. Central, 120 - Curitiba'],
+      ['6', 'Chegada Placas', 'Data', 'Ex: 10/05/2026 (DD/MM/AAAA)'],
+      ['7', 'Data Contrato', 'Data', 'Ex: 01/05/2026 (DD/MM/AAAA)'],
+      ['8', 'Qtd Placas', 'Número', 'Ex: 12'],
+      ['9', 'Valor Mão Obra', 'Número', 'Ex: 60 (R$ por placa)'],
+      ['10', 'Data Obra', 'Data', 'Ex: 18/05/2026 (DD/MM/AAAA)'],
+      ['11', 'Data Conclusão', 'Data', 'Ex: 22/05/2026 (DD/MM/AAAA)'],
+      ['12', 'Equipe', 'Texto', 'Nome da equipe responsável'],
+      ['13', 'Inversor', 'Texto', 'Ex: Deye 8kW'],
+      ['14', 'Observações', 'Texto', 'Detalhes adicionais da obra'],
+      ['15', 'Forma Pagamento', 'Texto', 'Ex: Entrada + 3x, PIX']
+    ] : [
+      ['1', 'Situação', 'Texto', 'Pendente, Em Andamento, Concluído'],
+      ['2', 'Prioridade', 'Texto', 'Alta, Média, Baixa'],
+      ['3', 'Atendimento', 'Data', 'Ex: 10/05/2026 (DD/MM/AAAA)'],
+      ['4', 'Cliente', 'Texto', 'Ex: Maria Souza'],
+      ['5', 'Local', 'Texto', 'Ex: Rua 15 de Novembro, 250'],
+      ['6', 'Vendedor', 'Texto', 'Ex: Mariana'],
+      ['7', 'Equipe Serviço', 'Texto', 'Nome da equipe de atendimento'],
+      ['8', 'Serviço', 'Texto', 'Descrição do serviço prestado'],
+      ['9', 'Valor', 'Número', 'Ex: 350.00'],
+      ['10', 'Equipe Instalou', 'Texto', 'Equipe que realizou o reparo'],
+      ['11', 'Data Serviço', 'Data', 'Ex: 15/05/2026 (DD/MM/AAAA)'],
+      ['12', 'Forma Pagamento', 'Texto', 'Ex: PIX, Dinheiro'],
+      ['13', 'Observação', 'Texto', 'Observações relevantes']
+    ];
+    
+    autoTable(doc, {
+      head: headers,
+      body: columnsInfo,
+      startY: y + 4,
+      theme: 'grid',
+      headStyles: { fillColor: [79, 70, 229] },
+      styles: { fontSize: 8, cellPadding: 2.5 }
+    });
+    
+    doc.save(`modelo_importacao_${activeTab === 'obras' ? 'obras' : 'servicos'}.pdf`);
   };
 
   const exportarXLS = () => {
@@ -2670,7 +2818,7 @@ export default function App() {
                               </td>
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
+                                <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
                                   <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
                                   <div 
                                     className="cursor-pointer hover:scale-105 transition-transform"
@@ -2698,8 +2846,44 @@ export default function App() {
                                         <option value="Outros">Outros</option>
                                       </select>
                                     ) : (
-                                      <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
+                                      <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm" title="Forma de Pagamento">
                                         {obra.formaPagamento || 'DEFINIR PGTO'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div 
+                                    className="cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingPayment({ id: obra.id.toString(), type: 'obra-situacao' as any });
+                                    }}
+                                  >
+                                    {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra-situacao' ? (
+                                      <select
+                                        autoFocus
+                                        className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none font-bold"
+                                        value={obra.situacaoPagamento || ''}
+                                        onBlur={() => setEditingPayment(null)}
+                                        onChange={(e) => {
+                                          updateObraQuick(obra.id as any, 'situacaoPagamento' as any, e.target.value);
+                                          setEditingPayment(null);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <option value="">Status</option>
+                                        <option value="À Vista">À Vista</option>
+                                        <option value="Pago">Pago</option>
+                                        <option value="A Pagar">A Pagar</option>
+                                      </select>
+                                    ) : (
+                                      <span className={`font-black px-2 py-0.5 rounded border shadow-sm ${
+                                        obra.situacaoPagamento === 'À Vista' 
+                                          ? 'bg-sky-50 text-sky-700 border-sky-100'
+                                          : obra.situacaoPagamento === 'Pago'
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                          : 'bg-rose-50 text-rose-700 border-rose-100'
+                                      }`} title="Situação de Pagamento">
+                                        {obra.situacaoPagamento || 'A Pagar'}
                                       </span>
                                     )}
                                   </div>
@@ -2967,7 +3151,7 @@ export default function App() {
                               </td>
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                                <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1 mt-1">
+                                <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
                                   <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
                                   <div 
                                     className="cursor-pointer hover:scale-105 transition-transform"
@@ -2995,8 +3179,44 @@ export default function App() {
                                         <option value="Outros">Outros</option>
                                       </select>
                                     ) : (
-                                      <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm">
+                                      <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm" title="Forma de Pagamento">
                                         {obra.formaPagamento || 'DEFINIR PGTO'}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div 
+                                    className="cursor-pointer hover:scale-105 transition-transform"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setEditingPayment({ id: obra.id.toString(), type: 'obra-situacao' as any });
+                                    }}
+                                  >
+                                    {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra-situacao' ? (
+                                      <select
+                                        autoFocus
+                                        className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none font-bold"
+                                        value={obra.situacaoPagamento || ''}
+                                        onBlur={() => setEditingPayment(null)}
+                                        onChange={(e) => {
+                                          updateObraQuick(obra.id as any, 'situacaoPagamento' as any, e.target.value);
+                                          setEditingPayment(null);
+                                        }}
+                                        onClick={(e) => e.stopPropagation()}
+                                      >
+                                        <option value="">Status</option>
+                                        <option value="À Vista">À Vista</option>
+                                        <option value="Pago">Pago</option>
+                                        <option value="A Pagar">A Pagar</option>
+                                      </select>
+                                    ) : (
+                                      <span className={`font-black px-2 py-0.5 rounded border shadow-sm ${
+                                        obra.situacaoPagamento === 'À Vista' 
+                                          ? 'bg-sky-50 text-sky-700 border-sky-100'
+                                          : obra.situacaoPagamento === 'Pago'
+                                          ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                          : 'bg-rose-50 text-rose-700 border-rose-100'
+                                      }`} title="Situação de Pagamento">
+                                        {obra.situacaoPagamento || 'A Pagar'}
                                       </span>
                                     )}
                                   </div>
@@ -3212,36 +3432,74 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
-                              <div 
-                                className="cursor-pointer hover:scale-105 transition-transform"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingPayment({ id: obra.id.toString(), type: 'obra' });
-                                }}
-                              >
-                                {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
-                                  <select
-                                    autoFocus
-                                    className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
-                                    value={obra.formaPagamento || ''}
-                                    onBlur={() => setEditingPayment(null)}
-                                    onChange={(e) => {
-                                      updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
-                                      setEditingPayment(null);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <option value="">Selecione</option>
-                                    {formasPagamento.filter(f => f.ativo).map(f => (
-                                      <option key={f.id} value={f.nome}>{f.nome}</option>
-                                    ))}
-                                    <option value="Outros">Outros</option>
-                                  </select>
-                                ) : (
-                                  <div className="text-[10px] text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm mt-1 inline-block uppercase">
-                                    {obra.formaPagamento || 'PGTO'}
-                                  </div>
-                                )}
+                              <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
+                                <div 
+                                  className="cursor-pointer hover:scale-105 transition-transform"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingPayment({ id: obra.id.toString(), type: 'obra' });
+                                  }}
+                                >
+                                  {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra' ? (
+                                    <select
+                                      autoFocus
+                                      className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                      value={obra.formaPagamento || ''}
+                                      onBlur={() => setEditingPayment(null)}
+                                      onChange={(e) => {
+                                        updateObraQuick(obra.id as any, 'formaPagamento' as any, e.target.value);
+                                        setEditingPayment(null);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <option value="">Selecione</option>
+                                      {formasPagamento.filter(f => f.ativo).map(f => (
+                                        <option key={f.id} value={f.nome}>{f.nome}</option>
+                                      ))}
+                                      <option value="Outros">Outros</option>
+                                    </select>
+                                  ) : (
+                                    <span className="text-indigo-700 font-black bg-indigo-50 px-2 py-0.5 rounded border border-indigo-100 shadow-sm" title="Forma de Pagamento">
+                                      {obra.formaPagamento || 'DEFINIR PGTO'}
+                                    </span>
+                                  )}
+                                </div>
+                                <div 
+                                  className="cursor-pointer hover:scale-105 transition-transform"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingPayment({ id: obra.id.toString(), type: 'obra-situacao' as any });
+                                  }}
+                                >
+                                  {editingPayment?.id === obra.id.toString() && editingPayment.type === 'obra-situacao' ? (
+                                    <select
+                                      autoFocus
+                                      className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none font-bold"
+                                      value={obra.situacaoPagamento || ''}
+                                      onBlur={() => setEditingPayment(null)}
+                                      onChange={(e) => {
+                                        updateObraQuick(obra.id as any, 'situacaoPagamento' as any, e.target.value);
+                                        setEditingPayment(null);
+                                      }}
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <option value="">Status</option>
+                                      <option value="À Vista">À Vista</option>
+                                      <option value="Pago">Pago</option>
+                                      <option value="A Pagar">A Pagar</option>
+                                    </select>
+                                  ) : (
+                                    <span className={`font-black px-2 py-0.5 rounded border shadow-sm ${
+                                      obra.situacaoPagamento === 'À Vista' 
+                                        ? 'bg-sky-50 text-sky-700 border-sky-100'
+                                        : obra.situacaoPagamento === 'Pago'
+                                        ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                        : 'bg-rose-50 text-rose-700 border-rose-100'
+                                    }`} title="Situação de Pagamento">
+                                      {obra.situacaoPagamento || 'A Pagar'}
+                                    </span>
+                                  )}
+                                </div>
                               </div>
                             </td>
                             <td className="px-3 py-3 text-right">
@@ -4610,6 +4868,20 @@ export default function App() {
                           <option value="Outros">Outros</option>
                         </select>
                       </FormField>
+                      <FormField label="Situação do Pagamento">
+                        <select 
+                          name="situacaoPagamento"
+                          disabled={!canEditAllFields}
+                          value={formData.situacaoPagamento || ''}
+                          onChange={handleInputChange}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                        >
+                          <option value="">Selecione o status</option>
+                          <option value="À Vista">À Vista</option>
+                          <option value="Pago">Pago</option>
+                          <option value="A Pagar">A Pagar</option>
+                        </select>
+                      </FormField>
                     </div>
                   </div>
 
@@ -4887,6 +5159,19 @@ export default function App() {
                           {formasPagamento.filter(f => f.ativo).map(f => (
                             <option key={f.id} value={f.nome}>{f.nome}</option>
                           ))}
+                        </select>
+                      </FormField>
+                      <FormField label="Situação do Pagamento">
+                        <select 
+                          name="situacaoPagamento"
+                          value={servicoFormData.situacaoPagamento || ''}
+                          onChange={handleServicoInputChange}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                        >
+                          <option value="">Selecione o status</option>
+                          <option value="À Vista">À Vista</option>
+                          <option value="Pago">Pago</option>
+                          <option value="A Pagar">A Pagar</option>
                         </select>
                       </FormField>
                       <FormField label="Equipe Serviço">
@@ -5254,8 +5539,11 @@ export default function App() {
                           <DetailItem label="Valor Total" value={`R$ ${selectedObra.valorReceber.toLocaleString('pt-BR')}`} />
                           <DetailItem label="Qtd. Placas" value={`${selectedObra.quantidadePlacas} unidades`} />
                           <DetailItem label="Mão de Obra (un)" value={`R$ ${selectedObra.valorMaoObra.toLocaleString('pt-BR')}`} />
-                          <div className="md:col-span-3">
+                          <div className="md:col-span-2">
                             <DetailItem label="Forma de Pagamento" value={selectedObra.formaPagamento || '---'} />
+                          </div>
+                          <div>
+                            <DetailItem label="Situação de Pagamento" value={selectedObra.situacaoPagamento || '---'} />
                           </div>
                         </div>
                       </div>
@@ -5312,6 +5600,7 @@ export default function App() {
                         <DetailItem label="Vendedor" value={selectedServico.vendedor || '---'} icon={<UserIcon size={14} />} />
                         <DetailItem label="Atendimento" value={formatDateBR(selectedServico.dataAtendimento)} icon={<Calendar size={14} />} />
                         <DetailItem label="Forma de Pagamento" value={selectedServico.formaPagamento || '---'} icon={<DollarSign size={14} />} />
+                        <DetailItem label="Situação de Pagamento" value={selectedServico.situacaoPagamento || '---'} icon={<DollarSign size={14} />} />
                         <div className="md:col-span-1">
                           <DetailItem label="Valor do Serviço" value={`R$ ${Number(selectedServico.valor).toLocaleString('pt-BR')}`} icon={<DollarSign size={14} />} />
                         </div>
