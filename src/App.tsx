@@ -10,6 +10,7 @@ import {
   Plus, 
   Trash2, 
   Edit, 
+  Check,
   Filter, 
   Download, 
   Upload, 
@@ -51,13 +52,15 @@ import {
   PlusCircle,
   ShieldCheck,
   Table,
-  AlertTriangle
+  AlertTriangle,
+  Bell,
+  Volume2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Obra, Servico, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule } from './types';
+import { Obra, Servico, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule, Lembrete } from './types';
 import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
@@ -243,6 +246,21 @@ export default function App() {
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [isBulkDeleteMode, setIsBulkDeleteMode] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
+
+  // States for Alarms & Reminders
+  const [lembretes, setLembretes] = useState<Lembrete[]>([]);
+  const [isLembreteModalOpen, setIsLembreteModalOpen] = useState(false);
+  const [isLembretesHubOpen, setIsLembretesHubOpen] = useState(false);
+  const [lembreteFormData, setLembreteFormData] = useState<Partial<Lembrete>>({
+    titulo: '',
+    dataAlarme: new Date().toISOString().split('T')[0],
+    descricao: '',
+    importante: false,
+    concluido: false
+  });
+  const [editingLembreteId, setEditingLembreteId] = useState<string | null>(null);
+  const [showLembretesBanner, setShowLembretesBanner] = useState(true);
+  const [hasPlayedTodayChime, setHasPlayedTodayChime] = useState(false);
   
   const [obraToDelete, setObraToDelete] = useState<number | null>(null);
   const [servicoToDelete, setServicoToDelete] = useState<number | null>(null);
@@ -378,6 +396,190 @@ export default function App() {
   const [valorMaoObraOutros, setValorMaoObraOutros] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // States for inline spreadsheet editing
+  const [editingCell, setEditingCell] = useState<{ id: number; field: string; type: 'obra' | 'servico' } | null>(null);
+  const [tempDate, setTempDate] = useState<string>('');
+
+  const renderEditableCell = (
+    id: number,
+    field: string,
+    type: 'obra' | 'servico',
+    currentValue: string,
+    cellType: 'vendedor' | 'equipe' | 'date',
+    displayValue?: React.ReactNode
+  ) => {
+    const isEditing = editingCell?.id === id && editingCell?.field === field && editingCell?.type === type;
+
+    if (isEditing) {
+      if (cellType === 'vendedor') {
+        const filteredVendedores = vendedores.filter(v => v.ativo);
+        if (currentValue && !filteredVendedores.some(v => v.nome === currentValue)) {
+          filteredVendedores.push({ id: 'current', nome: currentValue, ativo: true } as any);
+        }
+        return (
+          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+            <select
+              autoFocus
+              value={currentValue || ''}
+              onBlur={() => setEditingCell(null)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (type === 'obra') {
+                  updateObraQuick(id, field as any, val);
+                } else {
+                  updateServicoQuick(id, field, val);
+                }
+                setEditingCell(null);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[10px] bg-white border border-indigo-400 rounded-lg px-2 py-1 outline-none font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="">Selecione</option>
+              {filteredVendedores.map(v => (
+                <option key={v.id} value={v.nome}>{v.nome}</option>
+              ))}
+            </select>
+          </td>
+        );
+      } else if (cellType === 'equipe') {
+        const filteredEquipes = equipes.filter(eq => eq.ativo);
+        if (currentValue && !filteredEquipes.some(eq => eq.nome === currentValue)) {
+          filteredEquipes.push({ id: 'current', nome: currentValue, ativo: true } as any);
+        }
+        return (
+          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+            <select
+              autoFocus
+              value={currentValue || ''}
+              onBlur={() => setEditingCell(null)}
+              onChange={(e) => {
+                const val = e.target.value;
+                if (type === 'obra') {
+                  updateObraQuick(id, field as any, val);
+                } else {
+                  updateServicoQuick(id, field, val);
+                }
+                setEditingCell(null);
+              }}
+              onClick={(e) => e.stopPropagation()}
+              className="text-[10px] bg-white border border-indigo-400 rounded-lg px-2 py-1 outline-none font-bold text-slate-800 focus:ring-1 focus:ring-indigo-500"
+            >
+              <option value="">Selecione</option>
+              {filteredEquipes.map(eq => (
+                <option key={eq.id} value={eq.nome}>{eq.nome}</option>
+              ))}
+            </select>
+          </td>
+        );
+      } else if (cellType === 'date') {
+        return (
+          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center gap-1">
+              <input
+                type="date"
+                autoFocus
+                value={tempDate}
+                onChange={(e) => setTempDate(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (type === 'obra') {
+                      updateObraQuick(id, field as any, tempDate);
+                    } else {
+                      updateServicoQuick(id, field, tempDate);
+                    }
+                    setEditingCell(null);
+                  } else if (e.key === 'Escape') {
+                    setEditingCell(null);
+                  }
+                }}
+                className="text-[10px] bg-white border border-indigo-400 rounded-lg px-2 py-1 outline-none font-bold text-slate-800 max-w-[110px]"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (type === 'obra') {
+                    updateObraQuick(id, field as any, tempDate);
+                  } else {
+                    updateServicoQuick(id, field, tempDate);
+                  }
+                  setEditingCell(null);
+                }}
+                className="p-1 text-emerald-600 hover:text-emerald-800 bg-emerald-50 rounded"
+                title="Salvar"
+              >
+                <Check size={10} />
+              </button>
+            </div>
+          </td>
+        );
+      }
+    }
+
+    const textValue = currentValue || '---';
+    const displayElement = displayValue || (
+      <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1 group-hover/cell:border-slate-200">
+        {textValue}
+        <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 transition-opacity whitespace-nowrap text-indigo-500" />
+      </span>
+    );
+
+    return (
+      <td
+        className="px-3 py-3 group/cell"
+        onClick={(e) => {
+          e.stopPropagation();
+          setEditingCell({ id, field, type });
+          if (cellType === 'date') {
+            setTempDate(currentValue || '');
+          }
+        }}
+      >
+        {displayElement}
+      </td>
+    );
+  };
+
+  // States for client autocomplete from existing Obras
+  const [showClientSuggestions, setShowClientSuggestions] = useState(false);
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  const matchingObras = useMemo(() => {
+    const term = (servicoFormData.cliente || '').trim().toLowerCase();
+    if (!term) {
+      // If no input, return last 10 obras for quick select
+      return obras.slice(-10).reverse();
+    }
+    return obras.filter(obra => 
+      obra.cliente?.toLowerCase().includes(term) ||
+      obra.numeroRegistro?.toLowerCase().includes(term) ||
+      obra.local?.toLowerCase().includes(term)
+    ).slice(0, 15);
+  }, [obras, servicoFormData.cliente]);
+
+  const selectObraForServico = (obra: Obra) => {
+    setServicoFormData(prev => ({
+      ...prev,
+      cliente: obra.cliente || '',
+      local: obra.local || '',
+      vendedor: obra.vendedor || '',
+      formaPagamento: obra.formaPagamento || '',
+      situacaoPagamento: obra.situacaoPagamento || ''
+    }));
+    setShowClientSuggestions(false);
+  };
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowClientSuggestions(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
+
   // Auth Listener
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (user) => {
@@ -447,6 +649,27 @@ export default function App() {
       setServicos(servicosData);
     }, (error) => {
       handleFirestoreError(error, OperationType.LIST, 'servicos');
+    });
+
+    return () => unsubscribe();
+  }, [isAuthReady, user]);
+
+  // Firestore Listener for Lembretes
+  useEffect(() => {
+    if (!isAuthReady || !user) {
+      setLembretes([]);
+      return;
+    }
+
+    const q = query(collection(db, 'lembretes'), orderBy('createdAt', 'desc'));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const lembretesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Lembrete[];
+      setLembretes(lembretesData);
+    }, (error) => {
+      console.error("Erro ao escutar lembretes: ", error);
     });
 
     return () => unsubscribe();
@@ -599,6 +822,127 @@ export default function App() {
       return 0;
     });
   }, [servicos, filtrosArquivados, sortConfigServicos]);
+
+  // Alarms and Reminders logic
+  const localTodayStr = useMemo(() => {
+    const d = new Date();
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }, []);
+
+  const alarmesDeHoje = useMemo(() => {
+    // 1. General custom alerts for today
+    const listLembretes = lembretes
+      .filter(l => l.dataAlarme === localTodayStr && !l.concluido)
+      .map(l => ({
+        id: l.id || '',
+        tipo: 'lembrete' as const,
+        titulo: l.titulo,
+        descricao: l.descricao,
+        importante: l.importante,
+        itemOriginal: l
+      }));
+
+    return listLembretes;
+  }, [lembretes, localTodayStr]);
+
+  const playAlarmChime = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      
+      const audioCtx = new AudioContextClass();
+      
+      const playTone = (freq: number, startTime: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        osc.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        osc.frequency.setValueAtTime(freq, startTime);
+        osc.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(0.25, startTime + 0.05);
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
+
+      const now = audioCtx.currentTime;
+      playTone(659.25, now, 0.6); // E5
+      playTone(880.00, now + 0.25, 0.8); // A5
+    } catch (e) {
+      console.warn("AudioContext playback blocked or failed:", e);
+    }
+  };
+
+  useEffect(() => {
+    if (alarmesDeHoje.length > 0 && !hasPlayedTodayChime) {
+      playAlarmChime();
+      setHasPlayedTodayChime(true);
+    }
+  }, [alarmesDeHoje, hasPlayedTodayChime]);
+
+  const handleSaveLembrete = async () => {
+    if (!lembreteFormData.titulo) {
+      alert("Por favor, preencha o campo de lembrete!");
+      return;
+    }
+
+    const item = {
+      titulo: lembreteFormData.titulo,
+      dataAlarme: lembreteFormData.dataAlarme || localTodayStr,
+      descricao: lembreteFormData.descricao || '',
+      importante: !!lembreteFormData.importante,
+      concluido: !!lembreteFormData.concluido,
+      createdAt: serverTimestamp(),
+      createdBy: user?.uid || ''
+    };
+
+    try {
+      if (editingLembreteId) {
+        await updateDoc(doc(db, 'lembretes', editingLembreteId), item);
+      } else {
+        await addDoc(collection(db, 'lembretes'), item);
+      }
+      setIsLembreteModalOpen(false);
+      setEditingLembreteId(null);
+      setLembreteFormData({
+        titulo: '',
+        dataAlarme: localTodayStr,
+        descricao: '',
+        importante: false,
+        concluido: false
+      });
+    } catch (error) {
+      console.error("Erro ao salvar lembrete: ", error);
+    }
+  };
+
+  const handleDeleteLembrete = async (id: string) => {
+    if (confirm("Tem certeza que quer excluir este lembrete/alarme?")) {
+      try {
+        await deleteDoc(doc(db, 'lembretes', id));
+      } catch (error) {
+        console.error("Erro ao excluir lembrete: ", error);
+      }
+    }
+  };
+
+  const handleToggleLembreteConcluido = async (id: string, currentStatus: boolean) => {
+    try {
+      await updateDoc(doc(db, 'lembretes', id), {
+        concluido: !currentStatus
+      });
+    } catch (e) {
+      console.error("Erro ao alternar conclusao: ", e);
+    }
+  };
 
   const valorReceberCalculado = useMemo(() => {
     const valorUnitario = formData.valorMaoObra === 0 ? parseFloat(valorMaoObraOutros) || 0 : formData.valorMaoObra || 0;
@@ -2366,6 +2710,12 @@ export default function App() {
               onBack={() => setActiveTab('obras')} 
               obras={obras} 
               servicos={servicos} 
+              onEditObra={(obra) => {
+                handleEdit(obra);
+              }}
+              onEditServico={(servico) => {
+                handleServicoEdit(servico);
+              }}
             />
           ) : (
             <>
@@ -2440,6 +2790,22 @@ export default function App() {
             </div>
             <div className="flex items-center gap-2">
               <button 
+                onClick={() => setIsLembretesHubOpen(true)}
+                className={`relative p-2.5 rounded-xl transition-all ${
+                  alarmesDeHoje.length > 0
+                    ? 'bg-amber-100 text-amber-600 hover:bg-amber-200 ring-2 ring-amber-400 ring-offset-1 animate-pulse'
+                    : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100'
+                }`}
+                title="Central de Alarmes e Lembretes"
+              >
+                <Bell size={20} className={alarmesDeHoje.length > 0 ? "animate-bounce" : ""} />
+                {alarmesDeHoje.length > 0 && (
+                  <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border border-white">
+                    {alarmesDeHoje.length}
+                  </span>
+                )}
+              </button>
+              <button 
                 onClick={() => setIsPayrollOpen(true)}
                 className="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
                 title="Folha de Pagamento"
@@ -2482,6 +2848,85 @@ export default function App() {
             </div>
           </div>
         </header>
+
+        {/* Banner de Alarmes Ativos do Dia */}
+        <AnimatePresence>
+          {alarmesDeHoje.length > 0 && showLembretesBanner && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: -10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: -10 }}
+              className="bg-amber-400 text-slate-950 p-4 md:p-5 rounded-3xl shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-2 border-amber-300 relative overflow-hidden"
+            >
+              <div className="absolute top-0 right-0 p-1 opacity-10 font-black text-6xl select-none pointer-events-none">
+                HOJE!
+              </div>
+              <div className="flex items-start gap-4 z-10 w-full md:w-auto">
+                <div className="bg-amber-950 text-amber-300 p-3 rounded-2xl animate-bounce shrink-0 mt-0.5 shadow-lg">
+                  <Bell size={24} className="text-amber-300" />
+                </div>
+                <div className="space-y-1 w-full">
+                  <h3 className="text-lg font-black tracking-tight text-amber-950 flex items-center gap-2">
+                    🚨 PAINEL DE ALARME DE HOJE
+                    <span className="bg-amber-950 text-amber-300 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider animate-pulse shrink-0">
+                      Deixar Bem Visível!
+                    </span>
+                  </h3>
+                  <p className="text-sm font-semibold text-amber-950 leading-relaxed">
+                    Aqui estão os compromissos marcados para hoje. Certifique-se de deixar tudo bem sinalizado e visível:
+                  </p>
+                  <div className="space-y-2 mt-3 w-full max-w-2xl">
+                    {alarmesDeHoje.map((alarm, idx) => (
+                      <div key={alarm.id} className="bg-amber-950/10 p-3.5 rounded-xl border border-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                        <div className="space-y-1">
+                          <p className="font-extrabold text-sm text-amber-950">
+                            {idx + 1}. {alarm.titulo}
+                          </p>
+                          {alarm.descricao && (
+                            <p className="text-xs text-amber-900 font-bold leading-relaxed">
+                              &rarr; {alarm.descricao}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+                          {alarm.tipo === 'lembrete' ? (
+                            <button
+                              onClick={() => handleToggleLembreteConcluido(alarm.id, false)}
+                              className="bg-amber-950 hover:bg-amber-900 text-amber-300 text-xs font-bold px-3 py-1.5 rounded-lg active:scale-95 transition-all shadow-md"
+                            >
+                              Concluir Lembrete
+                            </button>
+                          ) : (
+                            <span className="text-[10px] bg-amber-950 text-amber-300 font-extrabold px-2 py-1 rounded-md uppercase tracking-wider">
+                              {alarm.tipo === 'obra' ? 'Instalação Obra' : 'Serviço Agendado'}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 self-end md:self-center z-10 shrink-0">
+                <button
+                  onClick={playAlarmChime}
+                  className="flex items-center gap-1.5 bg-amber-950 hover:bg-amber-900 text-amber-300 font-extrabold px-3 py-2 rounded-xl text-xs shadow-md transition-all active:scale-95"
+                  title="Testar Som do Alarme"
+                >
+                  <Volume2 size={16} />
+                  Testar Som
+                </button>
+                <button
+                  onClick={() => setShowLembretesBanner(false)}
+                  className="bg-amber-950/10 hover:bg-amber-950/20 text-amber-950 p-2 rounded-xl transition-all"
+                  title="Minimizar Alerta"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Stats Grid - REMOVED AS PER REQUEST */}
 
@@ -2712,7 +3157,8 @@ export default function App() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className={`hover:bg-indigo-50/50 transition-colors ${
+                              onClick={() => handleEdit(obra)}
+                              className={`cursor-pointer hover:bg-indigo-50/50 transition-colors ${
                                 obra.situacao === 'Pendente' 
                                   ? 'bg-amber-50/40 border-l-4 border-amber-400' 
                                   : obra.situacao === 'Em Espera'
@@ -2720,7 +3166,7 @@ export default function App() {
                                   : 'bg-blue-50/40 border-l-4 border-blue-400'
                               } ${selectedIds.has(obra.id) ? 'bg-indigo-100/50' : ''}`}
                             >
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <input 
                                   type="checkbox" 
                                   className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -2733,7 +3179,7 @@ export default function App() {
                                   #{obra.numeroRegistro}
                                 </span>
                               </td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <select 
                                   value={obra.situacao}
                                   onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
@@ -2751,7 +3197,7 @@ export default function App() {
                                   <option value="Em Espera">Em Espera</option>
                                 </select>
                               </td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <select 
                                   value={obra.prioridade}
                                   onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
@@ -2770,7 +3216,7 @@ export default function App() {
                               </td>
                               <td className="px-3 py-3">
                                 <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                  <span onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                                  <span onClick={() => handleEdit(obra)} className="flex-1 truncate" title="Clique para editar informações">{obra.cliente}</span>
                                   {obra.txtFile && (
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
@@ -2800,22 +3246,34 @@ export default function App() {
                               <td className="px-3 py-3">
                                 <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
                               </td>
-                              <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
-                              <td className="px-3 py-3 text-[10px] whitespace-nowrap">
-                                <div className="font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                  {obra.equipe || '---'}
+                              {renderEditableCell(obra.id, 'vendedor', 'obra', obra.vendedor || '', 'vendedor')}
+                              {renderEditableCell(
+                                obra.id,
+                                'equipe',
+                                'obra',
+                                obra.equipe || '',
+                                'equipe',
+                                <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                  <span>{obra.equipe || '---'}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                                 </div>
-                              </td>
-                              <td className="px-3 py-3 whitespace-nowrap">
-                                <div className="flex flex-col text-indigo-700 bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200">
+                              )}
+                              {renderEditableCell(
+                                obra.id,
+                                'dataObra',
+                                'obra',
+                                obra.dataObra || '',
+                                'date',
+                                <div className="flex flex-col text-indigo-700 bg-indigo-50 hover:bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-100 hover:border-indigo-300 transition-all cursor-pointer group-hover/cell:shadow-xs">
                                   <div className="flex items-center gap-1.5 text-[10px] font-bold">
                                     <Calendar size={10} /> {formatDateBR(obra.dataObra)}
                                   </div>
-                                  <div className="text-[12px] font-black uppercase opacity-80 mt-0.5">
-                                    {getDayOfWeek(obra.dataObra)}
+                                  <div className="text-[12px] font-black uppercase opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                    <span>{getDayOfWeek(obra.dataObra)}</span>
+                                    <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                                   </div>
                                 </div>
-                              </td>
+                              )}
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                                 <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
@@ -2889,7 +3347,7 @@ export default function App() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-3 text-right">
+                              <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button 
                                     onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -3049,7 +3507,8 @@ export default function App() {
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
-                              className={`hover:bg-slate-50 transition-colors ${
+                              onClick={() => handleEdit(obra)}
+                              className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                                 obra.situacao === 'Pendente' 
                                   ? 'bg-amber-50/60 border-l-4 border-amber-400' 
                                   : obra.situacao === 'Em Espera'
@@ -3057,10 +3516,10 @@ export default function App() {
                                   : 'bg-blue-50/60 border-l-4 border-blue-400'
                               } ${selectedIds.has(obra.id) ? 'bg-indigo-50/80' : ''}`}
                             >
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <input 
                                   type="checkbox" 
-                                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                  className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-emerald-500"
                                   checked={selectedIds.has(obra.id)}
                                   onChange={() => toggleSelect(obra.id)}
                                 />
@@ -3070,7 +3529,7 @@ export default function App() {
                                   #{obra.numeroRegistro}
                                 </span>
                               </td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <select 
                                   value={obra.situacao}
                                   onChange={(e) => updateObraQuick(obra.id, 'situacao', e.target.value)}
@@ -3088,7 +3547,7 @@ export default function App() {
                                   <option value="Em Espera">Em Espera</option>
                                 </select>
                               </td>
-                              <td className="px-3 py-3">
+                              <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                                 <select 
                                   value={obra.prioridade}
                                   onChange={(e) => updateObraQuick(obra.id, 'prioridade', e.target.value)}
@@ -3107,7 +3566,7 @@ export default function App() {
                               </td>
                               <td className="px-3 py-3">
                                 <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                  <span onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                                  <span onClick={() => handleEdit(obra)} className="flex-1 truncate" title="Clique para editar informações">{obra.cliente}</span>
                                   {obra.txtFile && (
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
@@ -3137,18 +3596,34 @@ export default function App() {
                               <td className="px-3 py-3">
                                 <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
                               </td>
-                              <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
-                              <td className="px-3 py-3">
-                                <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                  {obra.equipe || '---'}
+                              {renderEditableCell(obra.id, 'vendedor', 'obra', obra.vendedor || '', 'vendedor')}
+                              {renderEditableCell(
+                                obra.id,
+                                'equipe',
+                                'obra',
+                                obra.equipe || '',
+                                'equipe',
+                                <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                  <span>{obra.equipe || '---'}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                                 </div>
-                              </td>
-                              <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                                <div className="flex flex-col">
-                                  <span className="font-bold">{formatDateBR(obra.dataContrato)}</span>
-                                  <span className="text-[12px] uppercase font-black opacity-80 mt-0.5">{getDayOfWeek(obra.dataContrato)}</span>
+                              )}
+                              {renderEditableCell(
+                                obra.id,
+                                'dataContrato',
+                                'obra',
+                                obra.dataContrato || '',
+                                'date',
+                                <div className="flex flex-col text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                  <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                    <Calendar size={10} /> {formatDateBR(obra.dataContrato)}
+                                  </div>
+                                  <div className="text-[12px] font-black uppercase opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                    <span>{getDayOfWeek(obra.dataContrato)}</span>
+                                    <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                                  </div>
                                 </div>
-                              </td>
+                              )}
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                                 <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
@@ -3222,7 +3697,7 @@ export default function App() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-3 text-right">
+                              <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button 
                                     onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -3382,9 +3857,10 @@ export default function App() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors bg-emerald-50/40 border-l-4 border-emerald-400 ${selectedIds.has(obra.id) ? 'bg-emerald-100/80' : ''}`}
+                            onClick={() => handleEdit(obra)}
+                            className={`cursor-pointer hover:bg-slate-50 transition-colors bg-emerald-50/40 border-l-4 border-emerald-400 ${selectedIds.has(obra.id) ? 'bg-emerald-100/80' : ''}`}
                           >
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
@@ -3399,7 +3875,7 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{obra.cliente}</span>
+                                <span onClick={() => handleEdit(obra)} className="flex-1 truncate" title="Clique para editar informações">{obra.cliente}</span>
                                 {obra.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
@@ -3422,14 +3898,34 @@ export default function App() {
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-500 min-w-[100px]">{obra.local || '---'}</div>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{obra.vendedor || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 font-medium">{obra.equipe || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              <div className="flex flex-col">
-                                <span className="font-bold">{formatDateBR(obra.dataConclusao)}</span>
-                                <span className="text-[12px] uppercase font-black opacity-80 mt-0.5">{getDayOfWeek(obra.dataConclusao)}</span>
+                            {renderEditableCell(obra.id, 'vendedor', 'obra', obra.vendedor || '', 'vendedor')}
+                            {renderEditableCell(
+                              obra.id,
+                              'equipe',
+                              'obra',
+                              obra.equipe || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{obra.equipe || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
-                            </td>
+                            )}
+                            {renderEditableCell(
+                              obra.id,
+                              'dataConclusao',
+                              'obra',
+                              obra.dataConclusao || '',
+                              'date',
+                              <div className="flex flex-col text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                <div className="flex items-center gap-1.5 text-[10px] font-bold">
+                                  <Calendar size={10} /> {formatDateBR(obra.dataConclusao)}
+                                </div>
+                                <div className="text-[12px] font-black uppercase opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                  <span>{getDayOfWeek(obra.dataConclusao)}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                                </div>
+                              </div>
+                            )}
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                               <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
@@ -3502,7 +3998,7 @@ export default function App() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-right">
+                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -3685,7 +4181,8 @@ export default function App() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors ${
+                            onClick={() => handleServicoEdit(servico)}
+                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                               servico.situacao === 'Em Espera'
                                 ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
                                 : servico.situacao === 'Pendente'
@@ -3693,7 +4190,7 @@ export default function App() {
                                 : 'bg-blue-50/20 border-l-4 border-blue-400'
                             } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
-                            <td className="px-3 py-3 whitespace-nowrap">
+                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -3706,7 +4203,7 @@ export default function App() {
                                 #{servico.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
@@ -3724,7 +4221,7 @@ export default function App() {
                                 <option value="Em Espera">Em Espera</option>
                               </select>
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <select 
                                 value={servico.prioridade}
                                 onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
@@ -3741,9 +4238,16 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              {formatDateBR(servico.dataAtendimento)}
-                            </td>
+                            {renderEditableCell(
+                              servico.id,
+                              'dataAtendimento',
+                              'servico',
+                              servico.dataAtendimento || '',
+                              'date',
+                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                {formatDateBR(servico.dataAtendimento)}
+                              </span>
+                            )}
                             <td className="px-3 py-3 text-center">
                               <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
                                 (() => {
@@ -3756,7 +4260,7 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{servico.cliente}</span>
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
                                 {servico.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
@@ -3776,19 +4280,45 @@ export default function App() {
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.vendedor || '---'}</td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                {servico.equipeServico || '---'}
+                            {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeServico',
+                              'servico',
+                              servico.equipeServico || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeServico || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
-                            </td>
+                            )}
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
                             <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap font-bold">
-                              {formatDateBR(servico.dataServico)}
-                              <div className="text-[12px] uppercase font-black opacity-80">{getDayOfWeek(servico.dataServico)}</div>
-                            </td>
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeInstalou',
+                              'servico',
+                              servico.equipeInstalou || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeInstalou || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                              </div>
+                            )}
+                            {renderEditableCell(
+                              servico.id,
+                              'dataServico',
+                              'servico',
+                              servico.dataServico || '',
+                              'date',
+                              <div className="flex flex-col text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                <span className="font-bold whitespace-nowrap">{formatDateBR(servico.dataServico)}</span>
+                                <div className="text-[12px] uppercase font-black opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                  <span>{getDayOfWeek(servico.dataServico)}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                                </div>
+                              </div>
+                            )}
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div 
                                 className="cursor-pointer hover:scale-105 transition-transform inline-block"
@@ -3822,7 +4352,7 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-right">
+                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -4013,13 +4543,14 @@ export default function App() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors ${
+                            onClick={() => handleServicoEdit(servico)}
+                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                               servico.situacao === 'Em Espera'
                                 ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
                                 : 'bg-amber-50/20 border-l-4 border-amber-400'
                             } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
-                            <td className="px-3 py-3 whitespace-nowrap">
+                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
@@ -4032,7 +4563,7 @@ export default function App() {
                                 #{servico.numeroRegistro}
                               </span>
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
@@ -4050,7 +4581,7 @@ export default function App() {
                                 <option value="Em Espera">Em Espera</option>
                               </select>
                             </td>
-                            <td className="px-3 py-3">
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
                               <select 
                                 value={servico.prioridade}
                                 onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
@@ -4067,9 +4598,16 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              {formatDateBR(servico.dataAtendimento)}
-                            </td>
+                            {renderEditableCell(
+                              servico.id,
+                              'dataAtendimento',
+                              'servico',
+                              servico.dataAtendimento || '',
+                              'date',
+                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                {formatDateBR(servico.dataAtendimento)}
+                              </span>
+                            )}
                             <td className="px-3 py-3 text-center">
                               <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
                                 (() => {
@@ -4082,7 +4620,7 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{servico.cliente}</span>
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
                                 {servico.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
@@ -4102,16 +4640,45 @@ export default function App() {
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.vendedor || '---'}</td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                {servico.equipeServico || '---'}
+                            {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeServico',
+                              'servico',
+                              servico.equipeServico || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeServico || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
-                            </td>
+                            )}
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
                             <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeInstalou',
+                              'servico',
+                              servico.equipeInstalou || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeInstalou || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                              </div>
+                            )}
+                            {renderEditableCell(
+                              servico.id,
+                              'dataServico',
+                              'servico',
+                              servico.dataServico || '',
+                              'date',
+                              <div className="flex flex-col text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                <span className="font-bold whitespace-nowrap">{formatDateBR(servico.dataServico)}</span>
+                                <div className="text-[12px] uppercase font-black opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                  <span>{getDayOfWeek(servico.dataServico)}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                                </div>
+                              </div>
+                            )}
                             <td className="px-3 py-3 whitespace-nowrap">
                               <div 
                                 className="cursor-pointer hover:scale-105 transition-transform inline-block"
@@ -4145,7 +4712,7 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-right">
+                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -4383,9 +4950,10 @@ export default function App() {
                             initial={{ opacity: 0 }}
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
-                            className={`hover:bg-slate-50 transition-colors ${selectedIds.has(servico.id) ? 'bg-emerald-100/50' : ''}`}
+                            onClick={() => handleServicoEdit(servico)}
+                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${selectedIds.has(servico.id) ? 'bg-emerald-100/50' : ''}`}
                           >
-                            <td className="px-3 py-3 whitespace-nowrap">
+                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                               <input 
                                 type="checkbox" 
                                 className="w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
@@ -4414,9 +4982,16 @@ export default function App() {
                                 {servico.prioridade}
                               </span>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">
-                              {formatDateBR(servico.dataAtendimento)}
-                            </td>
+                            {renderEditableCell(
+                              servico.id,
+                              'dataAtendimento',
+                              'servico',
+                              servico.dataAtendimento || '',
+                              'date',
+                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 px-2 py-1 rounded border border-transparent hover:border-emerald-200 hover:shadow-xs transition-all cursor-pointer">
+                                {formatDateBR(servico.dataAtendimento)}
+                              </span>
+                            )}
                             <td className="px-3 py-3 text-center">
                               <div className="text-[10px] font-bold px-2 py-1 rounded inline-block bg-slate-100 text-slate-600">
                                 {getDaysDiff(servico.dataAtendimento)} d
@@ -4424,7 +4999,7 @@ export default function App() {
                             </td>
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }} className="flex-1 truncate">{servico.cliente}</span>
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
                                 {servico.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
@@ -4444,17 +5019,46 @@ export default function App() {
                             <td className="px-3 py-3">
                               <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
                             </td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{servico.vendedor || '---'}</td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] font-medium text-slate-700 bg-white/50 px-2 py-1 rounded border border-slate-200/50 inline-block">
-                                {servico.equipeServico || '---'}
+                            {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeServico',
+                              'servico',
+                              servico.equipeServico || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 px-2 py-1 rounded border border-transparent hover:border-emerald-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeServico || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
-                            </td>
+                            )}
                             <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-sm font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 min-w-[80px]">{servico.equipeInstalou || '---'}</td>
-                            <td className="px-3 py-3 text-[10px] text-slate-600 whitespace-nowrap">{formatDateBR(servico.dataServico)}</td>
-                            <td className="px-3 py-3 text-right">
+                            <td className="px-3 py-3 text-sm font-bold text-slate-900 whitespace-nowrap leading-tight text-slate-900">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeInstalou',
+                              'servico',
+                              servico.equipeInstalou || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 px-2 py-1 rounded border border-transparent hover:border-emerald-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeInstalou || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                              </div>
+                            )}
+                            {renderEditableCell(
+                              servico.id,
+                              'dataServico',
+                              'servico',
+                              servico.dataServico || '',
+                              'date',
+                              <div className="flex flex-col text-slate-600 bg-slate-50 hover:bg-emerald-50 hover:text-emerald-700 px-2 py-1 rounded border border-transparent hover:border-emerald-200 hover:shadow-xs transition-all cursor-pointer">
+                                <span className="font-bold whitespace-nowrap">{formatDateBR(servico.dataServico)}</span>
+                                <div className="text-[12px] uppercase font-black opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                  <span>{getDayOfWeek(servico.dataServico)}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                                </div>
+                              </div>
+                            )}
+                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -5062,15 +5666,74 @@ export default function App() {
                         </select>
                       </FormField>
                       <FormField label="Cliente">
-                        <input 
-                          type="text" 
-                          name="cliente"
-                          required
-                          value={servicoFormData.cliente}
-                          onChange={handleServicoInputChange}
-                          placeholder="Nome do cliente"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                        />
+                        <div className="relative" ref={suggestionsRef}>
+                          <div className="relative">
+                            <input 
+                              type="text" 
+                              name="cliente"
+                              required
+                              value={servicoFormData.cliente || ''}
+                              onChange={handleServicoInputChange}
+                              onFocus={() => setShowClientSuggestions(true)}
+                              placeholder="Nome do cliente (ou busque por obras)"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-slate-800"
+                              autoComplete="off"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowClientSuggestions(!showClientSuggestions)}
+                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                              title="Buscar clientes cadastrados em Obras"
+                            >
+                              <Search size={18} />
+                            </button>
+                          </div>
+                          
+                          {showClientSuggestions && (
+                            <div className="absolute z-50 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl divide-y divide-slate-100">
+                              <div className="px-4 py-2 bg-slate-50 text-[10px] uppercase font-black tracking-widest text-slate-400 flex items-center justify-between">
+                                <span>{(servicoFormData.cliente || '').trim() ? 'Resultados em Obras' : 'Obras Recentes'}</span>
+                                <span className="font-mono lowercase font-normal text-slate-400">({matchingObras.length} encontradas)</span>
+                              </div>
+                              {matchingObras.length === 0 ? (
+                                <div className="p-4 text-center text-sm text-slate-400">
+                                  Nenhum cliente ou obra de referência encontrado.
+                                </div>
+                              ) : (
+                                matchingObras.map((obra) => (
+                                  <button
+                                    key={obra.id}
+                                    type="button"
+                                    onClick={() => selectObraForServico(obra)}
+                                    className="w-full text-left px-4 py-3 hover:bg-indigo-50/50 transition-colors flex items-start gap-3"
+                                  >
+                                    <div className="bg-indigo-50 text-indigo-600 p-1.5 rounded-lg mt-0.5 text-xs font-mono font-bold shrink-0">
+                                      #{obra.numeroRegistro}
+                                    </div>
+                                    <div className="min-w-0 flex-1">
+                                      <div className="font-semibold text-sm text-slate-800 truncate">
+                                        {obra.cliente}
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 font-medium whitespace-nowrap">
+                                        <div className="flex items-center gap-1 shrink-0 truncate">
+                                          <MapPin size={12} />
+                                          <span className="truncate max-w-[150px]">{obra.local}</span>
+                                        </div>
+                                        <span className="text-slate-200 font-normal">|</span>
+                                        <span className="truncate">Vend: {obra.vendedor || '---'}</span>
+                                      </div>
+                                    </div>
+                                    {obra.formaPagamento && (
+                                      <span className="shrink-0 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider self-center">
+                                        {obra.formaPagamento}
+                                      </span>
+                                    )}
+                                  </button>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </FormField>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -5818,6 +6481,262 @@ export default function App() {
               imprimirRelatorioConcluidos(startDate, endDate);
             }}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Central de Alarmes e Lembretes Modal */}
+      <AnimatePresence>
+        {isLembretesHubOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => {
+                setIsLembretesHubOpen(false);
+                setEditingLembreteId(null);
+                setLembreteFormData({
+                  titulo: '',
+                  dataAlarme: localTodayStr,
+                  descricao: '',
+                  importante: false,
+                  concluido: false
+                });
+              }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] z-10"
+            >
+              {/* Header */}
+              <div className="p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-4">
+                  <div className="bg-amber-500/10 p-3 rounded-2xl backdrop-blur-md">
+                    <Bell className="text-amber-400 animate-bounce" size={24} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-bold leading-tight">Central de Alarmes e Lembretes</h2>
+                    <p className="text-xs text-slate-400">Agende compromissos e lembretes para deixar visíveis no dia marcado</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={playAlarmChime}
+                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-amber-300 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                  >
+                    <Volume2 size={16} />
+                    Testar Som de Alarme
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setIsLembretesHubOpen(false);
+                      setEditingLembreteId(null);
+                      setLembreteFormData({
+                        titulo: '',
+                        dataAlarme: localTodayStr,
+                        descricao: '',
+                        importante: false,
+                        concluido: false
+                      });
+                    }} 
+                    className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  >
+                    <X size={24} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Body */}
+              <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
+                {/* Form column */}
+                <div className="w-full md:w-2/5 p-6 border-b md:border-b-0 md:border-r border-slate-100 overflow-y-auto bg-slate-50">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4">
+                    {editingLembreteId ? "📝 Editar Alarme" : "🔔 Criar Novo Alarme"}
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block font-sans">
+                        O que deixar bem visível? (Ex: Placas Solares) *
+                      </label>
+                      <input 
+                        type="text" 
+                        value={lembreteFormData.titulo || ''}
+                        onChange={(e) => setLembreteFormData(prev => ({ ...prev, titulo: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-sm"
+                        placeholder="Nome do produto/placa/equipamento..."
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block font-sans">
+                        Dia Marcado para Alarme *
+                      </label>
+                      <input 
+                        type="date" 
+                        value={lembreteFormData.dataAlarme || localTodayStr}
+                        onChange={(e) => setLembreteFormData(prev => ({ ...prev, dataAlarme: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-700 text-sm"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block font-sans">
+                        Descrição / Instrução Adicional
+                      </label>
+                      <textarea 
+                        rows={3}
+                        value={lembreteFormData.descricao || ''}
+                        onChange={(e) => setLembreteFormData(prev => ({ ...prev, descricao: e.target.value }))}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed text-sm"
+                        placeholder="Ex: Deixar as placas no portão lateral direito..."
+                      />
+                    </div>
+
+                    <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+                      <input 
+                        type="checkbox" 
+                        id="reminder-important"
+                        checked={!!lembreteFormData.importante}
+                        onChange={(e) => setLembreteFormData(prev => ({ ...prev, importante: e.target.checked }))}
+                        className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                      />
+                      <label htmlFor="reminder-important" className="text-sm font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                        Alerta Urgente/Esforço Máximo! 🚨
+                      </label>
+                    </div>
+
+                    <div className="pt-2 flex gap-3">
+                      {editingLembreteId && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingLembreteId(null);
+                            setLembreteFormData({
+                              titulo: '',
+                              dataAlarme: localTodayStr,
+                              descricao: '',
+                              importante: false,
+                              concluido: false
+                            });
+                          }}
+                          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl transition-all"
+                        >
+                          Cancelar
+                        </button>
+                      )}
+                      <button 
+                        onClick={handleSaveLembrete}
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 px-4 rounded-xl transition-all shadow-md shadow-indigo-100 text-center"
+                      >
+                        {editingLembreteId ? "Salvar Lembrete" : "Criar Alarme"}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* List column */}
+                <div className="flex-1 p-6 overflow-y-auto flex flex-col min-h-0">
+                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4 shrink-0">
+                    📋 Meus Lembretes e Alarmes Cadastrados
+                  </h3>
+
+                  {lembretes.length === 0 ? (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-8 border-2 border-dashed border-slate-200 rounded-2xl bg-slate-50/50">
+                      <Bell size={40} className="text-slate-300 mb-2" />
+                      <p className="font-bold text-slate-500">Nenhum alarme para exibir.</p>
+                      <p className="text-xs text-slate-400 mt-1">Crie um alarme no formulário para ser avisado no dia marcado.</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3 pr-1">
+                      {lembretes.map((l) => {
+                        const isToday = l.dataAlarme === localTodayStr;
+                        return (
+                          <div 
+                            key={l.id} 
+                            className={`p-4 rounded-2xl border transition-all flex items-start justify-between gap-4 ${
+                              l.concluido
+                                ? 'bg-slate-50/70 border-slate-100 opacity-60'
+                                : isToday
+                                ? 'bg-amber-50 border-amber-300 shadow-md ring-1 ring-amber-300'
+                                : l.importante
+                                ? 'bg-red-50 border-red-200'
+                                : 'bg-white border-slate-200 hover:border-slate-300'
+                            }`}
+                          >
+                            <div className="flex gap-3 items-start min-w-0">
+                              <input 
+                                type="checkbox"
+                                checked={!!l.concluido}
+                                onChange={() => handleToggleLembreteConcluido(l.id || '', !!l.concluido)}
+                                className="w-5 h-5 mt-0.5 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500"
+                              />
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <h4 className={`font-black text-sm leading-snug break-all ${l.concluido ? 'line-through text-slate-400' : 'text-slate-900'}`}>
+                                    {l.titulo}
+                                  </h4>
+                                  {isToday && !l.concluido && (
+                                    <span className="bg-amber-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wide animate-pulse">
+                                      Hoje!
+                                    </span>
+                                  )}
+                                  {l.importante && !l.concluido && (
+                                    <span className="bg-red-600 text-white text-[9px] font-black uppercase px-1.5 py-0.5 rounded tracking-wide">
+                                      Urgente 🚨
+                                    </span>
+                                  )}
+                                </div>
+                                {l.descricao && (
+                                  <p className="text-xs text-slate-600 mt-1 font-medium leading-relaxed">
+                                    {l.descricao}
+                                  </p>
+                                )}
+                                <div className="flex items-center gap-2 mt-2 font-mono text-[10px] text-slate-400 font-bold">
+                                  <Calendar size={12} />
+                                  Dia Marcado: {formatDateBR(l.dataAlarme)} ({getDayOfWeek(l.dataAlarme)})
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                              {!l.concluido && (
+                                <button
+                                  onClick={() => {
+                                    setEditingLembreteId(l.id || null);
+                                    setLembreteFormData({
+                                      titulo: l.titulo,
+                                      dataAlarme: l.dataAlarme,
+                                      descricao: l.descricao,
+                                      importante: l.importante,
+                                      concluido: l.concluido
+                                    });
+                                  }}
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded-lg transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => handleDeleteLembrete(l.id || '')}
+                                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                                title="Excluir"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

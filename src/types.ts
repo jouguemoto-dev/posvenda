@@ -108,3 +108,14 @@ export interface Schedule {
   data: string; // JSON string
   updatedAt: any;
 }
+
+export interface Lembrete {
+  id?: string;
+  titulo: string;
+  dataAlarme: string;
+  descricao: string;
+  importante: boolean;
+  concluido: boolean;
+  createdBy: string;
+  createdAt: any;
+}

@@ -77,11 +77,27 @@ service cloud.firestore {
              data.userId is string;
     }
 
+    function isValidLembrete(data) {
+      return data.titulo is string && data.titulo.size() > 0 && data.titulo.size() < 300 &&
+             data.dataAlarme is string &&
+             (!('descricao' in data) || data.descricao is string) &&
+             (!('importante' in data) || data.importante is bool) &&
+             (!('concluido' in data) || data.concluido is bool) &&
+             (!('createdBy' in data) || data.createdBy is string);
+    }
+
     match /obras/{obraId} {
       allow read: if isAuthenticated();
       allow create: if isAuthenticated() && isValidObra(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
       allow update: if isAuthenticated() && isValidObra(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
       allow delete: if isAdmin();
+    }
+
+    match /lembretes/{lembreteId} {
+      allow read: if isAuthenticated();
+      allow create: if isAuthenticated() && isValidLembrete(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow update: if isAuthenticated() && isValidLembrete(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
+      allow delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
     match /notes/{noteId} {

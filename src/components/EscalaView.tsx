@@ -89,9 +89,17 @@ interface EscalaViewProps {
   onBack?: () => void;
   obras?: Obra[];
   servicos?: Servico[];
+  onEditObra?: (obra: Obra) => void;
+  onEditServico?: (servico: Servico) => void;
 }
 
-export default function EscalaView({ onBack, obras = [], servicos = [] }: EscalaViewProps) {
+export default function EscalaView({ 
+  onBack, 
+  obras = [], 
+  servicos = [],
+  onEditObra,
+  onEditServico
+}: EscalaViewProps) {
   const [teams, setTeams] = useState<Team[]>([]);
   const [schedule, setSchedule] = useState<ScheduleData>({});
   const [isSyncing, setIsSyncing] = useState(false);
@@ -637,15 +645,19 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                         { (matchingObras.length > 0 || matchingServicos.length > 0) && (
                           <div className="mt-1 space-y-1 px-0.5 pb-1 max-h-[calc(100%-3rem)] overflow-y-auto scrollbar-hide">
                             {matchingObras.map(o => (
-                              <div key={o.firebaseId || o.id} className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
-                                o.situacao === 'Em Espera' 
-                                  ? 'bg-slate-100 text-slate-500 border-slate-200' 
-                                  : o.situacao === 'Concluído'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
-                                  : isDark 
-                                  ? 'bg-white/10 text-white border-white/20' 
-                                  : 'bg-white text-indigo-700 border-indigo-100'
-                              }`}>
+                              <div 
+                                key={o.firebaseId || o.id} 
+                                onClick={() => setSelectedDetails({ type: 'obra', item: o })}
+                                className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] cursor-pointer ${
+                                  o.situacao === 'Em Espera' 
+                                    ? 'bg-slate-100 text-slate-500 border-slate-200' 
+                                    : o.situacao === 'Concluído'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
+                                    : isDark 
+                                    ? 'bg-white/10 text-white border-white/20' 
+                                    : 'bg-white text-indigo-700 border-indigo-100'
+                                }`}
+                              >
                                 <div className="flex items-center justify-between mb-0.5">
                                   <div className="flex items-center gap-1">
                                     <ClipboardList size={10} className="opacity-70" />
@@ -659,8 +671,16 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    onClick={() => setSelectedDetails({ type: 'obra', item: o })}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onEditObra) {
+                                        onEditObra(o);
+                                      } else {
+                                        setSelectedDetails({ type: 'obra', item: o });
+                                      }
+                                    }}
                                     className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-indigo-600 transition-colors ${o.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                    title="Clique para editar informações"
                                   >
                                     {o.cliente}
                                   </span>
@@ -677,15 +697,19 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                               </div>
                             ))}
                             {matchingServicos.map(s => (
-                              <div key={s.firebaseId || s.id} className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] ${
-                                s.situacao === 'Em Espera'
-                                  ? 'bg-slate-100 text-slate-500 border-slate-200'
-                                  : s.situacao === 'Concluído'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
-                                  : isDark 
-                                  ? 'bg-white/10 text-white border-white/20' 
-                                  : 'bg-white text-blue-700 border-blue-100'
-                              }`}>
+                              <div 
+                                key={s.firebaseId || s.id} 
+                                onClick={() => setSelectedDetails({ type: 'servico', item: s })}
+                                className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] cursor-pointer ${
+                                  s.situacao === 'Em Espera'
+                                    ? 'bg-slate-100 text-slate-500 border-slate-200'
+                                    : s.situacao === 'Concluído'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
+                                    : isDark 
+                                    ? 'bg-white/10 text-white border-white/20' 
+                                    : 'bg-white text-blue-700 border-blue-100'
+                                }`}
+                              >
                                 <div className="flex items-center justify-between mb-0.5">
                                   <div className="flex items-center gap-1">
                                     <Wrench size={10} className="opacity-70" />
@@ -696,8 +720,16 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    onClick={() => setSelectedDetails({ type: 'servico', item: s })}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onEditServico) {
+                                        onEditServico(s);
+                                      } else {
+                                        setSelectedDetails({ type: 'servico', item: s });
+                                      }
+                                    }}
                                     className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-blue-600 transition-colors ${s.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                    title="Clique para editar informações"
                                   >
                                     {s.cliente}
                                   </span>
@@ -949,8 +981,20 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                   <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
                     {selectedDetails.type === 'obra' ? 'Ficha de Obra' : 'Ficha de Serviço'}
                   </p>
-                  <h2 className="text-xl font-bold text-slate-900 leading-tight">
+                  <h2 
+                    onClick={() => {
+                      if (selectedDetails.type === 'obra') {
+                        onEditObra?.(selectedDetails.item as Obra);
+                      } else {
+                        onEditServico?.(selectedDetails.item as Servico);
+                      }
+                      setSelectedDetails(null);
+                    }}
+                    className="text-xl font-bold text-slate-900 leading-tight cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1.5 group"
+                    title="Clique para editar informações"
+                  >
                     {selectedDetails.item.cliente}
+                    <Edit size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors shrink-0" />
                   </h2>
                 </div>
                 <button 
@@ -1173,7 +1217,7 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
               </div>
 
               {/* Minimal Actions */}
-              <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100">
+              <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100 gap-2">
                 <button
                   onClick={() => setSelectedDetails(null)}
                   className="px-4 py-2 text-slate-400 hover:text-slate-600 transition-colors font-bold text-xs uppercase tracking-widest"
@@ -1181,18 +1225,35 @@ export default function EscalaView({ onBack, obras = [], servicos = [] }: Escala
                   Fechar
                 </button>
                 
-                {selectedDetails.item.txtFile && (
+                <div className="flex items-center gap-2">
                   <button
                     onClick={() => {
-                      setViewingTxt(selectedDetails.item.txtFile || null);
+                      if (selectedDetails.type === 'obra') {
+                        onEditObra?.(selectedDetails.item as Obra);
+                      } else {
+                        onEditServico?.(selectedDetails.item as Servico);
+                      }
                       setSelectedDetails(null);
                     }}
-                    className="flex items-center gap-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg shadow-slate-200 uppercase tracking-widest"
+                    className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-indigo-100 uppercase tracking-widest active:scale-95"
                   >
-                    <FileText size={16} />
-                    Ver Detalhamento
+                    <Edit size={14} />
+                    Editar Cadastro
                   </button>
-                )}
+                  
+                  {selectedDetails.item.txtFile && (
+                    <button
+                      onClick={() => {
+                        setViewingTxt(selectedDetails.item.txtFile || null);
+                        setSelectedDetails(null);
+                      }}
+                      className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg shadow-slate-200 uppercase tracking-widest active:scale-95"
+                    >
+                      <FileText size={14} />
+                      Detalhamento
+                    </button>
+                  )}
+                </div>
               </div>
             </motion.div>
           </div>

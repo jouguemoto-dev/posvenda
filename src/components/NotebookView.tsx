@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Plus, 
   Trash2, 
@@ -9,12 +9,10 @@ import {
   Search,
   X,
   StickyNote,
-  MoreVertical,
-  Check,
   Edit2,
   Activity,
   ArrowLeft,
-  UserPlus
+  Pin
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, auth } from '../firebase';
@@ -41,15 +39,16 @@ interface Note {
   userName: string;
   atendente?: string;
   createdAt: any;
+  pinned?: boolean;
 }
 
 const COLORS = [
-  { name: 'Amarelo', bg: 'bg-yellow-100', border: 'border-yellow-200', text: 'text-yellow-700', marker: 'bg-yellow-400' },
-  { name: 'Azul', bg: 'bg-blue-100', border: 'border-blue-200', text: 'text-blue-700', marker: 'bg-blue-400' },
-  { name: 'Verde', bg: 'bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-700', marker: 'bg-emerald-400' },
-  { name: 'Rosa', bg: 'bg-pink-100', border: 'border-pink-200', text: 'text-pink-700', marker: 'bg-pink-400' },
-  { name: 'Roxo', bg: 'bg-purple-100', border: 'border-purple-200', text: 'text-purple-700', marker: 'bg-purple-400' },
-  { name: 'Laranja', bg: 'bg-orange-100', border: 'border-orange-200', text: 'text-orange-700', marker: 'bg-orange-400' },
+  { name: 'Amarelo', bg: 'bg-amber-100', border: 'border-amber-200', text: 'text-amber-800', marker: 'border-amber-400' },
+  { name: 'Azul', bg: 'bg-sky-100', border: 'border-sky-200', text: 'text-sky-800', marker: 'border-sky-400' },
+  { name: 'Verde', bg: 'bg-emerald-100', border: 'border-emerald-200', text: 'text-emerald-800', marker: 'border-emerald-400' },
+  { name: 'Rosa', bg: 'bg-rose-100', border: 'border-rose-200', text: 'text-rose-800', marker: 'border-rose-400' },
+  { name: 'Roxo', bg: 'bg-purple-100', border: 'border-purple-200', text: 'text-purple-800', marker: 'border-purple-400' },
+  { name: 'Laranja', bg: 'bg-orange-100', border: 'border-orange-200', text: 'text-orange-800', marker: 'border-orange-400' },
 ];
 
 const NotebookView: React.FC<{ 
@@ -58,13 +57,15 @@ const NotebookView: React.FC<{
   onBack: () => void;
 }> = ({ user, attendants = [], onBack }) => {
   const [notes, setNotes] = useState<Note[]>([]);
-  const [isAddingMode, setIsAddingMode] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
   const [noteToDelete, setNoteToDelete] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('Todos');
+  const [filterAttendant, setFilterAttendant] = useState<string>('Todos');
   const [isCustomAttendant, setIsCustomAttendant] = useState(false);
   
-  const [newNote, setNewNote] = useState({
+  const [formData, setFormData] = useState({
     content: '',
     date: new Date().toISOString().split('T')[0],
     status: 'Pendente' as Note['status'],
@@ -86,29 +87,75 @@ const NotebookView: React.FC<{
     return () => unsubscribe();
   }, []);
 
-  const handleAddNote = async (e: React.FormEvent) => {
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newNote.content.trim()) return;
+    if (!formData.content.trim()) return;
 
     try {
-      await addDoc(collection(db, 'notes'), {
-        ...newNote,
-        userId: auth.currentUser?.uid || user.id,
-        userName: user.name,
-        createdAt: serverTimestamp()
-      });
-      setNewNote({
+      if (editingNoteId) {
+        // Edit existing note
+        await updateDoc(doc(db, 'notes', editingNoteId), {
+          content: formData.content,
+          date: formData.date,
+          status: formData.status,
+          color: formData.color,
+          atendente: formData.atendente,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        // Create new note
+        await addDoc(collection(db, 'notes'), {
+          content: formData.content,
+          date: formData.date,
+          status: formData.status,
+          color: formData.color,
+          atendente: formData.atendente,
+          userId: auth.currentUser?.uid || user.id,
+          userName: user.name,
+          createdAt: serverTimestamp(),
+          pinned: false
+        });
+      }
+      setIsFormOpen(false);
+      setEditingNoteId(null);
+      setIsCustomAttendant(false);
+      setFormData({
         content: '',
         date: new Date().toISOString().split('T')[0],
         status: 'Pendente',
         color: COLORS[0].bg,
         atendente: user.name
       });
-      setIsAddingMode(false);
-      setIsCustomAttendant(false);
     } catch (error) {
-      console.error("Error adding note: ", error);
+      console.error("Error saving note: ", error);
     }
+  };
+
+  const openAddModal = () => {
+    setEditingNoteId(null);
+    setFormData({
+      content: '',
+      date: new Date().toISOString().split('T')[0],
+      status: 'Pendente',
+      color: COLORS[0].bg,
+      atendente: user.name
+    });
+    setIsCustomAttendant(false);
+    setIsFormOpen(true);
+  };
+
+  const openEditModal = (note: Note) => {
+    setEditingNoteId(note.firebaseId || note.id);
+    setFormData({
+      content: note.content || '',
+      date: note.date || new Date().toISOString().split('T')[0],
+      status: note.status || 'Pendente',
+      color: note.color || COLORS[0].bg,
+      atendente: note.atendente || note.userName || user.name
+    });
+    const isCustom = !attendants.includes(note.atendente || '') && (note.atendente !== user.name);
+    setIsCustomAttendant(isCustom);
+    setIsFormOpen(true);
   };
 
   const handleUpdateStatus = async (firebaseId: string, status: Note['status']) => {
@@ -128,22 +175,59 @@ const NotebookView: React.FC<{
     }
   };
 
-  const filteredNotes = notes.filter(note => {
-    const matchesSearch = note.content.toLowerCase().includes(search.toLowerCase()) || 
-                         note.userName.toLowerCase().includes(search.toLowerCase()) ||
-                         (note.atendente && note.atendente.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = filterStatus === 'Todos' || note.status === filterStatus;
-    return matchesSearch && matchesStatus;
-  });
+  const handleTogglePin = async (note: Note) => {
+    const noteId = note.firebaseId || note.id;
+    if (!noteId) return;
+    try {
+      await updateDoc(doc(db, 'notes', noteId), {
+        pinned: !note.pinned
+      });
+    } catch (error) {
+      console.error("Error toggling pin status: ", error);
+    }
+  };
+
+  // Get unique list of attendants present in downloaded notes to build filter dropdown
+  const uniqueAttendants = useMemo(() => {
+    const list = new Set<string>();
+    notes.forEach(note => {
+      const att = (note.atendente || note.userName || '').trim();
+      if (att) list.add(att);
+    });
+    return Array.from(list).sort();
+  }, [notes]);
+
+  const filteredNotes = useMemo(() => {
+    return notes.filter(note => {
+      const matchesSearch = note.content.toLowerCase().includes(search.toLowerCase()) || 
+                           note.userName.toLowerCase().includes(search.toLowerCase()) ||
+                           (note.atendente && note.atendente.toLowerCase().includes(search.toLowerCase()));
+      
+      const matchesStatus = filterStatus === 'Todos' || note.status === filterStatus;
+      
+      const currentAtendente = note.atendente || note.userName || '';
+      const matchesAttendant = filterAttendant === 'Todos' || currentAtendente.toLowerCase() === filterAttendant.toLowerCase();
+      
+      return matchesSearch && matchesStatus && matchesAttendant;
+    });
+  }, [notes, search, filterStatus, filterAttendant]);
+
+  const sortedNotes = useMemo(() => {
+    return [...filteredNotes].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return 0; // maintain default Firestore order (createdAt desc)
+    });
+  }, [filteredNotes]);
 
   return (
     <div className="space-y-6">
       {/* Header & Controls */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
         <div className="flex items-center gap-4">
           <button 
             onClick={onBack}
-            className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all"
+            className="p-2 hover:bg-slate-100 rounded-xl text-slate-500 transition-all active:scale-90"
             title="Voltar"
           >
             <ArrowLeft size={20} />
@@ -159,32 +243,43 @@ const NotebookView: React.FC<{
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
-          <div className="relative flex-1 md:w-64">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[180px] md:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text"
               placeholder="Buscar notas..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all"
+              className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-slate-800"
             />
           </div>
           
           <select 
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-white border border-slate-200 rounded-xl px-4 py-2 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
           >
-            <option value="Todos">Todos Status</option>
+            <option value="Todos">Filtro: Todos Status</option>
             <option value="Pendente">Pendentes</option>
             <option value="Em Andamento">Em Andamento</option>
             <option value="Concluído">Concluídos</option>
           </select>
 
+          <select 
+            value={filterAttendant}
+            onChange={(e) => setFilterAttendant(e.target.value)}
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+          >
+            <option value="Todos">Filtro: Todos Atendentes</option>
+            {uniqueAttendants.map(att => (
+              <option key={att} value={att}>{att}</option>
+            ))}
+          </select>
+
           <button 
-            onClick={() => setIsAddingMode(true)}
-            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95"
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-bold shadow-lg shadow-indigo-100 transition-all active:scale-95 shrink-0"
           >
             <Plus size={18} />
             Nova Nota
@@ -192,36 +287,39 @@ const NotebookView: React.FC<{
         </div>
       </div>
 
-      {/* Adding Modal */}
+      {/* Adding/Editing Modal */}
       <AnimatePresence>
-        {isAddingMode && (
+        {isFormOpen && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
             <motion.div 
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl"
+              className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-100"
             >
               <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-800">Adicionar Nota</h3>
+                <h3 className="text-xl font-bold text-slate-800">
+                  {editingNoteId ? 'Editar Nota' : 'Nova Nota'}
+                </h3>
                 <button onClick={() => {
-                  setIsAddingMode(false);
+                  setIsFormOpen(false);
+                  setEditingNoteId(null);
                   setIsCustomAttendant(false);
                 }} className="p-2 hover:bg-slate-200 rounded-xl transition-all">
                   <X size={20} className="text-slate-500" />
                 </button>
               </div>
               
-              <form onSubmit={handleAddNote} className="p-6 space-y-4">
+              <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Conteúdo</label>
                   <textarea 
                     autoFocus
                     required
-                    value={newNote.content}
-                    onChange={(e) => setNewNote({...newNote, content: e.target.value})}
-                    placeholder="O que você deseja lembrar?"
-                    className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none font-medium"
+                    value={formData.content}
+                    onChange={(e) => setFormData({...formData, content: e.target.value})}
+                    placeholder="Escreva algo importante para registrar ou cobrar..."
+                    className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none font-medium text-slate-800"
                   />
                 </div>
 
@@ -242,16 +340,16 @@ const NotebookView: React.FC<{
                       <input 
                         type="text"
                         required
-                        value={newNote.atendente}
-                        onChange={(e) => setNewNote({...newNote, atendente: e.target.value})}
+                        value={formData.atendente}
+                        onChange={(e) => setFormData({...formData, atendente: e.target.value})}
                         placeholder="Nome do novo atendente"
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500"
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-slate-800"
                       />
                     ) : (
                       <select 
-                        value={newNote.atendente}
-                        onChange={(e) => setNewNote({...newNote, atendente: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none"
+                        value={formData.atendente}
+                        onChange={(e) => setFormData({...formData, atendente: e.target.value})}
+                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800"
                       >
                         <option value={user.name}>{user.name} (Você)</option>
                         {attendants.filter(a => a !== user.name).map(a => (
@@ -264,17 +362,17 @@ const NotebookView: React.FC<{
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data</label>
                     <input 
                       type="date"
-                      value={newNote.date}
-                      onChange={(e) => setNewNote({...newNote, date: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none"
+                      value={formData.date}
+                      onChange={(e) => setFormData({...formData, date: e.target.value})}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800"
                     />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
                     <select 
-                      value={newNote.status}
-                      onChange={(e) => setNewNote({...newNote, status: e.target.value as Note['status']})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none"
+                      value={formData.status}
+                      onChange={(e) => setFormData({...formData, status: e.target.value as Note['status']})}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800"
                     >
                       <option value="Pendente">Pendente</option>
                       <option value="Em Andamento">Em Andamento</option>
@@ -285,13 +383,13 @@ const NotebookView: React.FC<{
 
                 <div>
                   <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Cor do Post-it</label>
-                  <div className="flex flex-wrap gap-3">
+                  <div className="flex flex-wrap gap-2.5">
                     {COLORS.map(color => (
                       <button
                         key={color.name}
                         type="button"
-                        onClick={() => setNewNote({...newNote, color: color.bg})}
-                        className={`w-10 h-10 rounded-xl border-2 transition-all ${color.bg} ${newNote.color === color.bg ? 'border-indigo-500 scale-110 shadow-lg' : 'border-transparent'}`}
+                        onClick={() => setFormData({...formData, color: color.bg})}
+                        className={`w-9 h-9 rounded-xl border-t-4 transition-all ${color.bg} ${color.marker} ${formData.color === color.bg ? 'border-2 border-indigo-600 scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
                         title={color.name}
                       />
                     ))}
@@ -302,16 +400,17 @@ const NotebookView: React.FC<{
                   <button 
                     type="button"
                     onClick={() => {
-                      setIsAddingMode(false);
+                      setIsFormOpen(false);
+                      setEditingNoteId(null);
                       setIsCustomAttendant(false);
                     }}
-                    className="flex-1 px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all"
+                    className="flex-1 px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-sm"
                   >
                     Cancelar
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95"
+                    className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95 text-sm"
                   >
                     Salvar Nota
                   </button>
@@ -359,14 +458,14 @@ const NotebookView: React.FC<{
 
       {/* Notes Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {filteredNotes.map((note) => {
+        {sortedNotes.map((note, index) => {
           const colorSet = COLORS.find(c => c.bg === note.color) || COLORS[0];
           
           return (
             <motion.div 
               layout
               key={note.id}
-              className={`${note.color} ${colorSet.border} border-t-4 ${colorSet.marker.replace('marker', 'border')} p-5 rounded-2xl shadow-sm hover:shadow-md transition-all group relative`}
+              className={`${note.color} ${colorSet.border} border-t-4 ${colorSet.marker} p-5 rounded-2xl shadow-xs hover:shadow-md transition-all duration-300 group relative ${index % 2 === 0 ? 'rotate-[-0.50deg]' : 'rotate-[0.50deg]'} hover:rotate-0 hover:-translate-y-1`}
             >
               {/* Note Header */}
               <div className="flex items-start justify-between mb-3">
@@ -378,28 +477,56 @@ const NotebookView: React.FC<{
                   <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">{note.status}</span>
                 </div>
 
-                <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button 
-                    onClick={() => setNoteToDelete(note.firebaseId || note.id)}
-                    className="p-1.5 hover:bg-red-100 text-red-500 rounded-lg transition-all"
-                    title="Excluir"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                <div className="flex items-center gap-1">
+                  {note.pinned && (
+                    <button 
+                      onClick={() => handleTogglePin(note)}
+                      className="p-1 text-slate-700 hover:text-slate-900 bg-white/70 rounded-full shadow-xs transition-all hover:scale-110"
+                      title="Desfixar"
+                    >
+                      <Pin size={12} className="fill-indigo-600 text-indigo-600 rotate-45" />
+                    </button>
+                  )}
+                  
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all duration-200">
+                    {!note.pinned && (
+                      <button 
+                        onClick={() => handleTogglePin(note)}
+                        className="p-1 hover:bg-black/5 text-slate-500 rounded-lg transition-all"
+                        title="Fixar Nota"
+                      >
+                        <Pin size={12} />
+                      </button>
+                    )}
+                    <button 
+                      onClick={() => openEditModal(note)}
+                      className="p-1 hover:bg-black/5 text-slate-600 rounded-lg transition-all"
+                      title="Editar Nota"
+                    >
+                      <Edit2 size={12} />
+                    </button>
+                    <button 
+                      onClick={() => setNoteToDelete(note.firebaseId || note.id)}
+                      className="p-1 hover:bg-red-100/55 text-red-500 rounded-lg transition-all"
+                      title="Excluir"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
 
               {/* Note Content */}
-              <p className="text-slate-800 font-medium text-sm leading-relaxed mb-4 whitespace-pre-wrap min-h-[60px]">
+              <p className="text-slate-800 font-semibold text-sm leading-relaxed mb-4 whitespace-pre-wrap min-h-[60px]">
                 {note.content}
               </p>
 
               {/* Note Footer */}
               <div className="pt-3 border-t border-black/5 flex items-center justify-between">
-                <div className="flex flex-col">
+                <div className="flex flex-col min-w-0 flex-1 mr-2">
                   <div className="flex items-center gap-1.5 text-slate-500">
-                    <CalendarIcon size={12} />
-                    <span className="text-[10px] font-bold">
+                    <CalendarIcon size={12} className="shrink-0" />
+                    <span className="text-[10px] font-bold truncate">
                       {(() => {
                         if (!note.date) return '---';
                         try {
@@ -417,32 +544,32 @@ const NotebookView: React.FC<{
                       })()}
                     </span>
                   </div>
-                  <div className="text-[10px] text-slate-400 font-medium mt-0.5 whitespace-nowrap overflow-hidden text-ellipsis max-w-[120px]">
-                    Atendente: <span className="text-slate-600 font-bold">{note.atendente || note.userName}</span>
+                  <div className="text-[10px] text-slate-400 font-medium mt-0.5 truncate" title={note.atendente || note.userName}>
+                    Atend: <span className="text-slate-600 font-black">{note.atendente || note.userName}</span>
                   </div>
                 </div>
 
-                <div className="flex bg-white/40 p-1 rounded-xl gap-1">
+                <div className="flex bg-white/40 p-0.5 rounded-xl gap-0.5 shrink-0">
                   <button 
                     onClick={() => handleUpdateStatus(note.firebaseId || note.id, 'Pendente')}
-                    className={`p-1 rounded-lg transition-all ${note.status === 'Pendente' ? 'bg-white shadow-sm text-yellow-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`p-1 rounded-lg transition-all ${note.status === 'Pendente' ? 'bg-white shadow-xs text-yellow-600' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Marcar como Pendente"
                   >
-                    <Clock size={16} />
+                    <Clock size={14} />
                   </button>
                   <button 
                     onClick={() => handleUpdateStatus(note.firebaseId || note.id, 'Em Andamento')}
-                    className={`p-1 rounded-lg transition-all ${note.status === 'Em Andamento' ? 'bg-white shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`p-1 rounded-lg transition-all ${note.status === 'Em Andamento' ? 'bg-white shadow-xs text-blue-600' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Marcar em Andamento"
                   >
-                    <Activity size={16} />
+                    <Activity size={14} />
                   </button>
                   <button 
                     onClick={() => handleUpdateStatus(note.firebaseId || note.id, 'Concluído')}
-                    className={`p-1 rounded-lg transition-all ${note.status === 'Concluído' ? 'bg-white shadow-sm text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
+                    className={`p-1 rounded-lg transition-all ${note.status === 'Concluído' ? 'bg-white shadow-xs text-emerald-600' : 'text-slate-400 hover:text-slate-600'}`}
                     title="Marcar como Concluído"
                   >
-                    <CheckCircle2 size={16} />
+                    <CheckCircle2 size={14} />
                   </button>
                 </div>
               </div>
@@ -450,13 +577,13 @@ const NotebookView: React.FC<{
           );
         })}
 
-        {filteredNotes.length === 0 && (
+        {sortedNotes.length === 0 && (
           <div className="col-span-full py-12 flex flex-col items-center justify-center text-slate-400">
             <StickyNote size={48} className="mb-4 opacity-20" />
-            <p className="font-medium">Nenhuma nota encontrada</p>
+            <p className="font-medium text-sm">Nenhuma nota encontrada</p>
             <button 
-              onClick={() => setIsAddingMode(true)}
-              className="mt-4 text-indigo-600 font-bold hover:underline"
+              onClick={openAddModal}
+              className="mt-4 text-indigo-600 font-bold hover:underline text-xs"
             >
               Criar primeira nota
             </button>

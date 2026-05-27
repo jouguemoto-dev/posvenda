@@ -127,6 +127,22 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["nomeCliente", "valorPago", "numeroRecibo"]
+    },
+    "Lembrete": {
+      "title": "Lembrete",
+      "description": "Representa um lembrete ou alarme agendado no sistema.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "titulo": { "type": "string" },
+        "dataAlarme": { "type": "string", "format": "date" },
+        "descricao": { "type": "string" },
+        "importante": { "type": "boolean" },
+        "concluido": { "type": "boolean" },
+        "createdBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["titulo", "dataAlarme"]
     }
   },
   "firestore": {
@@ -157,6 +173,10 @@
     "posvenda": {
       "schema": { "$ref": "#/entities/PosVenda" },
       "description": "Registros de propostas e recibos de pós-venda."
+    },
+    "lembretes": {
+      "schema": { "$ref": "#/entities/Lembrete" },
+      "description": "Coleção de lembretes e alarmes cadastrados."
     }
   }
 }
