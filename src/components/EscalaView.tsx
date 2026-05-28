@@ -27,7 +27,10 @@ import {
   LayoutDashboard,
   Hash,
   Activity,
-  Zap
+  Zap,
+  Copy,
+  ExternalLink,
+  User
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -671,16 +674,8 @@ export default function EscalaView({
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onEditObra) {
-                                        onEditObra(o);
-                                      } else {
-                                        setSelectedDetails({ type: 'obra', item: o });
-                                      }
-                                    }}
                                     className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-indigo-600 transition-colors ${o.situacao === 'Concluído' ? 'line-through' : ''}`}
-                                    title="Clique para editar informações"
+                                    title="Clique para ver detalhes organizados"
                                   >
                                     {o.cliente}
                                   </span>
@@ -720,16 +715,8 @@ export default function EscalaView({
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (onEditServico) {
-                                        onEditServico(s);
-                                      } else {
-                                        setSelectedDetails({ type: 'servico', item: s });
-                                      }
-                                    }}
                                     className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-blue-600 transition-colors ${s.situacao === 'Concluído' ? 'line-through' : ''}`}
-                                    title="Clique para editar informações"
+                                    title="Clique para ver detalhes organizados"
                                   >
                                     {s.cliente}
                                   </span>
@@ -960,304 +947,531 @@ export default function EscalaView({
 
       {/* Client Details Modal */}
       <AnimatePresence>
-        {selectedDetails && (
-          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedDetails(null)}
-              className="absolute inset-0 bg-[#0f172a]/40 backdrop-blur-[2px]"
-            />
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.98, y: 10 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.98, y: 10 }}
-              className="relative w-full max-w-sm bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col border border-slate-200"
-            >
-              {/* Minimal Header */}
-              <div className="p-6 pb-4 border-b border-slate-100 flex items-start justify-between">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 mb-1">
-                    {selectedDetails.type === 'obra' ? 'Ficha de Obra' : 'Ficha de Serviço'}
-                  </p>
-                  <h2 
-                    onClick={() => {
-                      if (selectedDetails.type === 'obra') {
-                        onEditObra?.(selectedDetails.item as Obra);
-                      } else {
-                        onEditServico?.(selectedDetails.item as Servico);
-                      }
-                      setSelectedDetails(null);
-                    }}
-                    className="text-xl font-bold text-slate-900 leading-tight cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1.5 group"
-                    title="Clique para editar informações"
-                  >
-                    {selectedDetails.item.cliente}
-                    <Edit size={16} className="text-slate-300 group-hover:text-indigo-600 transition-colors shrink-0" />
-                  </h2>
-                </div>
-                <button 
-                  onClick={() => setSelectedDetails(null)} 
-                  className="text-slate-400 hover:text-slate-600 transition-colors p-1"
-                >
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto scrollbar-hide">
-                {/* Section: Identificação */}
-                <div className="space-y-4">
-                  <div>
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Registro</span>
-                    <span className="text-sm font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded">#{selectedDetails.item.numeroRegistro}</span>
+        {selectedDetails && (() => {
+          const isObra = selectedDetails.type === 'obra';
+          const obraItem = isObra ? (selectedDetails.item as Obra) : null;
+          const servicoItem = !isObra ? (selectedDetails.item as Servico) : null;
+          
+          const item = selectedDetails.item;
+          
+          // Helper to get formatted full date
+          const formatFullDateBR = (dateStr: string) => {
+            if (!dateStr) return '---';
+            try {
+              const d = new Date(dateStr + 'T12:00:00'); // noon to avoid timezone shift
+              if (isNaN(d.getTime())) return '---';
+              const weekday = d.toLocaleDateString('pt-BR', { weekday: 'long' });
+              const formattedDate = d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+              return `${weekday.charAt(0).toUpperCase() + weekday.slice(1)}, ${formattedDate}`;
+            } catch (e) {
+              return dateStr;
+            }
+          };
+
+          // Currency Formatter
+          const formatCurrency = (val: number | undefined) => {
+            if (val === undefined || isNaN(val)) return 'R$ 0,00';
+            return val.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+          };
+
+          // WhatsApp Copy generator
+          const handleCopyScheduleText = () => {
+            let text = '';
+            if (isObra && obraItem) {
+              text = `📋 *DADOS DO AGENDAMENTO (OBRA SOLAR)*\n\n` +
+                     `👤 *Cliente:* ${obraItem.cliente}\n` +
+                     `🔢 *Registro:* #${obraItem.numeroRegistro}\n` +
+                     `📍 *Endereço:* ${obraItem.local || 'Não informado'}\n` +
+                     `💼 *Vendedor:* ${obraItem.vendedor || '---'}\n` +
+                     `🛠️ *Equipe Escala:* ${tempTeam || obraItem.equipe || '---'}\n` +
+                     `📅 *Data Instalada:* ${tempDate ? formatFullDateBR(tempDate) : formatFullDateBR(obraItem.dataObra)}\n\n` +
+                     `⚡ *ESPECIFICAÇÕES TÉCNICAS:*\n` +
+                     `🔌 *Inversor:* ${obraItem.inversor || '---'}\n` +
+                     `☀️ *Painéis:* ${obraItem.quantidadePlacas || 0} módulos\n` +
+                     `📊 *Prioridade:* ${obraItem.prioridade || 'Média'}\n` +
+                     `📈 *Situação:* ${obraItem.situacao || 'Pendente'}\n\n` +
+                     `💰 *FINANCEIRO:*\n` +
+                     `💵 *Receber:* ${formatCurrency(obraItem.valorReceber)}\n` +
+                     `⚒️ *Mão de Obra:* ${formatCurrency(obraItem.valorMaoObra)}\n` +
+                     `💳 *Forma de Pgto:* ${obraItem.formaPagamento || '---'}\n` +
+                     (obraItem.observacoes ? `\n📝 *Anotações:* ${obraItem.observacoes}` : '');
+            } else if (!isObra && servicoItem) {
+              text = `📋 *DADOS DO AGENDAMENTO (SERVIÇO DE MANUTENÇÃO)*\n\n` +
+                     `👤 *Cliente:* ${servicoItem.cliente}\n` +
+                     `🔢 *Registro:* #${servicoItem.numeroRegistro}\n` +
+                     `📍 *Endereço:* ${servicoItem.local || 'Não informado'}\n` +
+                     `💼 *Vendedor:* ${servicoItem.vendedor || '---'}\n` +
+                     `🛠️ *Equipe Serviço:* ${tempTeam || servicoItem.equipeServico || '---'}\n` +
+                     `📅 *Data do Serviço:* ${tempDate ? formatFullDateBR(tempDate) : formatFullDateBR(servicoItem.dataServico)}\n\n` +
+                     `⚡ *DETALHES DO SERVIÇO:*\n` +
+                     `🔧 *Serviço:* ${servicoItem.servico || '---'}\n` +
+                     `👷 *Instalado por:* ${servicoItem.equipeInstalou || '---'}\n` +
+                     `📊 *Prioridade:* ${servicoItem.prioridade || 'Média'}\n` +
+                     `📈 *Situação:* ${servicoItem.situacao || 'Pendente'}\n\n` +
+                     `💰 *FINANCEIRO:*\n` +
+                     `💵 *Valor:* ${formatCurrency(servicoItem.valor)}\n` +
+                     `💳 *Forma de Pgto:* ${servicoItem.formaPagamento || '---'}\n` +
+                     (servicoItem.observacao ? `\n📝 *Anotações:* ${servicoItem.observacao}` : '');
+            }
+
+            navigator.clipboard.writeText(text);
+            addToast("Dados formatados e copiados para o WhatsApp!");
+          };
+
+          return (
+            <div className="fixed inset-0 z-[200] flex items-center justify-center p-2 sm:p-4 overflow-y-auto bg-slate-900/60 backdrop-blur-md">
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setSelectedDetails(null)}
+                className="absolute inset-0"
+              />
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95, y: 15 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 15 }}
+                transition={{ type: 'spring', damping: 25, stiffness: 350 }}
+                className="relative w-full max-w-4xl bg-slate-50 rounded-3xl shadow-2xl overflow-hidden flex flex-col border border-slate-200 my-auto max-h-[92vh]"
+              >
+                {/* Visual Accent Header Banner */}
+                <div className={`p-6 pb-5 text-white relative overflow-hidden shrink-0 ${isObra ? 'bg-gradient-to-r from-indigo-700 via-indigo-600 to-indigo-800' : 'bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700'}`}>
+                  {/* Abstract background graphics */}
+                  <div className="absolute right-0 top-0 opacity-10 translate-x-20 -translate-y-20 select-none pointer-events-none">
+                    {isObra ? <Zap size={300} /> : <Wrench size={300} />}
                   </div>
 
-                  <div>
-                    <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Localização</span>
-                    <span className="text-sm font-medium text-slate-700 leading-relaxed">
-                      {selectedDetails.item.local || 'Não informado'}
-                    </span>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Vendedor</span>
-                      <span className="text-sm font-medium text-slate-700">{selectedDetails.item.vendedor}</span>
+                  <div className="flex items-start justify-between relative z-10">
+                    <div className="flex items-start gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center shrink-0 shadow-inner">
+                        {isObra ? <Zap size={28} className="text-amber-300" /> : <Wrench size={28} className="text-emerald-100" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                          <span className="text-[10px] uppercase font-black tracking-widest bg-white/20 px-2 py-0.5 rounded-md backdrop-blur-xs">
+                            {isObra ? 'Energia Solar' : 'Manutenção'}
+                          </span>
+                          <span className="text-xs font-mono font-bold bg-black/25 px-2 py-0.5 rounded-md text-white/90">
+                            REGISTRO #{item.numeroRegistro}
+                          </span>
+                        </div>
+                        <h2 className="text-2xl font-black tracking-tight leading-none text-white drop-shadow-xs">
+                          {item.cliente}
+                        </h2>
+                      </div>
                     </div>
-                    <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Valor Total</span>
-                      <span className="text-sm font-black text-slate-900 uppercase">
-                        R$ {selectedDetails.type === 'obra' 
-                          ? (selectedDetails.item as Obra).valorReceber?.toLocaleString('pt-BR') 
-                          : (selectedDetails.item as Servico).valor?.toLocaleString('pt-BR')}
-                      </span>
-                    </div>
+                    <button 
+                      onClick={() => setSelectedDetails(null)}
+                      className="p-2 bg-white/15 hover:bg-white/25 active:scale-95 text-white/95 hover:text-white rounded-xl transition-all border border-white/5"
+                    >
+                      <X size={20} />
+                    </button>
                   </div>
                 </div>
 
-                <div className="h-px bg-slate-100" />
-
-                {/* Section: Detalhes Técnicos */}
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">Especificações</h3>
+                {/* Main Body - 2 Columns Layout */}
+                <div className="p-4 sm:p-6 overflow-y-auto flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 max-h-[calc(92vh-18rem)]">
                   
-                  <div className="space-y-3">
-                    {selectedDetails.type === 'obra' ? (
-                      <>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-500">Inversor</span>
-                          <span className="font-semibold text-slate-700">{(selectedDetails.item as Obra).inversor || '---'}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-500">Módulos</span>
-                          <span className="font-semibold text-slate-700">{(selectedDetails.item as Obra).quantidadePlacas || 0} unidades</span>
-                        </div>
-                      </>
-                    ) : (
-                      <>
-                        <div className="flex flex-col gap-1">
-                          <span className="text-[10px] text-slate-400 font-bold uppercase">Serviço</span>
-                          <span className="text-sm font-medium text-slate-700">{(selectedDetails.item as Servico).servico || '---'}</span>
-                        </div>
-                        <div className="flex justify-between items-center text-sm">
-                          <span className="text-slate-500">Equipe de Instalação</span>
-                          <span className="font-semibold text-slate-700">{(selectedDetails.item as Servico).equipeInstalou || '---'}</span>
-                        </div>
-                      </>
-                    )}
+                  {/* COLUMN 1: Identificação, Informações Técnicas e Financeiras */}
+                  <div className="lg:col-span-7 space-y-6">
                     
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500">Equipe Responsável</span>
-                      <span className="text-indigo-600 font-bold uppercase text-xs tracking-wide">
-                        {selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).equipe : (selectedDetails.item as Servico).equipeServico}
-                      </span>
+                    {/* Panel: Dados Gerais */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <Users size={16} className="text-slate-400" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Dados do Cliente & Contato</h3>
+                      </div>
+
+                      <div className="space-y-3.5">
+                        <div className="flex items-start justify-between gap-4 bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                          <div className="flex gap-2.5 min-w-0">
+                            <MapPin size={18} className="text-indigo-500 shrink-0 mt-0.5" />
+                            <div className="min-w-0">
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Endereço da Instalação</span>
+                              <p className="text-xs font-bold text-slate-800 leading-normal break-words">
+                                {item.local || 'Endereço não cadastrado'}
+                              </p>
+                            </div>
+                          </div>
+                          {item.local && (
+                            <a 
+                              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.local)}`}
+                              target="_blank" 
+                              rel="noreferrer"
+                              className="flex items-center gap-1.5 bg-indigo-50 hover:bg-indigo-100 hover:text-indigo-700 text-indigo-600 px-3 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wider transition-all shadow-xs shrink-0 self-center border border-indigo-100/50"
+                            >
+                              <ExternalLink size={12} />
+                              Rota Maps
+                            </a>
+                          )}
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-full bg-slate-200 flex items-center justify-center text-slate-600 shrink-0">
+                              <User size={16} />
+                            </div>
+                            <div className="min-w-0">
+                              <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Vendedor</span>
+                              <span className="text-xs font-extrabold text-slate-700 truncate block">{item.vendedor || '---'}</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isObra ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {isObra ? <Zap size={16} /> : <Wrench size={16} />}
+                            </div>
+                            <div className="min-w-0">
+                              <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Categoria</span>
+                              <span className="text-xs font-extrabold text-slate-700 truncate block">
+                                {isObra ? 'Instalação Solar' : 'Manutenção'}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Badges for Status and Priority */}
+                        <div className="grid grid-cols-2 gap-4 pt-1">
+                          <div>
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status do Registro</span>
+                            <div className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-2 border ${
+                              item.situacao === 'Concluído' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
+                              item.situacao === 'Em Andamento' ? 'bg-blue-50 border-blue-100 text-blue-700' :
+                              item.situacao === 'Em Espera' ? 'bg-rose-50 border-rose-100 text-rose-700' :
+                              'bg-amber-50 border-amber-100 text-amber-700'
+                            }`}>
+                              <span className={`w-2 h-2 rounded-full ${
+                                item.situacao === 'Concluído' ? 'bg-emerald-500' :
+                                item.situacao === 'Em Andamento' ? 'bg-blue-500' :
+                                item.situacao === 'Em Espera' ? 'bg-rose-500' : 'bg-amber-500'
+                              }`} />
+                              <span>{item.situacao}</span>
+                            </div>
+                          </div>
+
+                          <div>
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Prioridade</span>
+                            <div className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-2 border ${
+                              item.prioridade === 'Alta' ? 'bg-red-50 border-red-100 text-red-700' :
+                              item.prioridade === 'Média' ? 'bg-amber-50 border-amber-100 text-amber-700' :
+                              'bg-slate-100 border-slate-200 text-slate-700'
+                            }`}>
+                              <span className={`w-1.5 h-1.5 rounded-full ${
+                                item.prioridade === 'Alta' ? 'bg-red-500' :
+                                item.prioridade === 'Média' ? 'bg-amber-500' : 'bg-slate-400'
+                              }`} />
+                              <span>Prioridade {item.prioridade || 'Média'}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
 
-                    <div className="flex justify-between items-center text-sm">
-                      <span className="text-slate-500">Status Atual</span>
-                      <span className={`text-[10px] font-black uppercase px-2 py-0.5 rounded ${
-                        selectedDetails.item.situacao === 'Concluído' ? 'text-emerald-600' :
-                        selectedDetails.item.situacao === 'Em Andamento' ? 'text-blue-600' :
-                        'text-amber-600'
-                      }`}>
-                        {selectedDetails.item.situacao}
-                      </span>
+                    {/* Panel: Especificações Técnicas */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <Wrench size={16} className="text-slate-400" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Especificações Técnicas</h3>
+                      </div>
+
+                      {isObra ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Módulos Solares (Painéis)</span>
+                            <div className="flex items-baseline gap-2 mt-2">
+                              <span className="text-3xl font-black text-slate-900 leading-none">{(obraItem as Obra).quantidadePlacas || 0}</span>
+                              <span className="text-xs font-bold text-slate-500">Unidades</span>
+                            </div>
+                            <div className="w-full bg-slate-200 h-1.5 rounded-full mt-3 overflow-hidden">
+                              <div className="bg-indigo-600 h-full rounded-full" style={{ width: `${Math.min(((obraItem as Obra).quantidadePlacas || 0) * 4, 100)}%` }} />
+                            </div>
+                          </div>
+
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 flex flex-col justify-between">
+                            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wide">Inversor Solar</span>
+                            <div className="mt-2 text-sm font-black text-slate-800">
+                              {(obraItem as Obra).inversor || 'Não especificado'}
+                            </div>
+                            <span className="text-[10px] text-slate-400 font-medium block mt-1">Homologado & Projetado</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <div className="bg-slate-50 p-4 rounded-xl border border-slate-100">
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Serviço Solicitado</span>
+                            <p className="text-sm font-bold text-slate-800 leading-relaxed mt-1">{(servicoItem as Servico).servico || 'Não especificado'}</p>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Equipe Originária</span>
+                              <p className="text-xs font-black text-slate-700 mt-1">{(servicoItem as Servico).equipeInstalou || 'Não cadastrada'}</p>
+                            </div>
+                            <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Equipe de Escala</span>
+                              <p className="text-xs font-black text-indigo-600 mt-1">{tempTeam || (servicoItem as Servico).equipeServico || 'Não programada'}</p>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
+
+                    {/* Panel: Detalhes Financeiros */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <DollarSign size={16} className="text-slate-400" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Financeiro & Pagamento</h3>
+                      </div>
+
+                      <div className="bg-slate-50 p-5 rounded-2xl border border-dashed border-slate-200 relative overflow-hidden">
+                        {/* Receipt style notches */}
+                        <div className="absolute -top-1.5 left-0 right-0 flex justify-between px-4 select-none pointer-events-none">
+                          {[...Array(12)].map((_, i) => (
+                            <div key={i} className="w-3 h-3 bg-white rounded-full border border-slate-200/80 -mt-1.5" />
+                          ))}
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+                          <div>
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Valor total bruto</span>
+                            <span className="text-2xl font-black text-slate-900 block mt-1 tracking-tight">
+                              {isObra && obraItem ? formatCurrency(obraItem.valorReceber) : servicoItem ? formatCurrency(servicoItem.valor) : '---'}
+                            </span>
+                          </div>
+
+                          {isObra && obraItem ? (
+                            <div>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mão de Obra Fornecedores</span>
+                              <span className="text-lg font-bold text-indigo-600 block mt-1.5">
+                                {formatCurrency(obraItem.valorMaoObra)}
+                              </span>
+                            </div>
+                          ) : (
+                            <div>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Situação Pagto</span>
+                              <span className="text-xs font-black text-slate-700 bg-slate-200/70 px-2.5 py-1 rounded-md block mt-1.5 inline-block uppercase">
+                                {item.situacaoPagamento || 'A Confirmar'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+
+                        <div className="h-px bg-slate-200 my-4" />
+
+                        <div className="flex flex-wrap justify-between items-center gap-2">
+                          <div>
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Forma de Pagamento</span>
+                            <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide block mt-0.5">
+                              {item.formaPagamento || 'Não informada'}
+                            </span>
+                          </div>
+                          {isObra && obraItem && (
+                            <div className="text-right">
+                              <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Situação Pagto</span>
+                              <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide block mt-0.5">
+                                {obraItem.situacaoPagamento || 'A Confirmar'}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
                   </div>
-                </div>
 
-                <div className="h-px bg-slate-100" />
+                  {/* COLUMN 2: Cronograma, Alterações Rápidas e Share */}
+                  <div className="lg:col-span-5 space-y-6">
 
-                {/* Section: Cronograma */}
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">Cronograma</h3>
-                  
-                  <div className="grid grid-cols-2 gap-y-4 gap-x-4">
-                    <div>
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Agendado</span>
-                      <span className="text-sm font-semibold text-slate-700">
-                        {(() => {
-                          const dateStr = selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).dataObra : (selectedDetails.item as Servico).dataServico;
-                          return dateStr ? new Date(dateStr).toLocaleDateString('pt-BR') : '---';
-                        })()}
-                      </span>
+                    {/* Panel: Cronograma Temporal */}
+                    <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 border-b border-slate-100 pb-3">
+                        <Calendar size={16} className="text-slate-400" />
+                        <h3 className="text-xs font-black uppercase tracking-wider text-slate-500">Rastreamento Temporal</h3>
+                      </div>
+
+                      <div className="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-slate-100">
+                        {isObra ? (
+                          <>
+                            {/* Step: Contrato */}
+                            <div className="relative">
+                              <span className={`absolute -left-[20px] top-1 w-[10px] h-[10px] rounded-full border-2 ${(obraItem as Obra).dataContrato ? 'bg-indigo-600 border-indigo-200' : 'bg-slate-300 border-white'}`} />
+                              <div>
+                                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Data do Contrato Assinado</span>
+                                <p className="text-xs font-extrabold text-slate-700 mt-0.5">{formatFullDateBR((obraItem as Obra).dataContrato)}</p>
+                              </div>
+                            </div>
+                            {/* Step: Chegada das placas */}
+                            <div className="relative">
+                              <span className={`absolute -left-[20px] top-1 w-[10px] h-[10px] rounded-full border-2 ${(obraItem as Obra).dataChegadaPlacas ? 'bg-indigo-500 border-indigo-200' : 'bg-slate-300 border-white'}`} />
+                              <div>
+                                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Chegada das Placas no Local</span>
+                                <p className="text-xs font-extrabold text-slate-700 mt-0.5">{formatFullDateBR((obraItem as Obra).dataChegadaPlacas)}</p>
+                              </div>
+                            </div>
+                            {/* Step: Agendamento Escala */}
+                            <div className="relative">
+                              <span className={`absolute -left-[20px] top-1.5 w-[10px] h-[10px] rounded-full border-2 ${(obraItem as Obra).dataObra ? 'bg-amber-500 border-amber-200' : 'bg-slate-300 border-white'}`} />
+                              <div>
+                                <span className="block text-[9px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">Agendado p/ Instalação <span className="px-1.5 py-0.2 bg-amber-100 text-amber-700 rounded text-[8px] font-black uppercase shadow-xs">Foco Escala</span></span>
+                                <p className="text-xs font-black text-slate-800 mt-0.5">
+                                  {tempDate ? formatFullDateBR(tempDate) : formatFullDateBR((obraItem as Obra).dataObra)}
+                                </p>
+                              </div>
+                            </div>
+                            {/* Step: Conclusão da Obra */}
+                            <div className="relative">
+                              <span className={`absolute -left-[20px] top-1 w-[10px] h-[10px] rounded-full border-2 ${(obraItem as Obra).dataConclusao ? 'bg-emerald-600 border-emerald-200 font-bold' : 'bg-slate-300 border-white'}`} />
+                              <div>
+                                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Conclusão de Auditoria / Homologação</span>
+                                <p className="text-xs font-semibold text-slate-700 mt-0.5">{formatFullDateBR((obraItem as Obra).dataConclusao)}</p>
+                              </div>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            {/* Step: Abertura Atendimento */}
+                            <div className="relative">
+                              <span className={`absolute -left-[20px] top-1 w-[10px] h-[10px] rounded-full border-2 ${(servicoItem as Servico).dataAtendimento ? 'bg-teal-600 border-teal-200' : 'bg-slate-300 border-white'}`} />
+                              <div>
+                                <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Data de Abertura / Cadastro</span>
+                                <p className="text-xs font-extrabold text-slate-700 mt-0.5">{formatFullDateBR((servicoItem as Servico).dataAtendimento)}</p>
+                              </div>
+                            </div>
+                            {/* Step: Agendamento Escala de Serviço */}
+                            <div className="relative">
+                              <span className={`absolute -left-[20px] top-1.5 w-[10px] h-[10px] rounded-full border-2 ${(servicoItem as Servico).dataServico ? 'bg-amber-500 border-amber-200' : 'bg-slate-300 border-white'}`} />
+                              <div>
+                                <span className="block text-[9px] font-bold text-amber-600 uppercase tracking-wider flex items-center gap-1">Agendado p/ Execução <span className="px-1.5 py-0.2 bg-amber-100 text-amber-700 rounded text-[8px] font-black uppercase shadow-xs">Foco Escala</span></span>
+                                <p className="text-xs font-black text-slate-800 mt-0.5">
+                                  {tempDate ? formatFullDateBR(tempDate) : formatFullDateBR((servicoItem as Servico).dataServico)}
+                                </p>
+                              </div>
+                            </div>
+                          </>
+                        )}
+                      </div>
                     </div>
 
-                    {selectedDetails.type === 'obra' && (
-                      <>
+                    {/* Panel: Alteração Rápida de Agendamento */}
+                    <div className="bg-indigo-50/50 p-5 rounded-2xl border border-indigo-100/80 shadow-xs space-y-4">
+                      <div className="flex items-center gap-2 border-b border-indigo-100 pb-2.5">
+                        <Clock size={16} className="text-indigo-500" />
+                        <h4 className="text-xs font-black uppercase tracking-wider text-indigo-700">Painel do Agendador</h4>
+                      </div>
+
+                      <div className="space-y-3.5">
                         <div>
-                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Chegada</span>
-                          <span className="text-sm font-semibold text-slate-700">
-                            {(selectedDetails.item as Obra).dataChegadaPlacas ? new Date((selectedDetails.item as Obra).dataChegadaPlacas).toLocaleDateString('pt-BR') : '---'}
-                          </span>
+                          <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                            Ajustar Data da Execução
+                          </label>
+                          <input 
+                            type="date" 
+                            value={tempDate}
+                            onChange={(e) => setTempDate(e.target.value)}
+                            className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
+                          />
                         </div>
+
                         <div>
-                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Contrato</span>
-                          <span className="text-sm font-semibold text-slate-700">
-                            {(selectedDetails.item as Obra).dataContrato ? new Date((selectedDetails.item as Obra).dataContrato).toLocaleDateString('pt-BR') : '---'}
-                          </span>
+                          <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                            Transferir para Equipe
+                          </label>
+                          <select 
+                            value={tempTeam}
+                            onChange={(e) => setTempTeam(e.target.value)}
+                            className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs h-[42px]"
+                          >
+                            <option value="">Nenhuma equipe</option>
+                            {teams.map(t => (
+                              <option key={t.id} value={t.name}>{t.name}</option>
+                            ))}
+                          </select>
                         </div>
-                        <div>
-                          <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Conclusão</span>
-                          <span className="text-sm font-semibold text-slate-700">
-                            {(selectedDetails.item as Obra).dataConclusao ? new Date((selectedDetails.item as Obra).dataConclusao).toLocaleDateString('pt-BR') : '---'}
-                          </span>
+
+                        <div className="grid grid-cols-2 gap-2.5 pt-1">
+                          <button
+                            onClick={handleUpdateSchedule}
+                            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] uppercase tracking-wider py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-indigo-200"
+                          >
+                            <Save size={12} />
+                            Reagendar
+                          </button>
+                          <button
+                            onClick={handleDuplicateItem}
+                            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-slate-200"
+                          >
+                            <Zap size={12} />
+                            Duplicar
+                          </button>
                         </div>
-                      </>
+                      </div>
+                    </div>
+
+                    {/* Panel: Observações & WhatsApp Dispatcher */}
+                    {(isObra ? obraItem?.observacoes : servicoItem?.observacao) && (
+                      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5">
+                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider border-l-2 border-amber-400 pl-2">Notas do Atendimento</span>
+                        <p className="text-xs text-slate-600 leading-relaxed italic border-l border-slate-100 pl-2.5 max-h-[120px] overflow-y-auto break-words">
+                          {isObra ? obraItem?.observacoes : servicoItem?.observacao}
+                        </p>
+                      </div>
                     )}
+
+                    {/* WhatsApp Quick Link Generator */}
+                    <button 
+                      onClick={handleCopyScheduleText}
+                      className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 hover:shadow-emerald-200 active:scale-[0.98]"
+                    >
+                      <Copy size={16} />
+                      Copiar Para WhatsApp
+                    </button>
+
                   </div>
                 </div>
 
-                {/* Section: Financeiro (Obra) */}
-                {selectedDetails.type === 'obra' && (
-                  <>
-                    <div className="h-px bg-slate-100" />
-                    <div className="space-y-3">
-                      <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">Financeiro</h3>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500">Mão de Obra</span>
-                        <span className="font-semibold text-slate-700">R$ {(selectedDetails.item as Obra).valorMaoObra?.toLocaleString('pt-BR')}</span>
-                      </div>
-                      <div className="flex justify-between items-center text-sm">
-                        <span className="text-slate-500">Pagamento</span>
-                        <span className="font-semibold text-slate-700 uppercase text-xs">{(selectedDetails.item as Obra).formaPagamento || '---'}</span>
-                      </div>
-                    </div>
-                  </>
-                )}
-
-                {/* Observation */}
-                {(selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).observacoes : (selectedDetails.item as Servico).observacao) && (
-                  <>
-                    <div className="h-px bg-slate-100" />
-                    <div className="space-y-2">
-                       <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notas Adicionais</span>
-                       <p className="text-xs text-slate-600 leading-relaxed italic border-l-2 border-amber-200 pl-3">
-                         {selectedDetails.type === 'obra' ? (selectedDetails.item as Obra).observacoes : (selectedDetails.item as Servico).observacao}
-                       </p>
-                    </div>
-                  </>
-                )}
-
-                {/* Section: Reschedule / Duplicate */}
-                <div className="h-px bg-slate-100" />
-                <div className="space-y-4">
-                  <h3 className="text-[10px] font-black text-slate-800 uppercase tracking-widest border-l-2 border-indigo-500 pl-2">
-                    Ações de Escala
-                  </h3>
-                  
-                  <div className="space-y-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Alterar Data
-                      </label>
-                      <input 
-                        type="date" 
-                        value={tempDate}
-                        onChange={(e) => setTempDate(e.target.value)}
-                        className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-[9px] font-bold text-slate-400 uppercase tracking-wider block">
-                        Alterar Equipe
-                      </label>
-                      <select 
-                        value={tempTeam}
-                        onChange={(e) => setTempTeam(e.target.value)}
-                        className="w-full text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none"
-                      >
-                        <option value="">Nenhuma equipe</option>
-                        {teams.map(t => (
-                          <option key={t.id} value={t.name}>{t.name}</option>
-                        ))}
-                      </select>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-2 pt-1.5">
-                      <button
-                        onClick={handleUpdateSchedule}
-                        className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-lg transition-all active:scale-95 shadow-sm"
-                      >
-                        <Calendar size={12} />
-                        Reagendar
-                      </button>
-                      <button
-                        onClick={handleDuplicateItem}
-                        className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-[10px] uppercase tracking-wider px-3 py-2 rounded-lg transition-all active:scale-95 shadow-sm"
-                      >
-                        <Zap size={12} />
-                        Duplicar
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Minimal Actions */}
-              <div className="p-4 bg-slate-50 flex items-center justify-between border-t border-slate-100 gap-2">
-                <button
-                  onClick={() => setSelectedDetails(null)}
-                  className="px-4 py-2 text-slate-400 hover:text-slate-600 transition-colors font-bold text-xs uppercase tracking-widest"
-                >
-                  Fechar
-                </button>
-                
-                <div className="flex items-center gap-2">
+                {/* Minimalist Footnotes / Actions */}
+                <div className="p-4 bg-slate-100 flex items-center justify-between border-t border-slate-200 shrink-0 gap-2 flex-wrap">
                   <button
-                    onClick={() => {
-                      if (selectedDetails.type === 'obra') {
-                        onEditObra?.(selectedDetails.item as Obra);
-                      } else {
-                        onEditServico?.(selectedDetails.item as Servico);
-                      }
-                      setSelectedDetails(null);
-                    }}
-                    className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-lg shadow-indigo-100 uppercase tracking-widest active:scale-95"
+                    onClick={() => setSelectedDetails(null)}
+                    className="px-5 h-11 rounded-xl text-slate-500 hover:bg-slate-200 hover:text-slate-700 transition-all font-bold text-xs uppercase tracking-wider"
                   >
-                    <Edit size={14} />
-                    Editar Cadastro
+                    Fechar Detalhes
                   </button>
                   
-                  {selectedDetails.item.txtFile && (
+                  <div className="flex items-center gap-2">
                     <button
                       onClick={() => {
-                        setViewingTxt(selectedDetails.item.txtFile || null);
+                        if (isObra) {
+                          onEditObra?.(obraItem!);
+                        } else {
+                          onEditServico?.(servicoItem!);
+                        }
                         setSelectedDetails(null);
                       }}
-                      className="flex items-center gap-1.5 px-4 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition-all shadow-lg shadow-slate-200 uppercase tracking-widest active:scale-95"
+                      className="flex items-center gap-1.5 px-5 h-11 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl font-bold text-xs transition-all shadow-md shadow-indigo-100 uppercase tracking-wider active:scale-95"
                     >
-                      <FileText size={14} />
-                      Detalhamento
+                      <Edit size={14} />
+                      Editar Ficha
                     </button>
-                  )}
+                    
+                    {item.txtFile && (
+                      <button
+                        onClick={() => {
+                          setViewingTxt(item.txtFile || null);
+                          setSelectedDetails(null);
+                        }}
+                        className="flex items-center gap-1.5 px-5 h-11 bg-slate-900 text-white rounded-xl font-bold text-xs hover:bg-black transition-all shadow-md shadow-slate-200 uppercase tracking-wider active:scale-95"
+                      >
+                        <FileText size={14} />
+                        Ficha Técnica .txt
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
+              </motion.div>
+            </div>
+          );
+        })()}
       </AnimatePresence>
 
       {/* TXT View Modal */}

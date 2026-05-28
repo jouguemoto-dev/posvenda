@@ -719,6 +719,7 @@ export default function App() {
       if (filtros.prioridade && obra.prioridade !== filtros.prioridade) return false;
       if (filtros.cliente && !obra.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
       if (filtros.vendedor && !obra.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.equipe && obra.equipe !== filtros.equipe) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfig;
@@ -765,6 +766,7 @@ export default function App() {
       if (filtros.prioridade && servico.prioridade !== filtros.prioridade) return false;
       if (filtros.cliente && !servico.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
       if (filtros.vendedor && !servico.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.equipe && servico.equipeServico !== filtros.equipe && servico.equipeInstalou !== filtros.equipe) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfigServicos;
@@ -2938,19 +2940,19 @@ export default function App() {
               <h2>Filtros</h2>
             </div>
             <button 
-              onClick={() => setFiltros({ situacao: '', prioridade: '', cliente: '', vendedor: '' })}
+              onClick={() => setFiltros({ situacao: '', prioridade: '', cliente: '', vendedor: '', equipe: '' })}
               className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
             >
               <X size={12} />
               Limpar
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
             <div className="space-y-1">
               <select 
                 value={filtros.situacao}
                 onChange={(e) => setFiltros(prev => ({ ...prev, situacao: e.target.value }))}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
               >
                 <option value="">Todas Situações</option>
                 <option value="Pendente">Pendente</option>
@@ -2962,7 +2964,7 @@ export default function App() {
               <select 
                 value={filtros.prioridade}
                 onChange={(e) => setFiltros(prev => ({ ...prev, prioridade: e.target.value }))}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
               >
                 <option value="">Todas Prioridades</option>
                 <option value="Alta">Alta</option>
@@ -2978,7 +2980,7 @@ export default function App() {
                   placeholder="Filtrar cliente..."
                   value={filtros.cliente}
                   onChange={(e) => setFiltros(prev => ({ ...prev, cliente: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
                 />
               </div>
             </div>
@@ -2988,8 +2990,20 @@ export default function App() {
                 placeholder="Filtrar vendedor..."
                 value={filtros.vendedor}
                 onChange={(e) => setFiltros(prev => ({ ...prev, vendedor: e.target.value }))}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
               />
+            </div>
+            <div className="space-y-1">
+              <select 
+                value={filtros.equipe}
+                onChange={(e) => setFiltros(prev => ({ ...prev, equipe: e.target.value }))}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
+              >
+                <option value="">Todas Equipes</option>
+                {[...equipes].sort((a, b) => a.nome.localeCompare(b.nome)).map((e) => (
+                  <option key={e.id} value={e.nome}>{e.nome}</option>
+                ))}
+              </select>
             </div>
           </div>
           {activeTab === 'obras' && (

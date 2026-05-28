@@ -38,6 +38,7 @@ interface Note {
   userId: string;
   userName: string;
   atendente?: string;
+  categoria?: 'Geral' | 'Instalação' | 'Financeiro' | 'Pós-Venda' | 'Cobrança' | 'Outros';
   createdAt: any;
   pinned?: boolean;
 }
@@ -63,6 +64,7 @@ const NotebookView: React.FC<{
   const [search, setSearch] = useState('');
   const [filterStatus, setFilterStatus] = useState<string>('Todos');
   const [filterAttendant, setFilterAttendant] = useState<string>('Todos');
+  const [filterCategory, setFilterCategory] = useState<string>('Todos');
   const [isCustomAttendant, setIsCustomAttendant] = useState(false);
   
   const [formData, setFormData] = useState({
@@ -70,7 +72,8 @@ const NotebookView: React.FC<{
     date: new Date().toISOString().split('T')[0],
     status: 'Pendente' as Note['status'],
     color: COLORS[0].bg,
-    atendente: user.name
+    atendente: user.name,
+    categoria: 'Geral' as Note['categoria']
   });
 
   // Firestore Listeners
@@ -100,6 +103,7 @@ const NotebookView: React.FC<{
           status: formData.status,
           color: formData.color,
           atendente: formData.atendente,
+          categoria: formData.categoria || 'Geral',
           updatedAt: serverTimestamp()
         });
       } else {
@@ -110,6 +114,7 @@ const NotebookView: React.FC<{
           status: formData.status,
           color: formData.color,
           atendente: formData.atendente,
+          categoria: formData.categoria || 'Geral',
           userId: auth.currentUser?.uid || user.id,
           userName: user.name,
           createdAt: serverTimestamp(),
@@ -124,7 +129,8 @@ const NotebookView: React.FC<{
         date: new Date().toISOString().split('T')[0],
         status: 'Pendente',
         color: COLORS[0].bg,
-        atendente: user.name
+        atendente: user.name,
+        categoria: 'Geral'
       });
     } catch (error) {
       console.error("Error saving note: ", error);
@@ -138,7 +144,8 @@ const NotebookView: React.FC<{
       date: new Date().toISOString().split('T')[0],
       status: 'Pendente',
       color: COLORS[0].bg,
-      atendente: user.name
+      atendente: user.name,
+      categoria: 'Geral'
     });
     setIsCustomAttendant(false);
     setIsFormOpen(true);
@@ -151,7 +158,8 @@ const NotebookView: React.FC<{
       date: note.date || new Date().toISOString().split('T')[0],
       status: note.status || 'Pendente',
       color: note.color || COLORS[0].bg,
-      atendente: note.atendente || note.userName || user.name
+      atendente: note.atendente || note.userName || user.name,
+      categoria: note.categoria || 'Geral'
     });
     const isCustom = !attendants.includes(note.atendente || '') && (note.atendente !== user.name);
     setIsCustomAttendant(isCustom);
@@ -208,9 +216,11 @@ const NotebookView: React.FC<{
       const currentAtendente = note.atendente || note.userName || '';
       const matchesAttendant = filterAttendant === 'Todos' || currentAtendente.toLowerCase() === filterAttendant.toLowerCase();
       
-      return matchesSearch && matchesStatus && matchesAttendant;
+      const matchesCategory = filterCategory === 'Todos' || (note.categoria || 'Geral') === filterCategory;
+      
+      return matchesSearch && matchesStatus && matchesAttendant && matchesCategory;
     });
-  }, [notes, search, filterStatus, filterAttendant]);
+  }, [notes, search, filterStatus, filterAttendant, filterCategory]);
 
   const sortedNotes = useMemo(() => {
     return [...filteredNotes].sort((a, b) => {
@@ -258,7 +268,7 @@ const NotebookView: React.FC<{
           <select 
             value={filterStatus}
             onChange={(e) => setFilterStatus(e.target.value)}
-            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xs"
           >
             <option value="Todos">Filtro: Todos Status</option>
             <option value="Pendente">Pendentes</option>
@@ -267,9 +277,23 @@ const NotebookView: React.FC<{
           </select>
 
           <select 
+            value={filterCategory}
+            onChange={(e) => setFilterCategory(e.target.value)}
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xs"
+          >
+            <option value="Todos">Filtro: Todas Categorias</option>
+            <option value="Geral">📂 Geral</option>
+            <option value="Instalação">🛠️ Instalação</option>
+            <option value="Financeiro">💰 Financeiro</option>
+            <option value="Pós-Venda">📞 Pós-Venda</option>
+            <option value="Cobrança">⚠️ Cobrança</option>
+            <option value="Outros">💡 Outros</option>
+          </select>
+
+          <select 
             value={filterAttendant}
             onChange={(e) => setFilterAttendant(e.target.value)}
-            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
+            className="bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 shadow-xs"
           >
             <option value="Todos">Filtro: Todos Atendentes</option>
             {uniqueAttendants.map(att => (
@@ -359,12 +383,12 @@ const NotebookView: React.FC<{
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data</label>
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Ref.</label>
                     <input 
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({...formData, date: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800 font-bold"
                     />
                   </div>
                   <div>
@@ -372,11 +396,26 @@ const NotebookView: React.FC<{
                     <select 
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value as Note['status']})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800"
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800 font-bold"
                     >
                       <option value="Pendente">Pendente</option>
                       <option value="Em Andamento">Em Andamento</option>
                       <option value="Concluído">Concluído</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Categoria</label>
+                    <select 
+                      value={formData.categoria}
+                      onChange={(e) => setFormData({...formData, categoria: e.target.value as Note['categoria']})}
+                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800 font-bold"
+                    >
+                      <option value="Geral">📂 Geral (Fatos / Avisos)</option>
+                      <option value="Instalação">🛠️ Instalação (Agendamento / Obras)</option>
+                      <option value="Financeiro">💰 Financeiro (Recebimentos / Caixa)</option>
+                      <option value="Pós-Venda">📞 Pós-Venda (Retornos / Atendimento)</option>
+                      <option value="Cobrança">⚠️ Cobrança (Pendências / Boletos)</option>
+                      <option value="Outros">💡 Outros</option>
                     </select>
                   </div>
                 </div>
@@ -457,7 +496,7 @@ const NotebookView: React.FC<{
       </AnimatePresence>
 
       {/* Notes Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
         {sortedNotes.map((note, index) => {
           const colorSet = COLORS.find(c => c.bg === note.color) || COLORS[0];
           
@@ -465,16 +504,32 @@ const NotebookView: React.FC<{
             <motion.div 
               layout
               key={note.id}
-              className={`${note.color} ${colorSet.border} border-t-4 ${colorSet.marker} p-5 rounded-2xl shadow-xs hover:shadow-md transition-all duration-300 group relative ${index % 2 === 0 ? 'rotate-[-0.50deg]' : 'rotate-[0.50deg]'} hover:rotate-0 hover:-translate-y-1`}
+              className={`${note.color} ${colorSet.border} border-t-4 ${colorSet.marker} p-5 rounded-2xl shadow-xs hover:shadow-lg transition-all duration-300 group relative ${index % 2 === 0 ? 'rotate-[-1deg]' : 'rotate-[1deg]'} hover:rotate-0 hover:-translate-y-1`}
             >
+              {/* Retro Paper Sticky Tape Accent */}
+              <div className="absolute -top-3 left-1/2 -translate-x-1/2 w-14 h-5.5 bg-white/40 backdrop-blur-[1px] rotate-[-2deg] shadow-3xs border-l border-r border-white/20 select-none pointer-events-none" style={{ mixBlendMode: 'soft-light' }} />
+
               {/* Note Header */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex items-center gap-2 px-2 py-0.5 bg-white/50 rounded-full border border-white/50 backdrop-blur-sm">
-                  <span className={`w-2 h-2 rounded-full ${
-                    note.status === 'Concluído' ? 'bg-emerald-500' : 
-                    note.status === 'Em Andamento' ? 'bg-blue-500' : 'bg-yellow-500'
-                  }`} />
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-tight">{note.status}</span>
+              <div className="flex items-start justify-between mb-3 pt-1">
+                <div className="flex flex-wrap items-center gap-1.5">
+                  <div className="flex items-center gap-1.5 px-2 py-0.5 bg-white/60 rounded-full border border-white/50 backdrop-blur-xs">
+                    <span className={`w-1.5 h-1.5 rounded-full ${
+                      note.status === 'Concluído' ? 'bg-emerald-500' : 
+                      note.status === 'Em Andamento' ? 'bg-blue-500' : 'bg-amber-500'
+                    }`} />
+                    <span className="text-[9px] font-black text-slate-700 uppercase tracking-tight">{note.status}</span>
+                  </div>
+
+                  <span className={`px-2 py-0.5 rounded-full text-[9px] font-black border uppercase tracking-tight ${
+                    note.categoria === 'Financeiro' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-800' :
+                    note.categoria === 'Instalação' ? 'bg-amber-500/10 border-amber-500/20 text-amber-800' :
+                    note.categoria === 'Pós-Venda' ? 'bg-indigo-500/10 border-indigo-500/20 text-indigo-800' :
+                    note.categoria === 'Cobrança' ? 'bg-rose-500/10 border-rose-500/20 text-rose-800' :
+                    note.categoria === 'Outros' ? 'bg-slate-500/10 border-slate-500/20 text-slate-800' :
+                    'bg-slate-500/10 border-slate-500/20 text-slate-800'
+                  }`}>
+                    {note.categoria || 'Geral'}
+                  </span>
                 </div>
 
                 <div className="flex items-center gap-1">
