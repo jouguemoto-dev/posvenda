@@ -45,18 +45,18 @@ service cloud.firestore {
 
     function isValidObra(data) {
       return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
-             data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
-             data.prioridade in ['Alta', 'Média', 'Baixa'] &&
-             (!('numeroRegistro' in data) || data.numeroRegistro is string) &&
+             data.numeroRegistro is string && data.numeroRegistro.size() > 0 && data.numeroRegistro.size() < 200 &&
+             data.situacao is string && data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
+             data.prioridade is string && data.prioridade in ['Alta', 'Média', 'Baixa'] &&
              (!('valorReceber' in data) || data.valorReceber is number) &&
              (!('quantidadePlacas' in data) || data.quantidadePlacas is number);
     }
 
     function isValidServico(data) {
       return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
-             data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
-             data.prioridade in ['Alta', 'Média', 'Baixa'] &&
-             (!('numeroRegistro' in data) || data.numeroRegistro is string) &&
+             data.numeroRegistro is string && data.numeroRegistro.size() > 0 && data.numeroRegistro.size() < 200 &&
+             data.situacao is string && data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
+             data.prioridade is string && data.prioridade in ['Alta', 'Média', 'Baixa'] &&
              (!('valor' in data) || data.valor is number);
     }
 

@@ -65,6 +65,7 @@ import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
 import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
 import NotebookView from './components/NotebookView';
+import DashboardView from './components/DashboardView';
 import MobilePWAInstall from './components/MobilePWAInstall';
 import PeriodoRelatorioModal from './components/PeriodoRelatorioModal';
 import { 
@@ -228,7 +229,7 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(USERS[0]);
-  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda' | 'notebook'>('obras');
+  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda' | 'notebook' | 'dashboard'>('obras');
   const [obras, setObras] = useState<Obra[]>([]);
   const [servicos, setServicos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
@@ -2719,6 +2720,14 @@ export default function App() {
                 handleServicoEdit(servico);
               }}
             />
+          ) : activeTab === 'dashboard' ? (
+            <DashboardView 
+              obras={obras}
+              servicos={servicos}
+              vendedores={vendedores}
+              equipes={equipes}
+              onBack={() => setActiveTab('obras')}
+            />
           ) : (
             <>
               {/* Header */}
@@ -2764,6 +2773,12 @@ export default function App() {
                 className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'notebook' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Bloco de Notas
+              </button>
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                Dashboard
               </button>
             </div>
 
@@ -3049,6 +3064,7 @@ export default function App() {
         {/* Main Content - Obras or Servicos */}
         {activeTab === 'obras' ? (
           <div className="space-y-8">
+
             {/* Section: Obras Agendadas (Highlighted) */}
             {!hideScheduledObras && (
               <section className="bg-white rounded-2xl shadow-lg border-2 border-indigo-500 overflow-hidden relative">
@@ -4418,14 +4434,14 @@ export default function App() {
 
 
             {/* Section: Pendentes */}
-            <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+            <section id="section-servicos-sem-data" className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
               <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
                 <h2 className="font-bold text-slate-700 flex items-center gap-2">
                   <Clock size={18} className="text-amber-500" />
-                  Serviços Pendentes
+                  Serviços Sem Data Prevista (Pendentes / Em Espera)
                 </h2>
                 <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
-                  {pendingServicos.length} aguardando
+                  {unscheduledServicosList.length} aguardando
                 </span>
               </div>
               <div className="overflow-x-auto scrollbar-hide">
@@ -4436,8 +4452,8 @@ export default function App() {
                         <input 
                           type="checkbox" 
                           className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                          checked={pendingServicos.length > 0 && pendingServicos.every(s => selectedIds.has(s.id))}
-                          onChange={() => toggleSelectAll(pendingServicos)}
+                          checked={unscheduledServicosList.length > 0 && unscheduledServicosList.every(s => selectedIds.has(s.id))}
+                          onChange={() => toggleSelectAll(unscheduledServicosList)}
                         />
                       </th>
                       <th 
@@ -4549,8 +4565,8 @@ export default function App() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     <AnimatePresence mode="popLayout">
-                      {pendingServicos.length > 0 ? (
-                        pendingServicos.map((servico) => (
+                      {unscheduledServicosList.length > 0 ? (
+                        unscheduledServicosList.map((servico) => (
                           <motion.tr 
                             key={servico.id}
                             layout
@@ -4561,7 +4577,9 @@ export default function App() {
                             className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                               servico.situacao === 'Em Espera'
                                 ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
-                                : 'bg-amber-50/20 border-l-4 border-amber-400'
+                                : servico.situacao === 'Pendente'
+                                ? 'bg-amber-50/20 border-l-4 border-amber-400'
+                                : 'bg-blue-50/20 border-l-4 border-blue-400'
                             } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
                           >
                             <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
@@ -4765,7 +4783,7 @@ export default function App() {
                       ) : (
                         <tr>
                           <td colSpan={15} className="px-6 py-10 text-center text-slate-400">
-                            Nenhum serviço pendente.
+                            Nenhum serviço sem data prevista.
                           </td>
                         </tr>
                       )}

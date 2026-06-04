@@ -26,7 +26,7 @@
         "createdBy": { "type": "string", "description": "UID do usuário que criou o registro." },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["cliente", "situacao", "prioridade"]
+      "required": ["cliente", "situacao", "prioridade", "numeroRegistro"]
     },
     "Servico": {
       "title": "Serviço",
@@ -50,7 +50,7 @@
         "createdBy": { "type": "string" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["cliente", "situacao", "prioridade"]
+      "required": ["cliente", "situacao", "prioridade", "numeroRegistro"]
     },
     "Vendedor": {
       "title": "Vendedor",

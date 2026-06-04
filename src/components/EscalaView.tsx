@@ -679,15 +679,27 @@ export default function EscalaView({
                                   >
                                     {o.cliente}
                                   </span>
-                                  {o.txtFile && (
+                                  <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
-                                      onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
-                                      className="p-0.5 text-indigo-500 hover:text-indigo-700 transition-colors flex-none"
-                                      title="Ver TXT"
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        onEditObra?.(o); 
+                                      }}
+                                      className="p-0.5 text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors"
+                                      title="Editar Registro"
                                     >
-                                      <FileText size={10} />
+                                      <Edit size={10} />
                                     </button>
-                                  )}
+                                    {o.txtFile && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
+                                        className="p-0.5 text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors"
+                                        title="Ver TXT"
+                                      >
+                                        <FileText size={10} />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -720,15 +732,27 @@ export default function EscalaView({
                                   >
                                     {s.cliente}
                                   </span>
-                                  {s.txtFile && (
+                                  <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
-                                      onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
-                                      className="p-0.5 text-blue-500 hover:text-blue-700 transition-colors flex-none"
-                                      title="Ver TXT"
+                                      onClick={(e) => { 
+                                        e.stopPropagation(); 
+                                        onEditServico?.(s); 
+                                      }}
+                                      className="p-0.5 text-blue-500 hover:text-blue-700 hover:bg-slate-100/50 rounded transition-colors"
+                                      title="Editar Registro"
                                     >
-                                      <FileText size={10} />
+                                      <Edit size={10} />
                                     </button>
-                                  )}
+                                    {s.txtFile && (
+                                      <button 
+                                        onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
+                                        className="p-0.5 text-blue-500 hover:text-blue-700 hover:bg-slate-100/50 rounded transition-colors"
+                                        title="Ver TXT"
+                                      >
+                                        <FileText size={10} />
+                                      </button>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             ))}
@@ -1060,12 +1084,29 @@ export default function EscalaView({
                         </h2>
                       </div>
                     </div>
-                    <button 
-                      onClick={() => setSelectedDetails(null)}
-                      className="p-2 bg-white/15 hover:bg-white/25 active:scale-95 text-white/95 hover:text-white rounded-xl transition-all border border-white/5"
-                    >
-                      <X size={20} />
-                    </button>
+                    <div className="flex items-center gap-2 shrink-0">
+                      <button 
+                        onClick={() => {
+                          if (isObra) {
+                            onEditObra?.(obraItem!);
+                          } else {
+                            onEditServico?.(servicoItem!);
+                          }
+                          setSelectedDetails(null);
+                        }}
+                        className="flex items-center gap-1.5 bg-white text-indigo-700 hover:bg-slate-100 font-extrabold text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all active:scale-95 shadow-sm"
+                        title="Editar Registro"
+                      >
+                        <Edit size={12} />
+                        Editar Registro
+                      </button>
+                      <button 
+                        onClick={() => setSelectedDetails(null)}
+                        className="p-2 bg-white/15 hover:bg-white/25 active:scale-95 text-white/95 hover:text-white rounded-xl transition-all border border-white/5"
+                      >
+                        <X size={20} />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
