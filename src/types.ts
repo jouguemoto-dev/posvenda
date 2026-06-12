@@ -95,6 +95,7 @@ export interface Filtros {
   cliente: string;
   vendedor: string;
   equipe: string;
+  formaPagamento?: string;
 }
 
 export interface TeamMember {

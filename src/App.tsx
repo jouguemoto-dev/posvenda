@@ -315,7 +315,8 @@ export default function App() {
     prioridade: '',
     cliente: '',
     vendedor: '',
-    equipe: ''
+    equipe: '',
+    formaPagamento: ''
   });
   const [filtrosArquivados, setFiltrosArquivados] = useState({
     cliente: '',
@@ -721,6 +722,7 @@ export default function App() {
       if (filtros.cliente && !obra.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
       if (filtros.vendedor && !obra.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
       if (filtros.equipe && obra.equipe !== filtros.equipe) return false;
+      if (filtros.formaPagamento && obra.formaPagamento !== filtros.formaPagamento) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfig;
@@ -733,7 +735,12 @@ export default function App() {
     });
   }, [obras, filtros, sortConfig]);
 
-  const activeObras = useMemo(() => filteredObras.filter(o => o.situacao !== 'Concluído'), [filteredObras]);
+  const activeObras = useMemo(() => {
+    if (filtros.situacao === 'Concluído') {
+      return filteredObras;
+    }
+    return filteredObras.filter(o => o.situacao !== 'Concluído');
+  }, [filteredObras, filtros.situacao]);
   const scheduledObras = useMemo(() => {
     if (hideScheduledObras) return [];
     return activeObras.filter(o => o.dataObra && o.dataObra !== '');
@@ -747,6 +754,15 @@ export default function App() {
   const archivedObras = useMemo(() => {
     return obras.filter(o => {
       if (o.situacao !== 'Concluído') return false;
+      
+      // Aplicar filtros principais se definidos
+      if (filtros.prioridade && o.prioridade !== filtros.prioridade) return false;
+      if (filtros.cliente && !o.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
+      if (filtros.vendedor && !o.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.equipe && o.equipe !== filtros.equipe) return false;
+      if (filtros.formaPagamento && o.formaPagamento !== filtros.formaPagamento) return false;
+
+      // Aplicar filtros específicos da seção de concluídas
       if (filtrosArquivados.cliente && !o.cliente.toLowerCase().includes(filtrosArquivados.cliente.toLowerCase())) return false;
       if (filtrosArquivados.vendedor && !o.vendedor.toLowerCase().includes(filtrosArquivados.vendedor.toLowerCase())) return false;
       return true;
@@ -759,7 +775,7 @@ export default function App() {
       if (valA > valB) return direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [obras, filtrosArquivados, sortConfig]);
+  }, [obras, filtros, filtrosArquivados, sortConfig]);
 
   const filteredServicos = useMemo(() => {
     return servicos.filter(servico => {
@@ -768,6 +784,7 @@ export default function App() {
       if (filtros.cliente && !servico.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
       if (filtros.vendedor && !servico.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
       if (filtros.equipe && servico.equipeServico !== filtros.equipe && servico.equipeInstalou !== filtros.equipe) return false;
+      if (filtros.formaPagamento && servico.formaPagamento !== filtros.formaPagamento) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfigServicos;
@@ -784,9 +801,11 @@ export default function App() {
   }, [servicos, filtros, sortConfigServicos]);
 
   const activeServicos = useMemo(() => {
-    return filteredServicos
-      .filter(s => s.situacao !== 'Concluído');
-  }, [filteredServicos]);
+    if (filtros.situacao === 'Concluído') {
+      return filteredServicos;
+    }
+    return filteredServicos.filter(s => s.situacao !== 'Concluído');
+  }, [filteredServicos, filtros.situacao]);
 
   const scheduledServicosList = useMemo(() => {
     if (hideScheduledServicos) return [];
@@ -809,6 +828,15 @@ export default function App() {
   const archivedServicos = useMemo(() => {
     return servicos.filter(s => {
       if (s.situacao !== 'Concluído') return false;
+
+      // Aplicar filtros principais se definidos
+      if (filtros.prioridade && s.prioridade !== filtros.prioridade) return false;
+      if (filtros.cliente && !s.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
+      if (filtros.vendedor && !s.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.equipe && s.equipeServico !== filtros.equipe && s.equipeInstalou !== filtros.equipe) return false;
+      if (filtros.formaPagamento && s.formaPagamento !== filtros.formaPagamento) return false;
+
+      // Aplicar filtros específicos da seção de concluídos
       if (filtrosArquivados.cliente && !s.cliente.toLowerCase().includes(filtrosArquivados.cliente.toLowerCase())) return false;
       if (filtrosArquivados.vendedor && !s.vendedor.toLowerCase().includes(filtrosArquivados.vendedor.toLowerCase())) return false;
       return true;
@@ -824,7 +852,7 @@ export default function App() {
       if (valA > valB) return direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [servicos, filtrosArquivados, sortConfigServicos]);
+  }, [servicos, filtros, filtrosArquivados, sortConfigServicos]);
 
   // Alarms and Reminders logic
   const localTodayStr = useMemo(() => {
@@ -2955,14 +2983,14 @@ export default function App() {
               <h2>Filtros</h2>
             </div>
             <button 
-              onClick={() => setFiltros({ situacao: '', prioridade: '', cliente: '', vendedor: '', equipe: '' })}
+              onClick={() => setFiltros({ situacao: '', prioridade: '', cliente: '', vendedor: '', equipe: '', formaPagamento: '' })}
               className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
             >
               <X size={12} />
               Limpar
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
             <div className="space-y-1">
               <select 
                 value={filtros.situacao}
@@ -2973,6 +3001,7 @@ export default function App() {
                 <option value="Pendente">Pendente</option>
                 <option value="Em Andamento">Em Andamento</option>
                 <option value="Em Espera">Em Espera</option>
+                <option value="Concluído">Concluído</option>
               </select>
             </div>
             <div className="space-y-1">
@@ -2991,7 +3020,7 @@ export default function App() {
               <div className="relative">
                 <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                 <input 
-                  type="text" 
+                   type="text" 
                   placeholder="Filtrar cliente..."
                   value={filtros.cliente}
                   onChange={(e) => setFiltros(prev => ({ ...prev, cliente: e.target.value }))}
@@ -3017,6 +3046,18 @@ export default function App() {
                 <option value="">Todas Equipes</option>
                 {[...equipes].sort((a, b) => a.nome.localeCompare(b.nome)).map((e) => (
                   <option key={e.id} value={e.nome}>{e.nome}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-1">
+              <select 
+                value={filtros.formaPagamento}
+                onChange={(e) => setFiltros(prev => ({ ...prev, formaPagamento: e.target.value }))}
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
+              >
+                <option value="">Tipo de Pagamento</option>
+                {formasPagamento.filter(f => f.ativo).map((f) => (
+                  <option key={f.id || f.nome} value={f.nome}>{f.nome}</option>
                 ))}
               </select>
             </div>
