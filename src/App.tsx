@@ -48,6 +48,8 @@ import {
   Trash,
   ArrowUp,
   ArrowDown,
+  ArrowLeft,
+  CalendarClock,
   Database,
   PlusCircle,
   ShieldCheck,
@@ -55,8 +57,7 @@ import {
   AlertTriangle,
   Bell,
   Volume2,
-  Sparkles,
-  CalendarClock
+  Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -84,6 +85,7 @@ import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
 import NotebookView from './components/NotebookView';
 import DashboardView from './components/DashboardView';
+import Proactive3DaysAlert from './components/Proactive3DaysAlert';
 import MobilePWAInstall from './components/MobilePWAInstall';
 import PeriodoRelatorioModal from './components/PeriodoRelatorioModal';
 import { 
@@ -247,8 +249,27 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(USERS[0]);
-  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda' | 'notebook' | 'dashboard'>('obras');
+  const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda' | 'notebook' | 'dashboard' | 'alertas'>('obras');
+
   const [obras, setObras] = useState<Obra[]>([]);
+
+  const upcoming3DaysCount = useMemo(() => {
+    if (!obras || obras.length === 0) return 0;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    return obras.filter(obra => {
+      if (!obra.dataObra || !/^\d{4}-\d{2}-\d{2}$/.test(obra.dataObra)) return false;
+      if (obra.situacao === 'Concluído') return false;
+
+      const [y, m, d] = obra.dataObra.split('-').map(Number);
+      const obraDate = new Date(y, m - 1, d);
+      obraDate.setHours(0, 0, 0, 0);
+
+      const diffDays = Math.round((obraDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      return diffDays >= 0 && diffDays <= 3;
+    }).length;
+  }, [obras]);
   const [servicos, setServicos] = useState<any[]>([]);
   const [vendedores, setVendedores] = useState<Vendedor[]>([]);
   const [equipes, setEquipes] = useState<Equipe[]>([]);
@@ -2851,7 +2872,49 @@ export default function App() {
               vendedores={vendedores}
               equipes={equipes}
               onBack={() => setActiveTab('obras')}
+              onSelectObra={(obra) => {
+                setSelectedObra(obra);
+                setIsDetailsModalOpen(true);
+              }}
             />
+          ) : activeTab === 'alertas' ? (
+            <div className="space-y-6">
+              <div className="flex items-center justify-between bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm">
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => setActiveTab('obras')}
+                    className="p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors"
+                    title="Voltar"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div>
+                    <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
+                      <CalendarClock className="text-amber-500" size={24} />
+                      Aba de Alertas (Próximos 3 Dias)
+                    </h2>
+                    <p className="text-xs text-slate-500 font-medium mt-0.5">
+                      Obras com instalações agendadas para hoje, amanhã ou nos próximos 3 dias.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setActiveTab('obras')}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all"
+                >
+                  Voltar para Início
+                </button>
+              </div>
+
+              <Proactive3DaysAlert 
+                obras={obras} 
+                onSelectObra={(obra) => {
+                  setSelectedObra(obra);
+                  setIsDetailsModalOpen(true);
+                }} 
+                formatDateBR={formatDateBR} 
+              />
+            </div>
           ) : (
             <>
               {/* Header */}
@@ -2867,42 +2930,54 @@ export default function App() {
           </div>
           
             {/* Tab Switcher */}
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200">
+            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 flex-wrap gap-1">
               <button 
                 onClick={() => setActiveTab('obras')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'obras' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'obras' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Obras
               </button>
               <button 
                 onClick={() => setActiveTab('servicos')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'servicos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'servicos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Agendamento de Serviço
               </button>
               <button 
                 onClick={() => setActiveTab('escala')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'escala' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'escala' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Escala Semanal
               </button>
               <button 
                 onClick={() => setActiveTab('posvenda')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'posvenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'posvenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Pós-Venda
               </button>
               <button 
                 onClick={() => setActiveTab('notebook')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'notebook' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'notebook' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Bloco de Notas
               </button>
               <button 
                 onClick={() => setActiveTab('dashboard')}
-                className={`px-4 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
               >
                 Dashboard
+              </button>
+              <button 
+                onClick={() => setActiveTab('alertas')}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'alertas' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                <CalendarClock size={14} className={activeTab === 'alertas' ? 'text-slate-950' : 'text-amber-500'} />
+                <span>Alertas 3 Dias</span>
+                {upcoming3DaysCount > 0 && (
+                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse">
+                    {upcoming3DaysCount}
+                  </span>
+                )}
               </button>
             </div>
 
@@ -3068,8 +3143,6 @@ export default function App() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Stats Grid - REMOVED AS PER REQUEST */}
 
         {/* Filters */}
         <section className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">

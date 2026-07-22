@@ -30,6 +30,7 @@ import {
   ResponsiveContainer 
 } from 'recharts';
 import { Obra, Servico, Equipe, Vendedor } from '../types';
+import Proactive3DaysAlert from './Proactive3DaysAlert';
 
 interface DashboardViewProps {
   obras: Obra[];
@@ -37,9 +38,10 @@ interface DashboardViewProps {
   equipes: Equipe[];
   vendedores: Vendedor[];
   onBack?: () => void;
+  onSelectObra?: (obra: Obra) => void;
 }
 
-export default function DashboardView({ obras, servicos, equipes, vendedores, onBack }: DashboardViewProps) {
+export default function DashboardView({ obras, servicos, equipes, vendedores, onBack, onSelectObra }: DashboardViewProps) {
   const [selectedSubTab, setSelectedSubTab] = useState<'geral' | 'obras' | 'servicos' | 'vendedores' | 'equipes'>('geral');
 
   // --- Filter states ---
@@ -386,6 +388,9 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
           ))}
         </div>
       </div>
+
+      {/* Proactive Automatic Check Alert (Next 3 Days) */}
+      <Proactive3DaysAlert obras={obras} onSelectObra={onSelectObra} />
 
       {/* FILTER CONTROL CARD */}
       <div className="bg-white rounded-2xl border border-slate-200 p-5 shadow-xs sm:space-y-4 space-y-3 relative overflow-hidden">
