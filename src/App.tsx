@@ -760,12 +760,43 @@ export default function App() {
     return { total, ativas, concluidas, emEspera, valorTotal };
   }, [obras]);
 
+  // Helper for real-time accent-insensitive search across multiple fields
+  const normalizeStr = (str: any) =>
+    String(str ?? '')
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '');
+
+  const matchesRealtimeSearch = (item: any, searchTerm: string) => {
+    if (!searchTerm || !searchTerm.trim()) return true;
+    const normTerm = normalizeStr(searchTerm.trim());
+
+    // Check multiple fields for instantaneous match
+    const fields = [
+      item.cliente,
+      item.numeroRegistro,
+      item.local,
+      item.vendedor,
+      item.inversor,
+      item.equipe,
+      item.equipeServico,
+      item.equipeInstalou,
+      item.observacoes,
+      item.observacao,
+      item.formaPagamento,
+      item.descricao,
+      item.tipoServico
+    ];
+
+    return fields.some(val => normalizeStr(val).includes(normTerm));
+  };
+
   const filteredObras = useMemo(() => {
     return obras.filter(obra => {
       if (filtros.situacao && obra.situacao !== filtros.situacao) return false;
       if (filtros.prioridade && obra.prioridade !== filtros.prioridade) return false;
-      if (filtros.cliente && !obra.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
-      if (filtros.vendedor && !obra.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.cliente && !matchesRealtimeSearch(obra, filtros.cliente)) return false;
+      if (filtros.vendedor && !normalizeStr(obra.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
       if (filtros.equipe && obra.equipe !== filtros.equipe) return false;
       if (filtros.formaPagamento && obra.formaPagamento !== filtros.formaPagamento) return false;
       return true;
@@ -802,14 +833,14 @@ export default function App() {
       
       // Aplicar filtros principais se definidos
       if (filtros.prioridade && o.prioridade !== filtros.prioridade) return false;
-      if (filtros.cliente && !o.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
-      if (filtros.vendedor && !o.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.cliente && !matchesRealtimeSearch(o, filtros.cliente)) return false;
+      if (filtros.vendedor && !normalizeStr(o.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
       if (filtros.equipe && o.equipe !== filtros.equipe) return false;
       if (filtros.formaPagamento && o.formaPagamento !== filtros.formaPagamento) return false;
 
       // Aplicar filtros específicos da seção de concluídas
-      if (filtrosArquivados.cliente && !o.cliente.toLowerCase().includes(filtrosArquivados.cliente.toLowerCase())) return false;
-      if (filtrosArquivados.vendedor && !o.vendedor.toLowerCase().includes(filtrosArquivados.vendedor.toLowerCase())) return false;
+      if (filtrosArquivados.cliente && !matchesRealtimeSearch(o, filtrosArquivados.cliente)) return false;
+      if (filtrosArquivados.vendedor && !normalizeStr(o.vendedor).includes(normalizeStr(filtrosArquivados.vendedor))) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfig;
@@ -826,8 +857,8 @@ export default function App() {
     return servicos.filter(servico => {
       if (filtros.situacao && servico.situacao !== filtros.situacao) return false;
       if (filtros.prioridade && servico.prioridade !== filtros.prioridade) return false;
-      if (filtros.cliente && !servico.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
-      if (filtros.vendedor && !servico.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.cliente && !matchesRealtimeSearch(servico, filtros.cliente)) return false;
+      if (filtros.vendedor && !normalizeStr(servico.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
       if (filtros.equipe && servico.equipeServico !== filtros.equipe && servico.equipeInstalou !== filtros.equipe) return false;
       if (filtros.formaPagamento && servico.formaPagamento !== filtros.formaPagamento) return false;
       return true;
@@ -876,14 +907,14 @@ export default function App() {
 
       // Aplicar filtros principais se definidos
       if (filtros.prioridade && s.prioridade !== filtros.prioridade) return false;
-      if (filtros.cliente && !s.cliente.toLowerCase().includes(filtros.cliente.toLowerCase())) return false;
-      if (filtros.vendedor && !s.vendedor.toLowerCase().includes(filtros.vendedor.toLowerCase())) return false;
+      if (filtros.cliente && !matchesRealtimeSearch(s, filtros.cliente)) return false;
+      if (filtros.vendedor && !normalizeStr(s.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
       if (filtros.equipe && s.equipeServico !== filtros.equipe && s.equipeInstalou !== filtros.equipe) return false;
       if (filtros.formaPagamento && s.formaPagamento !== filtros.formaPagamento) return false;
 
       // Aplicar filtros específicos da seção de concluídos
-      if (filtrosArquivados.cliente && !s.cliente.toLowerCase().includes(filtrosArquivados.cliente.toLowerCase())) return false;
-      if (filtrosArquivados.vendedor && !s.vendedor.toLowerCase().includes(filtrosArquivados.vendedor.toLowerCase())) return false;
+      if (filtrosArquivados.cliente && !matchesRealtimeSearch(s, filtrosArquivados.cliente)) return false;
+      if (filtrosArquivados.vendedor && !normalizeStr(s.vendedor).includes(normalizeStr(filtrosArquivados.vendedor))) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfigServicos;
@@ -3150,6 +3181,12 @@ export default function App() {
             <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
               <Filter size={16} />
               <h2>Filtros</h2>
+              {(filtros.situacao || filtros.prioridade || filtros.cliente || filtros.vendedor || filtros.equipe || filtros.formaPagamento) && (
+                <span className="ml-1 text-[11px] font-bold bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100/80 flex items-center gap-1 animate-fadeIn">
+                  <span>{activeTab === 'obras' ? activeObras.length : activeServicos.length}</span>
+                  <span>{activeTab === 'obras' ? (activeObras.length === 1 ? 'resultado' : 'resultados') : (activeServicos.length === 1 ? 'resultado' : 'resultados')}</span>
+                </span>
+              )}
             </div>
             <button 
               onClick={() => setFiltros({ situacao: '', prioridade: '', cliente: '', vendedor: '', equipe: '', formaPagamento: '' })}
@@ -3185,26 +3222,46 @@ export default function App() {
                 <option value="Baixa">Baixa</option>
               </select>
             </div>
-            <div className="space-y-1">
+            <div className="space-y-1 col-span-1 sm:col-span-2 lg:col-span-1">
               <div className="relative">
-                <Search size={12} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input 
-                   type="text" 
-                  placeholder="Filtrar cliente..."
+                  type="text" 
+                  placeholder="Pesquisar cliente, registro, local..."
                   value={filtros.cliente}
                   onChange={(e) => setFiltros(prev => ({ ...prev, cliente: e.target.value }))}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-8 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium transition-all"
                 />
+                {filtros.cliente && (
+                  <button
+                    onClick={() => setFiltros(prev => ({ ...prev, cliente: '' }))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 transition-colors"
+                    title="Limpar campo de pesquisa"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
               </div>
             </div>
             <div className="space-y-1">
-              <input 
-                type="text" 
-                placeholder="Filtrar vendedor..."
-                value={filtros.vendedor}
-                onChange={(e) => setFiltros(prev => ({ ...prev, vendedor: e.target.value }))}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
-              />
+              <div className="relative">
+                <input 
+                  type="text" 
+                  placeholder="Filtrar vendedor..."
+                  value={filtros.vendedor}
+                  onChange={(e) => setFiltros(prev => ({ ...prev, vendedor: e.target.value }))}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium transition-all"
+                />
+                {filtros.vendedor && (
+                  <button
+                    onClick={() => setFiltros(prev => ({ ...prev, vendedor: '' }))}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-200/60 transition-colors"
+                    title="Limpar vendedor"
+                  >
+                    <X size={12} />
+                  </button>
+                )}
+              </div>
             </div>
             <div className="space-y-1">
               <select 
