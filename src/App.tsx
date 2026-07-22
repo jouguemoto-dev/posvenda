@@ -54,14 +54,32 @@ import {
   Table,
   AlertTriangle,
   Bell,
-  Volume2
+  Volume2,
+  Sparkles,
+  CalendarClock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Obra, Servico, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule, Lembrete } from './types';
-import { auth, db, googleProvider, signInWithPopup, signOut } from './firebase';
+import { 
+  generateObraGCalUrl, 
+  generateServicoGCalUrl, 
+  buildObraGCalTitle, 
+  buildServicoGCalTitle, 
+  autoCreateGoogleCalendarEvent 
+} from './lib/googleCalendar';
+import { 
+  auth, 
+  db, 
+  googleProvider, 
+  signInWithPopup, 
+  signOut, 
+  getGoogleAccessToken, 
+  setGoogleAccessToken 
+} from './firebase';
+import { GoogleAuthProvider } from 'firebase/auth';
 import EscalaView from './components/EscalaView';
 import PosVendaView from './components/PosVendaView';
 import NotebookView from './components/NotebookView';
@@ -262,6 +280,12 @@ export default function App() {
   const [editingLembreteId, setEditingLembreteId] = useState<string | null>(null);
   const [showLembretesBanner, setShowLembretesBanner] = useState(true);
   const [hasPlayedTodayChime, setHasPlayedTodayChime] = useState(false);
+  const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+  const addToast = (msg: string) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(null), 4500);
+  };
   
   const [obraToDelete, setObraToDelete] = useState<number | null>(null);
   const [servicoToDelete, setServicoToDelete] = useState<number | null>(null);
@@ -1182,6 +1206,44 @@ export default function App() {
     setServicoFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const triggerAutoGoogleCalendar = async (type: 'obra' | 'servico', item: any) => {
+    const isObra = type === 'obra';
+    const dateStr = isObra ? item.dataObra : item.dataServico;
+    if (!dateStr) return;
+
+    const title = isObra 
+      ? buildObraGCalTitle(item as Obra) 
+      : buildServicoGCalTitle(item as Servico);
+
+    const details = isObra 
+      ? `👤 Cliente: ${item.cliente}\n🔢 Registro: #${item.numeroRegistro}\n🛠️ Equipe: ${item.equipe || 'Sem Equipe'}\n☀️ Placas: ${item.quantidadePlacas || 0} módulos\n📍 Endereço: ${item.local || 'Não informado'}\n📝 Obs: ${item.observacoes || ''}`
+      : `👤 Cliente: ${item.cliente}\n🔢 Registro: #${item.numeroRegistro}\n🛠️ Equipe: ${item.equipeServico || item.equipeInstalou || 'Sem Equipe'}\n🔧 Serviço: ${item.servico || ''}\n📍 Endereço: ${item.local || 'Não informado'}\n📝 Obs: ${item.observacao || ''}`;
+
+    const token = getGoogleAccessToken();
+    const gcalUrl = isObra 
+      ? generateObraGCalUrl(item as Obra) 
+      : generateServicoGCalUrl(item as Servico);
+
+    if (token) {
+      const res = await autoCreateGoogleCalendarEvent({
+        title,
+        details,
+        location: item.local || '',
+        startDateStr: dateStr
+      }, token);
+
+      if (res.success) {
+        addToast(`📅 Agendamento "${title}" incluído no Google Agenda!`);
+        return;
+      }
+    }
+
+    if (gcalUrl) {
+      window.open(gcalUrl, '_blank');
+      addToast(`📅 Agendamento "${title}" gerado! Abrindo Google Agenda...`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -1230,8 +1292,11 @@ export default function App() {
           createdAt: serverTimestamp(),
         });
       }
-      if (obraData.dataObra && obraData.equipe) {
-        await syncToWeeklySchedule(obraData.dataObra, obraData.equipe, obraData.cliente, 'Obra');
+      if (obraData.dataObra) {
+        if (obraData.equipe) {
+          await syncToWeeklySchedule(obraData.dataObra, obraData.equipe, obraData.cliente, 'Obra');
+        }
+        triggerAutoGoogleCalendar('obra', obraData);
       }
       resetForm();
     } catch (error) {
@@ -1280,9 +1345,12 @@ export default function App() {
           createdAt: serverTimestamp(),
         });
       }
-      const teamToSync = servicoData.equipeServico || servicoData.equipeInstalou;
-      if (servicoData.dataServico && teamToSync) {
-        await syncToWeeklySchedule(servicoData.dataServico, teamToSync, servicoData.cliente, servicoData.servico);
+      if (servicoData.dataServico) {
+        const teamToSync = servicoData.equipeServico || servicoData.equipeInstalou;
+        if (teamToSync) {
+          await syncToWeeklySchedule(servicoData.dataServico, teamToSync, servicoData.cliente, servicoData.servico);
+        }
+        triggerAutoGoogleCalendar('servico', servicoData);
       }
       resetServicoForm();
     } catch (error) {
@@ -1490,9 +1558,30 @@ export default function App() {
       if (finalDatePrev && finalTeam) {
         await syncToWeeklySchedule(finalDatePrev, finalTeam, obraToUpdate.cliente);
       }
+      if (field === 'dataObra' && value) {
+        triggerAutoGoogleCalendar('obra', { ...obraToUpdate, ...updatedData });
+      }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `obras/${obraToUpdate.firebaseId}`);
     }
+  };
+
+  const handleGenerateInstallationDate25DaysContrato = async (obra: Obra, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!obra.dataContrato) return;
+    
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(obra.dataContrato)) return;
+
+    const [y, m, d] = obra.dataContrato.split('-').map(Number);
+    const dateObj = new Date(y, m - 1, d);
+    dateObj.setDate(dateObj.getDate() + 25);
+    
+    const yearStr = dateObj.getFullYear();
+    const monthStr = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const dayStr = String(dateObj.getDate()).padStart(2, '0');
+    const newDateStr = `${yearStr}-${monthStr}-${dayStr}`;
+
+    await updateObraQuick(obra.id, 'dataObra', newDateStr);
   };
 
   const updateServicoQuick = async (id: number, field: string, value: any) => {
@@ -1509,6 +1598,9 @@ export default function App() {
       const finalTeamInst = field === 'equipeInstalou' ? value : servicoToUpdate.equipeInstalou;
       if (finalDateServ && finalTeamInst) {
         await syncToWeeklySchedule(finalDateServ, finalTeamInst, servicoToUpdate.cliente);
+      }
+      if (field === 'dataServico' && value) {
+        triggerAutoGoogleCalendar('servico', { ...servicoToUpdate, ...updatedData });
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `servicos/${servicoToUpdate.firebaseId}`);
@@ -2659,7 +2751,11 @@ export default function App() {
   const handleLogin = async () => {
     setAuthError(null);
     try {
-      await signInWithPopup(auth, googleProvider);
+      const res = await signInWithPopup(auth, googleProvider);
+      const credential = GoogleAuthProvider.credentialFromResult(res);
+      if (credential?.accessToken) {
+        setGoogleAccessToken(credential.accessToken);
+      }
     } catch (error: any) {
       console.error("Erro ao fazer login", error);
       if (error.code === 'auth/unauthorized-domain') {
@@ -3223,8 +3319,8 @@ export default function App() {
                         {scheduledObras.length > 0 ? (
                           scheduledObras.map((obra) => (
                             <motion.tr 
-                              key={obra.id}
                               layout
+                              key={obra.id}
                               initial={{ opacity: 0 }}
                               animate={{ opacity: 1 }}
                               exit={{ opacity: 0 }}
@@ -6432,6 +6528,23 @@ export default function App() {
                   )}
                 </div>
                 <div className="flex items-center gap-3">
+                  {(selectedObra?.dataObra || selectedServico?.dataServico) && (
+                    <button 
+                      onClick={() => {
+                        const url = selectedObra 
+                          ? generateObraGCalUrl(selectedObra)
+                          : selectedServico 
+                          ? generateServicoGCalUrl(selectedServico)
+                          : '';
+                        if (url) window.open(url, '_blank');
+                      }}
+                      className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 flex items-center gap-2"
+                      title="Anexar este agendamento ao Google Agenda"
+                    >
+                      <CalendarClock size={16} />
+                      Google Agenda
+                    </button>
+                  )}
                   <button 
                     onClick={() => { setIsDetailsModalOpen(false); setSelectedObra(null); setSelectedServico(null); }}
                     className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all"
@@ -6810,6 +6923,21 @@ export default function App() {
               </div>
             </motion.div>
           </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toastMessage && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md max-w-md"
+          >
+            <CalendarClock className="text-blue-400 shrink-0" size={20} />
+            <span className="text-sm font-semibold">{toastMessage}</span>
+          </motion.div>
         )}
       </AnimatePresence>
     </div>

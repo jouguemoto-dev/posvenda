@@ -30,10 +30,12 @@ import {
   Zap,
   Copy,
   ExternalLink,
-  User
+  User,
+  CalendarClock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
+import { generateObraGCalUrl, generateServicoGCalUrl } from '../lib/googleCalendar';
 import { 
   collection, 
   onSnapshot, 
@@ -88,6 +90,20 @@ const COLORS = [
 
 const BASE_DATE = new Date(2026, 3, 6); // April 6, 2026 is a Monday
 
+const formatDateBR = (dateStr: string | undefined | null): string => {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '---';
+  const [y, m, d] = dateStr.split('-');
+  return `${d}/${m}/${y}`;
+};
+
+const getDayOfWeek = (dateStr: string | undefined | null): string => {
+  if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return '';
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dateObj = new Date(y, m - 1, d);
+  const day = dateObj.toLocaleDateString('pt-BR', { weekday: 'long' });
+  return day.charAt(0).toUpperCase() + day.slice(1);
+};
+
 interface EscalaViewProps {
   onBack?: () => void;
   obras?: Obra[];
@@ -117,6 +133,7 @@ export default function EscalaView({
   const [selectedDetails, setSelectedDetails] = useState<{type: 'obra' | 'servico', item: Obra | Servico} | null>(null);
   const [tempDate, setTempDate] = useState('');
   const [tempTeam, setTempTeam] = useState('');
+  const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
 
   useEffect(() => {
     if (selectedDetails) {
@@ -520,19 +537,27 @@ export default function EscalaView({
           </button>
         </div>
 
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <button 
+            onClick={() => setIsGCalModalOpen(true)}
+            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-2xl font-bold shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95 text-xs sm:text-sm"
+            title="Anexar escala semanal no Google Agenda"
+          >
+            <CalendarClock size={18} />
+            Google Agenda
+          </button>
           <button 
             onClick={() => setIsTeamModalOpen(true)}
-            className="flex items-center gap-2 bg-white text-[#1e2f3e] px-5 py-2.5 rounded-2xl font-bold shadow-sm border border-slate-200 hover:bg-slate-50 transition-all"
+            className="flex items-center gap-2 bg-white text-[#1e2f3e] px-4 py-2.5 rounded-2xl font-bold shadow-sm border border-slate-200 hover:bg-slate-50 transition-all text-xs sm:text-sm"
           >
-            <Users size={20} />
+            <Users size={18} />
             Gerenciar Equipes
           </button>
           <button 
             onClick={exportPDF}
-            className="flex items-center gap-2 bg-[#2c7da0] text-white px-5 py-2.5 rounded-2xl font-bold shadow-lg shadow-[#2c7da0]/20 hover:bg-[#256a8a] transition-all"
+            className="flex items-center gap-2 bg-[#2c7da0] text-white px-4 py-2.5 rounded-2xl font-bold shadow-lg shadow-[#2c7da0]/20 hover:bg-[#256a8a] transition-all text-xs sm:text-sm"
           >
-            <Download size={20} />
+            <Download size={18} />
             Exportar PDF
           </button>
         </div>
@@ -681,6 +706,17 @@ export default function EscalaView({
                                   </span>
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const url = generateObraGCalUrl(o, fullDate, team.name);
+                                        if (url) window.open(url, '_blank');
+                                      }}
+                                      className="p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded transition-colors"
+                                      title="Anexar ao Google Agenda"
+                                    >
+                                      <CalendarClock size={10} />
+                                    </button>
+                                    <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
                                         onEditObra?.(o); 
@@ -733,6 +769,17 @@ export default function EscalaView({
                                     {s.cliente}
                                   </span>
                                   <div className="flex items-center gap-0.5 flex-none select-none">
+                                    <button 
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        const url = generateServicoGCalUrl(s, fullDate, team.name);
+                                        if (url) window.open(url, '_blank');
+                                      }}
+                                      className="p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded transition-colors"
+                                      title="Anexar ao Google Agenda"
+                                    >
+                                      <CalendarClock size={10} />
+                                    </button>
                                     <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
@@ -1458,14 +1505,36 @@ export default function EscalaView({
                       </div>
                     )}
 
-                    {/* WhatsApp Quick Link Generator */}
-                    <button 
-                      onClick={handleCopyScheduleText}
-                      className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 hover:shadow-emerald-200 active:scale-[0.98]"
-                    >
-                      <Copy size={16} />
-                      Copiar Para WhatsApp
-                    </button>
+                    {/* Calendar & WhatsApp Quick Link Generators */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => {
+                          const url = isObra && obraItem 
+                            ? generateObraGCalUrl(obraItem, tempDate, tempTeam)
+                            : servicoItem 
+                            ? generateServicoGCalUrl(servicoItem, tempDate, tempTeam)
+                            : '';
+                          if (url) {
+                            window.open(url, '_blank');
+                            addToast("Abrindo Google Agenda...");
+                          } else {
+                            addToast("Informe uma data de agendamento.");
+                          }
+                        }}
+                        className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-200 active:scale-[0.98]"
+                      >
+                        <CalendarClock size={18} />
+                        Anexar no Google Agenda
+                      </button>
+
+                      <button 
+                        onClick={handleCopyScheduleText}
+                        className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs uppercase tracking-widest rounded-2xl flex items-center justify-center gap-2 transition-all shadow-lg shadow-emerald-100 hover:shadow-emerald-200 active:scale-[0.98]"
+                      >
+                        <Copy size={16} />
+                        Copiar Para WhatsApp
+                      </button>
+                    </div>
 
                   </div>
                 </div>
@@ -1566,6 +1635,152 @@ export default function EscalaView({
                 >
                   <Download size={18} />
                   Baixar Arquivo .txt
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Google Agenda Weekly Modal */}
+      <AnimatePresence>
+        {isGCalModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsGCalModalOpen(false)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+            >
+              <div className="p-6 bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 text-white flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-3 bg-white/15 rounded-2xl backdrop-blur-md">
+                    <CalendarClock size={28} />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-black leading-tight">Anexar Escala no Google Agenda</h2>
+                    <p className="text-xs text-blue-100 font-medium">
+                      Semana: {formatDateBR(weekRange.startStr)} até {formatDateBR(weekRange.endStr)}
+                    </p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => setIsGCalModalOpen(false)} 
+                  className="hover:bg-white/10 p-2 rounded-xl transition-colors"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-6 overflow-y-auto bg-slate-50 flex-1 space-y-4">
+                {(() => {
+                  const weekObras = obras.filter(o => o.dataObra && o.dataObra >= weekRange.startStr && o.dataObra <= weekRange.endStr);
+                  const weekServicos = servicos.filter(s => s.dataServico && s.dataServico >= weekRange.startStr && s.dataServico <= weekRange.endStr);
+
+                  const allItems = [
+                    ...weekObras.map(o => ({ type: 'obra' as const, item: o, date: o.dataObra, team: o.equipe })),
+                    ...weekServicos.map(s => ({ type: 'servico' as const, item: s, date: s.dataServico, team: s.equipeServico }))
+                  ].sort((a, b) => a.date.localeCompare(b.date));
+
+                  if (allItems.length === 0) {
+                    return (
+                      <div className="text-center py-12 bg-white rounded-2xl border border-slate-200/80 p-8">
+                        <Calendar size={48} className="mx-auto text-slate-300 mb-3" />
+                        <h3 className="text-base font-bold text-slate-700">Nenhum agendamento nesta semana</h3>
+                        <p className="text-xs text-slate-400 mt-1">
+                          Nenhuma obra ou serviço possui data agendada entre {formatDateBR(weekRange.startStr)} e {formatDateBR(weekRange.endStr)}.
+                        </p>
+                      </div>
+                    );
+                  }
+
+                  return (
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between px-1">
+                        <span className="text-xs font-black uppercase tracking-wider text-slate-500">
+                          {allItems.length} {allItems.length === 1 ? 'Agendamento Encontrado' : 'Agendamentos Encontrados'}
+                        </span>
+                        <button
+                          onClick={() => {
+                            allItems.forEach(({ type, item, date, team }) => {
+                              const url = type === 'obra' 
+                                ? generateObraGCalUrl(item as Obra, date, team)
+                                : generateServicoGCalUrl(item as Servico, date, team);
+                              if (url) window.open(url, '_blank');
+                            });
+                          }}
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-xl font-bold text-xs transition-colors border border-blue-100"
+                        >
+                          <ExternalLink size={14} />
+                          Abrir Todos no Google Agenda
+                        </button>
+                      </div>
+
+                      {allItems.map(({ type, item, date, team }, idx) => {
+                        const isObra = type === 'obra';
+                        const url = isObra 
+                          ? generateObraGCalUrl(item as Obra, date, team)
+                          : generateServicoGCalUrl(item as Servico, date, team);
+
+                        return (
+                          <div 
+                            key={idx} 
+                            className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs hover:border-blue-200 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+                          >
+                            <div className="space-y-1">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
+                                  isObra ? 'bg-indigo-100 text-indigo-700' : 'bg-teal-100 text-teal-700'
+                                }`}>
+                                  {isObra ? 'Instalação Solar' : 'Serviço Manutenção'}
+                                </span>
+                                <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-md">
+                                  {formatDateBR(date)} ({getDayOfWeek(date)})
+                                </span>
+                                <span className="text-xs font-bold text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                  Equipe: {team || 'Sem Equipe'}
+                                </span>
+                              </div>
+                              <h4 className="text-sm font-black text-slate-900">{item.cliente}</h4>
+                              <p className="text-xs text-slate-500 flex items-center gap-1">
+                                <MapPin size={12} className="text-slate-400 shrink-0" />
+                                {item.local || 'Sem endereço informado'}
+                              </p>
+                            </div>
+
+                            <button
+                              onClick={() => {
+                                if (url) {
+                                  window.open(url, '_blank');
+                                  addToast(`Anexando ${item.cliente} no Google Agenda...`);
+                                }
+                              }}
+                              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs rounded-xl shadow-md shadow-blue-200 transition-all active:scale-95 shrink-0"
+                            >
+                              <CalendarClock size={16} />
+                              Anexar
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              <div className="p-4 bg-white border-t border-slate-100 flex justify-end">
+                <button
+                  onClick={() => setIsGCalModalOpen(false)}
+                  className="px-6 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors"
+                >
+                  Fechar
                 </button>
               </div>
             </motion.div>
