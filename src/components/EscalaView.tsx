@@ -315,6 +315,40 @@ export default function EscalaView({
     }
   };
 
+  const handleQuickStatusChangeObra = async (obra: Obra, newStatus: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const targetId = obra.firebaseId || (obra as any).id;
+    if (!targetId) return;
+    try {
+      const docRef = doc(db, 'obras', targetId);
+      await updateDoc(docRef, {
+        situacao: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      addToast(`Status de "${obra.cliente}" alterado para "${newStatus}"`);
+    } catch (err) {
+      console.error("Erro ao alterar status da obra:", err);
+      addToast("❌ Erro ao atualizar status da obra.");
+    }
+  };
+
+  const handleQuickStatusChangeServico = async (servico: Servico, newStatus: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    const targetId = servico.firebaseId || (servico as any).id;
+    if (!targetId) return;
+    try {
+      const docRef = doc(db, 'servicos', targetId);
+      await updateDoc(docRef, {
+        situacao: newStatus,
+        updatedAt: serverTimestamp()
+      });
+      addToast(`Status de "${servico.cliente}" alterado para "${newStatus}"`);
+    } catch (err) {
+      console.error("Erro ao alterar status do serviço:", err);
+      addToast("❌ Erro ao atualizar status do serviço.");
+    }
+  };
+
   const handleDuplicateItem = async () => {
     if (!selectedDetails) return;
     const { type, item } = selectedDetails;
@@ -706,6 +740,17 @@ export default function EscalaView({
                                   </span>
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
+                                      onClick={(e) => handleQuickStatusChangeObra(o, o.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
+                                      className={`px-1 py-0.5 rounded transition-all flex items-center gap-0.5 font-bold ${
+                                        o.situacao === 'Concluído'
+                                          ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200 ring-1 ring-emerald-300'
+                                          : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 bg-white'
+                                      }`}
+                                      title={o.situacao === 'Concluído' ? 'Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
+                                    >
+                                      <Check size={10} className={o.situacao === 'Concluído' ? 'stroke-[3]' : 'stroke-[2.5]'} />
+                                    </button>
+                                    <button 
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const url = generateObraGCalUrl(o, fullDate, team.name);
@@ -769,6 +814,17 @@ export default function EscalaView({
                                     {s.cliente}
                                   </span>
                                   <div className="flex items-center gap-0.5 flex-none select-none">
+                                    <button 
+                                      onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
+                                      className={`px-1 py-0.5 rounded transition-all flex items-center gap-0.5 font-bold ${
+                                        s.situacao === 'Concluído'
+                                          ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200 ring-1 ring-emerald-300'
+                                          : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 bg-white'
+                                      }`}
+                                      title={s.situacao === 'Concluído' ? 'Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
+                                    >
+                                      <Check size={10} className={s.situacao === 'Concluído' ? 'stroke-[3]' : 'stroke-[2.5]'} />
+                                    </button>
                                     <button 
                                       onClick={(e) => {
                                         e.stopPropagation();
@@ -1132,6 +1188,27 @@ export default function EscalaView({
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
+                      <button
+                        onClick={async () => {
+                          const nextStatus = item.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído';
+                          if (isObra) {
+                            await handleQuickStatusChangeObra(obraItem!, nextStatus);
+                            setSelectedDetails({ type: 'obra', item: { ...obraItem!, situacao: nextStatus as any } });
+                          } else {
+                            await handleQuickStatusChangeServico(servicoItem!, nextStatus);
+                            setSelectedDetails({ type: 'servico', item: { ...servicoItem!, situacao: nextStatus as any } });
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all active:scale-95 shadow-md ${
+                          item.situacao === 'Concluído'
+                            ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300'
+                            : 'bg-emerald-500 hover:bg-emerald-400 text-white'
+                        }`}
+                        title="Atalho: Alternar para Concluído"
+                      >
+                        <Check size={14} className="stroke-[3]" />
+                        {item.situacao === 'Concluído' ? 'Concluído ✓' : 'Marcar Concluído'}
+                      </button>
                       <button 
                         onClick={() => {
                           if (isObra) {
@@ -1221,19 +1298,36 @@ export default function EscalaView({
                         {/* Badges for Status and Priority */}
                         <div className="grid grid-cols-2 gap-4 pt-1">
                           <div>
-                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Status do Registro</span>
-                            <div className={`px-3 py-2 rounded-xl font-bold text-xs flex items-center gap-2 border ${
-                              item.situacao === 'Concluído' ? 'bg-emerald-50 border-emerald-100 text-emerald-700' :
-                              item.situacao === 'Em Andamento' ? 'bg-blue-50 border-blue-100 text-blue-700' :
-                              item.situacao === 'Em Espera' ? 'bg-rose-50 border-rose-100 text-rose-700' :
-                              'bg-amber-50 border-amber-100 text-amber-700'
-                            }`}>
-                              <span className={`w-2 h-2 rounded-full ${
-                                item.situacao === 'Concluído' ? 'bg-emerald-500' :
-                                item.situacao === 'Em Andamento' ? 'bg-blue-500' :
-                                item.situacao === 'Em Espera' ? 'bg-rose-500' : 'bg-amber-500'
-                              }`} />
-                              <span>{item.situacao}</span>
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Alterar Status Rápido</span>
+                            <div className="flex flex-wrap gap-1 mt-1">
+                              {['Em Andamento', 'Concluído', 'Em Espera', 'Pendente'].map((st) => (
+                                <button
+                                  key={st}
+                                  onClick={async () => {
+                                    if (isObra) {
+                                      await handleQuickStatusChangeObra(obraItem!, st);
+                                      setSelectedDetails({ type: 'obra', item: { ...obraItem!, situacao: st as any } });
+                                    } else {
+                                      await handleQuickStatusChangeServico(servicoItem!, st);
+                                      setSelectedDetails({ type: 'servico', item: { ...servicoItem!, situacao: st as any } });
+                                    }
+                                  }}
+                                  className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1 ${
+                                    item.situacao === st
+                                      ? st === 'Concluído'
+                                        ? 'bg-emerald-600 text-white shadow-sm font-black'
+                                        : st === 'Em Andamento'
+                                        ? 'bg-blue-600 text-white shadow-sm font-black'
+                                        : st === 'Em Espera'
+                                        ? 'bg-rose-600 text-white shadow-sm font-black'
+                                        : 'bg-amber-600 text-white shadow-sm font-black'
+                                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600'
+                                  }`}
+                                >
+                                  {item.situacao === st && <Check size={10} className="stroke-[3]" />}
+                                  {st}
+                                </button>
+                              ))}
                             </div>
                           </div>
 

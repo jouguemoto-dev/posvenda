@@ -119,4 +119,6 @@ export interface Lembrete {
   concluido: boolean;
   createdBy: string;
   createdAt: any;
+  obraId?: string | number;
+  tipo?: string;
 }

@@ -56,6 +56,7 @@ import {
   Table,
   AlertTriangle,
   Bell,
+  BellRing,
   Volume2,
   Sparkles
 } from 'lucide-react';
@@ -301,6 +302,10 @@ export default function App() {
   const [editingLembreteId, setEditingLembreteId] = useState<string | null>(null);
   const [showLembretesBanner, setShowLembretesBanner] = useState(true);
   const [hasPlayedTodayChime, setHasPlayedTodayChime] = useState(false);
+  const [hasSentBrowserNotif, setHasSentBrowserNotif] = useState(false);
+  const [notifPermission, setNotifPermission] = useState<string>(() => {
+    return typeof window !== 'undefined' && 'Notification' in window ? Notification.permission : 'unsupported';
+  });
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const addToast = (msg: string) => {
@@ -940,15 +945,16 @@ export default function App() {
   }, []);
 
   const alarmesDeHoje = useMemo(() => {
-    // 1. General custom alerts for today
+    // Exibir lembretes com data de alarme até hoje que ainda não foram concluídos
     const listLembretes = lembretes
-      .filter(l => l.dataAlarme === localTodayStr && !l.concluido)
+      .filter(l => l.dataAlarme && l.dataAlarme <= localTodayStr && !l.concluido)
       .map(l => ({
         id: l.id || '',
         tipo: 'lembrete' as const,
         titulo: l.titulo,
         descricao: l.descricao,
         importante: l.importante,
+        dataAlarme: l.dataAlarme,
         itemOriginal: l
       }));
 
@@ -988,12 +994,88 @@ export default function App() {
     }
   };
 
-  useEffect(() => {
-    if (alarmesDeHoje.length > 0 && !hasPlayedTodayChime) {
-      playAlarmChime();
-      setHasPlayedTodayChime(true);
+  const triggerBrowserNotification = (title: string, body?: string) => {
+    if (typeof window !== 'undefined' && 'Notification' in window) {
+      if (Notification.permission === 'granted') {
+        try {
+          const notif = new Notification(title, {
+            body: body || 'Há lembretes pendentes marcados para hoje no sistema.',
+            icon: '/favicon.ico',
+            tag: 'lembrete-hoje'
+          });
+          notif.onclick = () => {
+            window.focus();
+            setIsLembretesHubOpen(true);
+          };
+        } catch (err) {
+          console.error("Erro ao disparar notificação visual do navegador:", err);
+        }
+      }
     }
-  }, [alarmesDeHoje, hasPlayedTodayChime]);
+  };
+
+  const requestNotificationPermission = async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) {
+      addToast("⚠️ Seu navegador não suporta a API de Notificações do Sistema.");
+      return false;
+    }
+
+    if (Notification.permission === 'granted') {
+      setNotifPermission('granted');
+      triggerBrowserNotification(
+        "🔔 Notificações do Navegador Ativas!",
+        alarmesDeHoje.length > 0
+          ? `Você possui ${alarmesDeHoje.length} lembrete(s) pendente(s) hoje!`
+          : "Você receberá alertas visuais no sistema sempre que houver lembretes pendentes para o dia."
+      );
+      addToast("🔔 Notificações do Navegador já estão ativadas e funcionando!");
+      return true;
+    }
+
+    try {
+      const perm = await Notification.requestPermission();
+      setNotifPermission(perm);
+      if (perm === 'granted') {
+        addToast("✅ Permissão concedida! Notificações visuais do navegador ativadas.");
+        triggerBrowserNotification(
+          "🚨 Alerta de Lembretes do Sistema",
+          alarmesDeHoje.length > 0
+            ? `Você possui ${alarmesDeHoje.length} lembrete(s) pendente(s) marcados para hoje.`
+            : "Notificações do navegador ativadas com sucesso."
+        );
+        return true;
+      } else {
+        addToast("⚠️ Permissão para Notificações do Navegador foi negada.");
+        return false;
+      }
+    } catch (e) {
+      console.error("Erro ao solicitar permissão de Notificação:", e);
+      return false;
+    }
+  };
+
+  useEffect(() => {
+    if (alarmesDeHoje.length > 0) {
+      if (!hasPlayedTodayChime) {
+        playAlarmChime();
+        setHasPlayedTodayChime(true);
+      }
+      
+      // Disparar Notificação do Navegador (Web Notification API) se houver permissão
+      if (!hasSentBrowserNotif && typeof window !== 'undefined' && 'Notification' in window && Notification.permission === 'granted') {
+        const primeiro = alarmesDeHoje[0];
+        const bodyText = alarmesDeHoje.length === 1
+          ? `Lembrete: ${primeiro.titulo}${primeiro.descricao ? ` (${primeiro.descricao})` : ''}`
+          : `Você possui ${alarmesDeHoje.length} lembretes hoje. Exemplo: ${primeiro.titulo}`;
+
+        triggerBrowserNotification(
+          `🚨 ${alarmesDeHoje.length} Lembrete(s) Pendente(s) para Hoje!`,
+          bodyText
+        );
+        setHasSentBrowserNotif(true);
+      }
+    }
+  }, [alarmesDeHoje, hasPlayedTodayChime, hasSentBrowserNotif]);
 
   const handleSaveLembrete = async () => {
     if (!lembreteFormData.titulo) {
@@ -1017,6 +1099,14 @@ export default function App() {
       } else {
         await addDoc(collection(db, 'lembretes'), item);
       }
+
+      if (item.dataAlarme <= localTodayStr && !item.concluido) {
+        triggerBrowserNotification(
+          `🔔 Lembrete Agendado para Hoje: ${item.titulo}`,
+          item.descricao || 'O alarme está visível no painel do dia.'
+        );
+      }
+
       setIsLembreteModalOpen(false);
       setEditingLembreteId(null);
       setLembreteFormData({
@@ -1296,6 +1386,63 @@ export default function App() {
     }
   };
 
+  const schedule3DaysReminderForObra = async (obraData: any) => {
+    if (!obraData.dataObra || !/^\d{4}-\d{2}-\d{2}$/.test(obraData.dataObra)) return;
+    try {
+      const [y, m, d] = obraData.dataObra.split('-').map(Number);
+      const obraDate = new Date(y, m - 1, d);
+      obraDate.setHours(12, 0, 0, 0);
+
+      // Agendar lembrete para exatamente 3 dias antes da data da obra
+      const reminderDate = new Date(obraDate);
+      reminderDate.setDate(reminderDate.getDate() - 3);
+
+      const yR = reminderDate.getFullYear();
+      const mR = String(reminderDate.getMonth() + 1).padStart(2, '0');
+      const dR = String(reminderDate.getDate()).padStart(2, '0');
+      const dataAlarmeStr = `${yR}-${mR}-${dR}`;
+
+      const [yO, mO, dO] = [String(y), String(m).padStart(2, '0'), String(d).padStart(2, '0')];
+      const dataObraBR = `${dO}/${mO}/${yO}`;
+
+      const titulo = `Lembrete (3 dias para Instalação): ${obraData.cliente || 'Obra'}`;
+      const descricao = `Aviso prévio para obra #${obraData.numeroRegistro || ''}. Instalação marcada para ${dataObraBR}. Local: ${obraData.local || 'Não informado'}. Equipe: ${obraData.equipe || 'Não definida'}.`;
+
+      const obraRefId = String(obraData.id || obraData.numeroRegistro || Date.now());
+
+      // Verificar se já existe um lembrete para esta obra no estado local
+      const existingLembrete = lembretes.find(
+        l => (l.obraId && String(l.obraId) === obraRefId) ||
+             (l.tipo === 'obra_3d' && l.titulo && l.titulo.includes(obraData.cliente || ''))
+      );
+
+      if (existingLembrete && existingLembrete.id) {
+        await updateDoc(doc(db, 'lembretes', existingLembrete.id), {
+          titulo,
+          dataAlarme: dataAlarmeStr,
+          descricao,
+          importante: true,
+          updatedAt: serverTimestamp()
+        });
+      } else {
+        await addDoc(collection(db, 'lembretes'), {
+          titulo,
+          dataAlarme: dataAlarmeStr,
+          descricao,
+          importante: true,
+          concluido: false,
+          tipo: 'obra_3d',
+          obraId: obraRefId,
+          createdAt: serverTimestamp(),
+          createdBy: user?.uid || ''
+        });
+      }
+      addToast(`🔔 Lembrete de 3 dias antes (${dR}/${mR}/${yR}) agendado automaticamente na coleção 'lembretes'!`);
+    } catch (error) {
+      console.error("Erro ao agendar lembrete automático de 3 dias para a obra:", error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
@@ -1349,6 +1496,7 @@ export default function App() {
           await syncToWeeklySchedule(obraData.dataObra, obraData.equipe, obraData.cliente, 'Obra');
         }
         triggerAutoGoogleCalendar('obra', obraData);
+        await schedule3DaysReminderForObra(obraData);
       }
       resetForm();
     } catch (error) {
@@ -1612,6 +1760,7 @@ export default function App() {
       }
       if (field === 'dataObra' && value) {
         triggerAutoGoogleCalendar('obra', { ...obraToUpdate, ...updatedData });
+        await schedule3DaysReminderForObra({ ...obraToUpdate, ...updatedData });
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `obras/${obraToUpdate.firebaseId}`);
@@ -3126,8 +3275,13 @@ export default function App() {
                     {alarmesDeHoje.map((alarm, idx) => (
                       <div key={alarm.id} className="bg-amber-950/10 p-3.5 rounded-xl border border-amber-950/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                         <div className="space-y-1">
-                          <p className="font-extrabold text-sm text-amber-950">
-                            {idx + 1}. {alarm.titulo}
+                          <p className="font-extrabold text-sm text-amber-950 flex items-center gap-1.5 flex-wrap">
+                            <span>{idx + 1}. {alarm.titulo}</span>
+                            {alarm.itemOriginal?.tipo === 'obra_3d' && (
+                              <span className="bg-amber-950 text-amber-300 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-wider shrink-0">
+                                🔔 Aviso 3 Dias Antes
+                              </span>
+                            )}
                           </p>
                           {alarm.descricao && (
                             <p className="text-xs text-amber-900 font-bold leading-relaxed">
@@ -3154,7 +3308,19 @@ export default function App() {
                   </div>
                 </div>
               </div>
-              <div className="flex items-center gap-2 self-end md:self-center z-10 shrink-0">
+              <div className="flex flex-wrap items-center gap-2 self-end md:self-center z-10 shrink-0">
+                <button
+                  onClick={requestNotificationPermission}
+                  className={`flex items-center gap-1.5 font-extrabold px-3 py-2 rounded-xl text-xs shadow-md transition-all active:scale-95 ${
+                    notifPermission === 'granted'
+                      ? 'bg-emerald-950 hover:bg-emerald-900 text-emerald-300 border border-emerald-800/80'
+                      : 'bg-amber-950 hover:bg-amber-900 text-amber-300'
+                  }`}
+                  title="Ativar/Testar Notificações Visuais no Navegador"
+                >
+                  <BellRing size={16} />
+                  {notifPermission === 'granted' ? 'Notificações Navegador: Ativas ✓' : 'Ativar Notificações no Navegador'}
+                </button>
                 <button
                   onClick={playAlarmChime}
                   className="flex items-center gap-1.5 bg-amber-950 hover:bg-amber-900 text-amber-300 font-extrabold px-3 py-2 rounded-xl text-xs shadow-md transition-all active:scale-95"
@@ -6838,10 +7004,22 @@ export default function App() {
                     <p className="text-xs text-slate-400">Agende compromissos e lembretes para deixar visíveis no dia marcado</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={requestNotificationPermission}
+                    className={`flex items-center gap-1.5 font-bold px-3.5 py-2 rounded-xl text-xs transition-all ${
+                      notifPermission === 'granted'
+                        ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-500/30'
+                        : 'bg-amber-500/20 text-amber-300 hover:bg-amber-500/30'
+                    }`}
+                    title="Ativar ou testar Notificações do Navegador"
+                  >
+                    <BellRing size={16} />
+                    {notifPermission === 'granted' ? 'Notificações Navegador: Ativas ✓' : 'Ativar Notificações Navegador'}
+                  </button>
                   <button
                     onClick={playAlarmChime}
-                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-amber-300 font-bold px-4 py-2 rounded-xl text-xs transition-colors"
+                    className="flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-amber-300 font-bold px-3.5 py-2 rounded-xl text-xs transition-colors"
                   >
                     <Volume2 size={16} />
                     Testar Som de Alarme

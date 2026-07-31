@@ -83,7 +83,9 @@ service cloud.firestore {
              (!('descricao' in data) || data.descricao is string) &&
              (!('importante' in data) || data.importante is bool) &&
              (!('concluido' in data) || data.concluido is bool) &&
-             (!('createdBy' in data) || data.createdBy is string);
+             (!('createdBy' in data) || data.createdBy is string) &&
+             (!('tipo' in data) || data.tipo is string) &&
+             (!('obraId' in data) || data.obraId is string || data.obraId is number || data.obraId is int);
     }
 
     match /obras/{obraId} {
