@@ -31,7 +31,10 @@ import {
   Copy,
   ExternalLink,
   User,
-  CalendarClock
+  CalendarClock,
+  Eye,
+  EyeOff,
+  Filter
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -288,6 +291,64 @@ export default function EscalaView({
     return `${start.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })} a ${end.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}`;
   }, [weekOffset]);
 
+  // Estado para ocultar equipes que não têm agendamento automático na semana atual
+  const [hideEmptyTeams, setHideEmptyTeams] = useState<boolean>(() => {
+    try {
+      const saved = localStorage.getItem('escala_hide_teams_without_auto');
+      return saved ? JSON.parse(saved) : false;
+    } catch {
+      return false;
+    }
+  });
+
+  const toggleHideEmptyTeams = () => {
+    setHideEmptyTeams(prev => {
+      const next = !prev;
+      try {
+        localStorage.setItem('escala_hide_teams_without_auto', JSON.stringify(next));
+      } catch (e) {
+        console.error("Error saving hideEmptyTeams preference", e);
+      }
+      return next;
+    });
+  };
+
+  // Contagem de agendamentos automáticos de cada equipe nesta semana (obras e serviços)
+  const teamScheduleCounts = useMemo(() => {
+    const datesSet = new Set(weekDatesFull);
+    const counts: Record<string, number> = {};
+
+    teams.forEach(t => {
+      const tName = t.name.trim().toLowerCase();
+      let count = 0;
+      obras.forEach(o => {
+        const datePart = (o.dataObra || '').split('T')[0];
+        if (datesSet.has(datePart) && (o.equipe || '').trim().toLowerCase() === tName) {
+          count++;
+        }
+      });
+      servicos.forEach(s => {
+        const datePart = (s.dataServico || '').split('T')[0];
+        if (datesSet.has(datePart)) {
+          const sEq = (s.equipeServico || '').trim().toLowerCase();
+          const iEq = (s.equipeInstalou || '').trim().toLowerCase();
+          if (sEq === tName || iEq === tName) {
+            count++;
+          }
+        }
+      });
+      counts[t.id] = count;
+    });
+
+    return counts;
+  }, [teams, weekDatesFull, obras, servicos]);
+
+  // Equipes visíveis na escala conforme o filtro de agendamento automático
+  const visibleTeams = useMemo(() => {
+    if (!hideEmptyTeams) return teams;
+    return teams.filter(t => (teamScheduleCounts[t.id] || 0) > 0);
+  }, [teams, hideEmptyTeams, teamScheduleCounts]);
+
   const handleUpdateSchedule = async () => {
     if (!selectedDetails) return;
     const { type, item } = selectedDetails;
@@ -442,6 +503,34 @@ export default function EscalaView({
     }
   };
 
+  const moveVisibleTeam = async (teamId: string, direction: 'left' | 'right') => {
+    const vIndex = visibleTeams.findIndex(t => t.id === teamId);
+    if (vIndex === -1) return;
+    const targetVIndex = direction === 'left' ? vIndex - 1 : vIndex + 1;
+    if (targetVIndex < 0 || targetVIndex >= visibleTeams.length) return;
+
+    const targetTeamId = visibleTeams[targetVIndex].id;
+    const indexA = teams.findIndex(t => t.id === teamId);
+    const indexB = teams.findIndex(t => t.id === targetTeamId);
+    if (indexA === -1 || indexB === -1) return;
+
+    const newTeams = [...teams];
+    [newTeams[indexA], newTeams[indexB]] = [newTeams[indexB], newTeams[indexA]];
+
+    setTeams(newTeams);
+
+    try {
+      const updates = newTeams.map((team, idx) => 
+        updateDoc(doc(db, 'teams', team.id), { order: idx })
+      );
+      await Promise.all(updates);
+      addToast("Equipes reordenadas!");
+    } catch (e) {
+      console.error("Error reordering teams", e);
+      addToast("Erro ao reordenar.");
+    }
+  };
+
   const exportPDF = () => {
     const doc = new jsPDF('landscape');
     const title = "Escala Semanal de Trabalho";
@@ -454,7 +543,8 @@ export default function EscalaView({
     doc.text(period, 14, 22);
     doc.text(timestamp, 14, 29);
 
-    const head = [['Dia / Data', ...teams.map(t => t.name)]];
+    const targetTeams = visibleTeams.length > 0 ? visibleTeams : teams;
+    const head = [['Dia / Data', ...targetTeams.map(t => t.name)]];
     const body = DAYS.map((day, i) => {
       const fullDate = weekDatesFull[i];
       const dailyObras = obras.filter(o => {
@@ -472,7 +562,7 @@ export default function EscalaView({
       
       return [
         dayText,
-        ...teams.map(team => {
+        ...targetTeams.map(team => {
           const manualText = schedule[day]?.[team.id]?.text || '';
           // Clean up manual text from auto-synced entries to avoid redundancy
           const filteredLines = manualText.split('\n').filter(line => {
@@ -495,7 +585,8 @@ export default function EscalaView({
       headStyles: { fillColor: '#1e2f3e', textColor: '#ffffff' },
       didParseCell: (data: any) => {
         if (data.section === 'body' && data.column.index > 0) {
-          const team = teams[data.column.index - 1];
+          const team = targetTeams[data.column.index - 1];
+          if (!team) return;
           const day = DAYS[data.row.index];
           const cellData = schedule[day]?.[team.id];
           if (cellData?.color) {
@@ -574,6 +665,39 @@ export default function EscalaView({
         </div>
 
         <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          {/* Botão de Ocultar Equipes Sem Agendamento Automático */}
+          <button
+            onClick={toggleHideEmptyTeams}
+            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold shadow-sm transition-all text-xs sm:text-sm border active:scale-95 cursor-pointer ${
+              hideEmptyTeams
+                ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20 ring-2 ring-amber-400/40'
+                : 'bg-white hover:bg-slate-50 text-[#1e2f3e] border-slate-200'
+            }`}
+            title={hideEmptyTeams 
+              ? `Filtro ativo: ${teams.length - visibleTeams.length} equipes sem agendamento automático estão ocultas nesta semana. Clique para exibir todas.` 
+              : "Clique para ocultar equipes que não têm agendamento automático nesta semana"}
+          >
+            {hideEmptyTeams ? (
+              <>
+                <EyeOff size={18} className="stroke-[2.5]" />
+                <span>Ocultar s/ Agendamento</span>
+                <span className="bg-amber-700/70 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
+                  {teams.length - visibleTeams.length} ocultas
+                </span>
+              </>
+            ) : (
+              <>
+                <Eye size={18} className="text-slate-500" />
+                <span>Ocultar s/ Agendamento</span>
+                {teams.length - visibleTeams.length > 0 && (
+                  <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
+                    {teams.length - visibleTeams.length} vazias
+                  </span>
+                )}
+              </>
+            )}
+          </button>
+
           <button 
             onClick={() => setIsGCalModalOpen(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-2xl font-bold shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95 text-xs sm:text-sm"
@@ -599,38 +723,89 @@ export default function EscalaView({
         </div>
       </div>
 
+      {/* Banner Informativo quando equipes estiverem ocultadas */}
+      {hideEmptyTeams && (
+        <div className="flex-none mb-2 bg-amber-50/90 border border-amber-200 px-3.5 py-1.5 rounded-xl flex items-center justify-between text-xs text-amber-900 shadow-2xs">
+          <div className="flex items-center gap-2">
+            <EyeOff size={14} className="text-amber-700 shrink-0" />
+            <span>
+              {visibleTeams.length > 0 ? (
+                <>
+                  Exibindo <strong>{visibleTeams.length}</strong> de {teams.length} equipes com agendamentos automáticos na semana ({weekRange}).{' '}
+                  <span className="text-amber-700 font-medium">({teams.length - visibleTeams.length} {teams.length - visibleTeams.length === 1 ? 'equipe sem agendamento ocultada' : 'equipes sem agendamento ocultadas'})</span>
+                </>
+              ) : (
+                <>
+                  Nenhuma equipe possui agendamentos automáticos de obras ou serviços na semana de <strong>{weekRange}</strong>.
+                </>
+              )}
+            </span>
+          </div>
+          <button
+            onClick={toggleHideEmptyTeams}
+            className="text-amber-800 hover:text-amber-950 font-bold underline text-xs cursor-pointer shrink-0 ml-3"
+          >
+            Mostrar todas as equipes
+          </button>
+        </div>
+      )}
+
       {/* Main Table */}
       <div className="flex-1 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
         <div className="overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-          <table className="w-full border-collapse table-fixed min-w-[1200px]">
+          <table className={`w-full border-collapse table-fixed ${visibleTeams.length > 5 ? 'min-w-[1200px]' : visibleTeams.length > 3 ? 'min-w-[900px]' : 'min-w-full'}`}>
             <thead className="sticky top-0 z-30">
               <tr className="bg-[#1e2f3e] text-white">
                 <th className="p-2 text-left font-bold border-r border-white/10 w-28 text-xs">Dia / Data</th>
-                {teams.map((team, tIdx) => (
+                {visibleTeams.map((team, vIdx) => (
                   <th key={team.id} className="p-2 text-center font-bold border-r border-white/10 text-xs relative group/header">
                     <div className="flex items-center justify-center gap-3">
                       <button 
-                        onClick={() => moveTeam(tIdx, 'left')}
-                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${tIdx === 0 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
-                        disabled={tIdx === 0}
+                        onClick={() => moveVisibleTeam(team.id, 'left')}
+                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${vIdx === 0 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
+                        disabled={vIdx === 0}
+                        title="Mover equipe para a esquerda"
                       >
                         <ChevronLeft size={16} />
                       </button>
                       
-                      <span className="truncate max-w-[120px]">{team.name}</span>
+                      <div className="flex flex-col items-center min-w-0">
+                        <span className="truncate max-w-[120px] font-black">{team.name}</span>
+                        {teamScheduleCounts[team.id] > 0 && (
+                          <span className="text-[8.5px] font-bold text-amber-300 opacity-90 tracking-wide">
+                            {teamScheduleCounts[team.id]} {teamScheduleCounts[team.id] === 1 ? 'agendamento' : 'agendamentos'}
+                          </span>
+                        )}
+                      </div>
                       
                       <button 
-                        onClick={() => moveTeam(tIdx, 'right')}
-                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${tIdx === teams.length - 1 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
-                        disabled={tIdx === teams.length - 1}
+                        onClick={() => moveVisibleTeam(team.id, 'right')}
+                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${vIdx === visibleTeams.length - 1 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
+                        disabled={vIdx === visibleTeams.length - 1}
+                        title="Mover equipe para a direita"
                       >
                         <ChevronRight size={16} />
                       </button>
                     </div>
                   </th>
                 ))}
-                {teams.length === 0 && (
-                  <th className="p-3 text-center italic text-white/50">Nenhuma equipe cadastrada</th>
+                {visibleTeams.length === 0 && (
+                  <th className="p-4 text-center italic text-white/70 font-normal">
+                    {teams.length === 0 
+                      ? 'Nenhuma equipe cadastrada' 
+                      : (
+                        <span>
+                          Nenhuma equipe possui agendamentos automáticos nesta semana.{' '}
+                          <button 
+                            onClick={toggleHideEmptyTeams}
+                            className="underline text-amber-300 hover:text-amber-200 font-bold ml-1 cursor-pointer"
+                          >
+                            Exibir todas as equipes
+                          </button>
+                        </span>
+                      )
+                    }
+                  </th>
                 )}
               </tr>
             </thead>
@@ -650,7 +825,12 @@ export default function EscalaView({
                         <p className="text-[10px] text-slate-500 font-medium">{weekDates[dayIdx]}</p>
                       </div>
                     </td>
-                  {teams.map(team => {
+                  {visibleTeams.length === 0 && (
+                    <td className="p-3 text-center text-slate-400 italic text-xs bg-slate-50/40">
+                      Sem agendamentos nesta data
+                    </td>
+                  )}
+                  {visibleTeams.map(team => {
                     const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
                     const colorObj = COLORS.find(c => c.bg === cellData.color);
                     const isDark = colorObj?.isDark;
