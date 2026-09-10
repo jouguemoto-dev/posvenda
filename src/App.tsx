@@ -89,6 +89,7 @@ import DashboardView from './components/DashboardView';
 import Proactive3DaysAlert from './components/Proactive3DaysAlert';
 import MobilePWAInstall from './components/MobilePWAInstall';
 import PeriodoRelatorioModal from './components/PeriodoRelatorioModal';
+import ObservacaoModal, { ObservacaoModalData } from './components/ObservacaoModal';
 import { 
   collection, 
   addDoc, 
@@ -360,6 +361,7 @@ export default function App() {
   const [editandoServicoId, setEditandoServicoId] = useState<number | null>(null);
   const [editingPayment, setEditingPayment] = useState<{ id: string; type: 'obra' | 'servico' } | null>(null);
   const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
+  const [viewingObs, setViewingObs] = useState<ObservacaoModalData | null>(null);
   const [filtros, setFiltros] = useState<Filtros>({
     situacao: '',
     prioridade: '',
@@ -3691,8 +3693,23 @@ export default function App() {
                                   )}
                                 </div>
                                 {obra.observacoes && (
-                                  <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
-                                    {obra.observacoes}
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingObs({
+                                        cliente: obra.cliente,
+                                        tipo: 'Obra',
+                                        observacao: obra.observacoes,
+                                        data: obra.dataObra ? formatDateBR(obra.dataObra) : undefined
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                    title={`Clique para abrir observação: ${obra.observacoes}`}
+                                  >
+                                    <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                      OBS
+                                    </span>
+                                    <span className="truncate">{obra.observacoes}</span>
                                   </div>
                                 )}
                               </td>
@@ -4041,8 +4058,23 @@ export default function App() {
                                   )}
                                 </div>
                                 {obra.observacoes && (
-                                  <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
-                                    {obra.observacoes}
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingObs({
+                                        cliente: obra.cliente,
+                                        tipo: 'Obra',
+                                        observacao: obra.observacoes,
+                                        data: obra.dataContrato ? `Contrato: ${formatDateBR(obra.dataContrato)}` : undefined
+                                      });
+                                    }}
+                                    className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                    title={`Clique para abrir observação: ${obra.observacoes}`}
+                                  >
+                                    <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                      OBS
+                                    </span>
+                                    <span className="truncate">{obra.observacoes}</span>
                                   </div>
                                 )}
                               </td>
@@ -4350,8 +4382,23 @@ export default function App() {
                                 )}
                               </div>
                               {obra.observacoes && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={obra.observacoes}>
-                                  {obra.observacoes}
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingObs({
+                                      cliente: obra.cliente,
+                                      tipo: 'Obra',
+                                      observacao: obra.observacoes,
+                                      data: (obra.dataConclusao || obra.dataObra) ? formatDateBR(obra.dataConclusao || obra.dataObra) : undefined
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  title={`Clique para abrir observação: ${obra.observacoes}`}
+                                >
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    OBS
+                                  </span>
+                                  <span className="truncate">{obra.observacoes}</span>
                                 </div>
                               )}
                             </td>
@@ -4735,8 +4782,23 @@ export default function App() {
                                 )}
                               </div>
                               {servico.observacao && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
-                                  {servico.observacao}
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingObs({
+                                      cliente: servico.cliente,
+                                      tipo: 'Serviço',
+                                      observacao: servico.observacao,
+                                      data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  title={`Clique para abrir observação: ${servico.observacao}`}
+                                >
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    OBS
+                                  </span>
+                                  <span className="truncate">{servico.observacao}</span>
                                 </div>
                               )}
                             </td>
@@ -5097,8 +5159,23 @@ export default function App() {
                                 )}
                               </div>
                               {servico.observacao && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
-                                  {servico.observacao}
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingObs({
+                                      cliente: servico.cliente,
+                                      tipo: 'Serviço',
+                                      observacao: servico.observacao,
+                                      data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  title={`Clique para abrir observação: ${servico.observacao}`}
+                                >
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    OBS
+                                  </span>
+                                  <span className="truncate">{servico.observacao}</span>
                                 </div>
                               )}
                             </td>
@@ -5476,8 +5553,23 @@ export default function App() {
                                 )}
                               </div>
                               {servico.observacao && (
-                                <div className="text-[10px] text-slate-500 mt-0.5 max-w-[200px] truncate" title={servico.observacao}>
-                                  {servico.observacao}
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingObs({
+                                      cliente: servico.cliente,
+                                      tipo: 'Serviço',
+                                      observacao: servico.observacao,
+                                      data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  title={`Clique para abrir observação: ${servico.observacao}`}
+                                >
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    OBS
+                                  </span>
+                                  <span className="truncate">{servico.observacao}</span>
                                 </div>
                               )}
                             </td>
@@ -6711,13 +6803,46 @@ export default function App() {
                         </div>
                       )}
 
-                      {/* Section: Observations */}
-                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                        <DetailItem 
-                          label="Observações Adicionais" 
-                          value={<p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{selectedObra.observacoes || 'Nenhuma observação registrada.'}</p>} 
-                          icon={<FileText size={14} />}
-                        />
+                      {/* Section: Observations Destacadas */}
+                      <div 
+                        onClick={() => {
+                          if (selectedObra.observacoes) {
+                            setViewingObs({
+                              cliente: selectedObra.cliente,
+                              tipo: 'Obra',
+                              observacao: selectedObra.observacoes,
+                              data: selectedObra.dataObra ? formatDateBR(selectedObra.dataObra) : undefined
+                            });
+                          }
+                        }}
+                        className={`p-5 rounded-2xl border-2 shadow-xs space-y-2 transition-all ${
+                          selectedObra.observacoes 
+                            ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group' 
+                            : 'bg-slate-50 border-slate-200 opacity-80'
+                        }`}
+                        title={selectedObra.observacoes ? "Clique para abrir apenas a observação com letra maior" : undefined}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-amber-500 text-white p-1.5 rounded-lg shadow-xs">
+                              <FileText size={15} className="stroke-[2.5]" />
+                            </span>
+                            <div>
+                              <span className="text-xs font-black text-amber-950 uppercase tracking-wider block">
+                                Observações da Obra
+                              </span>
+                              <span className="text-[10px] font-semibold text-amber-700">Anotações e instruções registradas</span>
+                            </div>
+                          </div>
+                          {selectedObra.observacoes && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2.5 py-1 rounded-md group-hover:bg-amber-300 transition-colors">
+                              🔍 Clique para ampliar
+                            </span>
+                          )}
+                        </div>
+                        <div className="bg-white/95 p-3.5 rounded-xl border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed shadow-2xs">
+                          {selectedObra.observacoes || 'Nenhuma observação registrada.'}
+                        </div>
                       </div>
                     </>
                   ) : selectedServico ? (
@@ -6754,13 +6879,46 @@ export default function App() {
 
                       <hr className="border-slate-100" />
 
-                      {/* Section: Observations */}
-                      <div className="bg-slate-50 p-6 rounded-2xl border border-slate-100">
-                        <DetailItem 
-                          label="Observações do Serviço" 
-                          value={<p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{selectedServico.observacao || 'Nenhuma observação registrada.'}</p>} 
-                          icon={<FileText size={14} />}
-                        />
+                      {/* Section: Observations Destacadas */}
+                      <div 
+                        onClick={() => {
+                          if (selectedServico.observacao) {
+                            setViewingObs({
+                              cliente: selectedServico.cliente,
+                              tipo: 'Agendamento de Serviço',
+                              observacao: selectedServico.observacao,
+                              data: selectedServico.dataServico ? formatDateBR(selectedServico.dataServico) : (selectedServico.dataAtendimento ? formatDateBR(selectedServico.dataAtendimento) : undefined)
+                            });
+                          }
+                        }}
+                        className={`p-5 rounded-2xl border-2 shadow-xs space-y-2 transition-all ${
+                          selectedServico.observacao 
+                            ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group' 
+                            : 'bg-slate-50 border-slate-200 opacity-80'
+                        }`}
+                        title={selectedServico.observacao ? "Clique para abrir apenas a observação com letra maior" : undefined}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-amber-500 text-white p-1.5 rounded-lg shadow-xs">
+                              <FileText size={15} className="stroke-[2.5]" />
+                            </span>
+                            <div>
+                              <span className="text-xs font-black text-amber-950 uppercase tracking-wider block">
+                                Observações do Agendamento de Serviço
+                              </span>
+                              <span className="text-[10px] font-semibold text-amber-700">Anotações e instruções registradas</span>
+                            </div>
+                          </div>
+                          {selectedServico.observacao && (
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2.5 py-1 rounded-md group-hover:bg-amber-300 transition-colors">
+                              🔍 Clique para ampliar
+                            </span>
+                          )}
+                        </div>
+                        <div className="bg-white/95 p-3.5 rounded-xl border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed shadow-2xs">
+                          {selectedServico.observacao || 'Nenhuma observação registrada.'}
+                        </div>
                       </div>
 
                       <hr className="border-slate-100" />
@@ -6892,6 +7050,7 @@ export default function App() {
         onSelectObra={setSelectedObra}
         onOpenDetails={setIsDetailsModalOpen}
         setViewingTxt={setViewingTxt}
+        setViewingObs={setViewingObs}
       />
 
       {/* TXT View Modal */}
@@ -7248,6 +7407,12 @@ export default function App() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Modal de Observação Ampliada */}
+      <ObservacaoModal 
+        data={viewingObs} 
+        onClose={() => setViewingObs(null)} 
+      />
     </div>
   );
 }
@@ -7477,7 +7642,7 @@ function SettingsModal({
 }
 
 // Payroll Modal Component
-function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDetails, setViewingTxt }: any) {
+function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDetails, setViewingTxt, setViewingObs }: any) {
   const [period, setPeriod] = useState('Mensal');
   const [selectedEquipe, setSelectedEquipe] = useState('');
   const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
@@ -7644,8 +7809,23 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
                             )}
                           </div>
                           {obra.observacoes && (
-                            <div className="text-[10px] text-slate-500 mt-0.5 max-w-[300px] truncate" title={obra.observacoes}>
-                              {obra.observacoes}
+                            <div 
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (setViewingObs) {
+                                  setViewingObs({
+                                    cliente: obra.cliente,
+                                    tipo: 'Obra',
+                                    observacao: obra.observacoes,
+                                    data: obra.dataObra ? formatDateBR(obra.dataObra) : (obra.dataContrato ? formatDateBR(obra.dataContrato) : undefined)
+                                  });
+                                }
+                              }}
+                              className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                              title={`Clique para abrir observação: ${obra.observacoes}`}
+                            >
+                              <span className="bg-amber-200/80 text-amber-800 font-black text-[8px] uppercase tracking-wider px-1 py-0.2 rounded">OBS</span>
+                              <span className="truncate">{obra.observacoes}</span>
                             </div>
                           )}
                         </td>

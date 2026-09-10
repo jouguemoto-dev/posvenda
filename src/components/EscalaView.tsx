@@ -36,6 +36,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
 import { generateObraGCalUrl, generateServicoGCalUrl } from '../lib/googleCalendar';
+import ObservacaoModal, { ObservacaoModalData } from './ObservacaoModal';
 import { 
   collection, 
   onSnapshot, 
@@ -130,6 +131,7 @@ export default function EscalaView({
   const [activeCell, setActiveCell] = useState<{day: string, teamId: string} | null>(null);
   const [addingClientTo, setAddingClientTo] = useState<{day: string, teamId: string} | null>(null);
   const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
+  const [viewingObs, setViewingObs] = useState<ObservacaoModalData | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<{type: 'obra' | 'servico', item: Obra | Servico} | null>(null);
   const [tempDate, setTempDate] = useState('');
   const [tempTeam, setTempTeam] = useState('');
@@ -720,15 +722,32 @@ export default function EscalaView({
                                     : 'bg-white text-indigo-700 border-indigo-100'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <ClipboardList size={10} className="opacity-70" />
-                                    <span className="uppercase tracking-widest text-[7px] opacity-60">
-                                      {o.situacao === 'Em Espera' ? 'Pausado' : o.situacao === 'Concluído' ? 'Check' : 'Obra'}
-                                    </span>
+                                <div className="flex items-center justify-between mb-1 gap-1">
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    <ClipboardList size={10} className="opacity-70 shrink-0" />
+                                    <select
+                                      value={o.situacao || 'Em Andamento'}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => handleQuickStatusChangeObra(o, e.target.value, e)}
+                                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded border outline-none cursor-pointer transition-all ${
+                                        o.situacao === 'Concluído'
+                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                          : o.situacao === 'Em Espera'
+                                          ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                          : o.situacao === 'Pendente'
+                                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                          : 'bg-blue-100 text-blue-800 border-blue-300'
+                                      }`}
+                                      title="Alterar status deste agendamento de obra"
+                                    >
+                                      <option value="Em Andamento">Em Andamento</option>
+                                      <option value="Concluído">Concluído</option>
+                                      <option value="Pendente">Pendente</option>
+                                      <option value="Em Espera">Em Espera</option>
+                                    </select>
                                   </div>
                                   {o.quantidadePlacas > 0 && (
-                                    <span className="text-[9px] font-black italic opacity-90 text-indigo-900 bg-indigo-50/50 px-1 rounded">{o.quantidadePlacas} PL</span>
+                                    <span className="text-[9px] font-black italic opacity-90 text-indigo-900 bg-indigo-50/50 px-1 rounded shrink-0">{o.quantidadePlacas} PL</span>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
@@ -741,14 +760,15 @@ export default function EscalaView({
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
                                       onClick={(e) => handleQuickStatusChangeObra(o, o.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
-                                      className={`px-1 py-0.5 rounded transition-all flex items-center gap-0.5 font-bold ${
+                                      className={`px-1.5 py-0.5 rounded transition-all flex items-center gap-0.5 font-black text-[8px] uppercase tracking-wider shadow-2xs ${
                                         o.situacao === 'Concluído'
-                                          ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200 ring-1 ring-emerald-300'
-                                          : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 bg-white'
+                                          ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 ring-1 ring-emerald-300/60'
+                                          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-300 bg-white'
                                       }`}
-                                      title={o.situacao === 'Concluído' ? 'Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
+                                      title={o.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
                                     >
-                                      <Check size={10} className={o.situacao === 'Concluído' ? 'stroke-[3]' : 'stroke-[2.5]'} />
+                                      <Check size={10} className={o.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                      <span className="hidden sm:inline">{o.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
                                     </button>
                                     <button 
                                       onClick={(e) => {
@@ -782,6 +802,26 @@ export default function EscalaView({
                                     )}
                                   </div>
                                 </div>
+                                {o.observacoes && (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingObs({
+                                        cliente: o.cliente,
+                                        tipo: 'Obra',
+                                        observacao: o.observacoes,
+                                        data: o.dataObra ? formatDateBR(o.dataObra) : undefined
+                                      });
+                                    }}
+                                    className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100/90 text-amber-950 border border-amber-300 text-[8.5px] font-bold leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors" 
+                                    title={`Clique para abrir observação: ${o.observacoes}`}
+                                  >
+                                    <span className="bg-amber-300 text-amber-900 px-1 py-0.2 rounded text-[7.5px] uppercase font-black shrink-0 tracking-wider">
+                                      OBS
+                                    </span>
+                                    <span className="truncate flex-1">{o.observacoes}</span>
+                                  </div>
+                                )}
                               </div>
                             ))}
                             {matchingServicos.map(s => (
@@ -798,12 +838,29 @@ export default function EscalaView({
                                     : 'bg-white text-blue-700 border-blue-100'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-0.5">
-                                  <div className="flex items-center gap-1">
-                                    <Wrench size={10} className="opacity-70" />
-                                    <span className="uppercase tracking-widest text-[7px] opacity-60">
-                                      {s.situacao === 'Em Espera' ? 'Pausado' : s.situacao === 'Concluído' ? 'Check' : 'Serviço'}
-                                    </span>
+                                <div className="flex items-center justify-between mb-1 gap-1">
+                                  <div className="flex items-center gap-1 min-w-0">
+                                    <Wrench size={10} className="opacity-70 shrink-0" />
+                                    <select
+                                      value={s.situacao || 'Em Andamento'}
+                                      onClick={(e) => e.stopPropagation()}
+                                      onChange={(e) => handleQuickStatusChangeServico(s, e.target.value, e)}
+                                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded border outline-none cursor-pointer transition-all ${
+                                        s.situacao === 'Concluído'
+                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                          : s.situacao === 'Em Espera'
+                                          ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                          : s.situacao === 'Pendente'
+                                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                          : 'bg-blue-100 text-blue-800 border-blue-300'
+                                      }`}
+                                      title="Alterar status deste agendamento de serviço"
+                                    >
+                                      <option value="Em Andamento">Em Andamento</option>
+                                      <option value="Concluído">Concluído</option>
+                                      <option value="Pendente">Pendente</option>
+                                      <option value="Em Espera">Em Espera</option>
+                                    </select>
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
@@ -816,14 +873,15 @@ export default function EscalaView({
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
                                       onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
-                                      className={`px-1 py-0.5 rounded transition-all flex items-center gap-0.5 font-bold ${
+                                      className={`px-1.5 py-0.5 rounded transition-all flex items-center gap-0.5 font-black text-[8px] uppercase tracking-wider shadow-2xs ${
                                         s.situacao === 'Concluído'
-                                          ? 'text-emerald-700 bg-emerald-100 hover:bg-emerald-200 ring-1 ring-emerald-300'
-                                          : 'text-slate-500 hover:text-emerald-600 hover:bg-emerald-50 border border-slate-200 bg-white'
+                                          ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 ring-1 ring-emerald-300/60'
+                                          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-300 bg-white'
                                       }`}
-                                      title={s.situacao === 'Concluído' ? 'Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
+                                      title={s.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
                                     >
-                                      <Check size={10} className={s.situacao === 'Concluído' ? 'stroke-[3]' : 'stroke-[2.5]'} />
+                                      <Check size={10} className={s.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                      <span className="hidden sm:inline">{s.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
                                     </button>
                                     <button 
                                       onClick={(e) => {
@@ -857,6 +915,26 @@ export default function EscalaView({
                                     )}
                                   </div>
                                 </div>
+                                {s.observacao && (
+                                  <div 
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setViewingObs({
+                                        cliente: s.cliente,
+                                        tipo: 'Agendamento de Serviço',
+                                        observacao: s.observacao,
+                                        data: s.dataServico ? formatDateBR(s.dataServico) : undefined
+                                      });
+                                    }}
+                                    className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100/90 text-amber-950 border border-amber-300 text-[8.5px] font-bold leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors" 
+                                    title={`Clique para abrir observação: ${s.observacao}`}
+                                  >
+                                    <span className="bg-amber-300 text-amber-900 px-1 py-0.2 rounded text-[7.5px] uppercase font-black shrink-0 tracking-wider">
+                                      OBS
+                                    </span>
+                                    <span className="truncate flex-1">{s.observacao}</span>
+                                  </div>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -1589,11 +1667,34 @@ export default function EscalaView({
                       </div>
                     </div>
 
-                    {/* Panel: Observações & WhatsApp Dispatcher */}
+                    {/* Panel: Observações Destacadas */}
                     {(isObra ? obraItem?.observacoes : servicoItem?.observacao) && (
-                      <div className="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-3.5">
-                        <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider border-l-2 border-amber-400 pl-2">Notas do Atendimento</span>
-                        <p className="text-xs text-slate-600 leading-relaxed italic border-l border-slate-100 pl-2.5 max-h-[120px] overflow-y-auto break-words">
+                      <div 
+                        onClick={() => {
+                          setViewingObs({
+                            cliente: item.cliente,
+                            tipo: isObra ? 'Obra' : 'Agendamento de Serviço',
+                            observacao: (isObra ? obraItem?.observacoes : servicoItem?.observacao) || '',
+                            data: (isObra ? obraItem?.dataObra : servicoItem?.dataServico) ? formatDateBR(isObra ? obraItem!.dataObra : servicoItem!.dataServico) : undefined
+                          });
+                        }}
+                        className="bg-amber-50/90 p-4 rounded-2xl border-2 border-amber-300 shadow-sm space-y-2 cursor-pointer hover:bg-amber-100/90 hover:border-amber-400 transition-all group"
+                        title="Clique para abrir apenas a observação com letra maior"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="bg-amber-500 text-white p-1 rounded-lg shadow-xs">
+                              <FileText size={14} className="stroke-[2.5]" />
+                            </span>
+                            <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider">
+                              {isObra ? 'Observações da Obra' : 'Observações do Agendamento de Serviço'}
+                            </span>
+                          </div>
+                          <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-md group-hover:bg-amber-300 transition-colors">
+                            Clique para ampliar
+                          </span>
+                        </div>
+                        <p className="text-xs text-amber-950 font-semibold leading-relaxed bg-white/95 p-3 rounded-xl border border-amber-200/90 whitespace-pre-wrap break-words max-h-[140px] overflow-y-auto shadow-2xs">
                           {isObra ? obraItem?.observacoes : servicoItem?.observacao}
                         </p>
                       </div>
@@ -1643,6 +1744,28 @@ export default function EscalaView({
                   </button>
                   
                   <div className="flex items-center gap-2">
+                    <button
+                      onClick={async () => {
+                        const nextStatus = item.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído';
+                        if (isObra) {
+                          await handleQuickStatusChangeObra(obraItem!, nextStatus);
+                          setSelectedDetails({ type: 'obra', item: { ...obraItem!, situacao: nextStatus as any } });
+                        } else {
+                          await handleQuickStatusChangeServico(servicoItem!, nextStatus);
+                          setSelectedDetails({ type: 'servico', item: { ...servicoItem!, situacao: nextStatus as any } });
+                        }
+                      }}
+                      className={`flex items-center gap-1.5 px-4 h-11 rounded-xl font-extrabold text-xs uppercase tracking-wider transition-all shadow-md active:scale-95 ${
+                        item.situacao === 'Concluído'
+                          ? 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-emerald-200 ring-2 ring-emerald-400'
+                          : 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-emerald-200'
+                      }`}
+                      title={item.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
+                    >
+                      <Check size={16} className="stroke-[3]" />
+                      <span>{item.situacao === 'Concluído' ? 'Concluído ✓' : 'Atalho: Concluir'}</span>
+                    </button>
+                    
                     <button
                       onClick={() => {
                         if (isObra) {
@@ -1881,6 +2004,12 @@ export default function EscalaView({
           </div>
         )}
       </AnimatePresence>
+
+      {/* Observação Ampliada Modal */}
+      <ObservacaoModal 
+        data={viewingObs} 
+        onClose={() => setViewingObs(null)} 
+      />
     </div>
   );
 }
