@@ -532,77 +532,168 @@ export default function EscalaView({
   };
 
   const exportPDF = () => {
-    const doc = new jsPDF('landscape');
-    const title = "Escala Semanal de Trabalho";
-    const period = `Período: ${weekRange}`;
-    const timestamp = `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
+    try {
+      const targetTeams = visibleTeams.length > 0 ? visibleTeams : teams;
+      if (targetTeams.length === 0) {
+        addToast("Nenhuma equipe cadastrada para exportar.");
+        return;
+      }
 
-    doc.setFontSize(18);
-    doc.text(title, 14, 15);
-    doc.setFontSize(12);
-    doc.text(period, 14, 22);
-    doc.text(timestamp, 14, 29);
-
-    const targetTeams = visibleTeams.length > 0 ? visibleTeams : teams;
-    const head = [['Dia / Data', ...targetTeams.map(t => t.name)]];
-    const body = DAYS.map((day, i) => {
-      const fullDate = weekDatesFull[i];
-      const dailyObras = obras.filter(o => {
-        const oDate = (o.dataObra || '').split('T')[0];
-        const isExactDate = oDate === fullDate;
-        return isExactDate;
+      const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
       });
-      const dailyServicos = servicos.filter(s => {
-        const sDate = (s.dataServico || '').split('T')[0];
-        const isExactDate = sDate === fullDate;
-        return isExactDate;
-      });
-      
-      let dayText = `${day} (${weekDates[i]})`;
-      
-      return [
-        dayText,
-        ...targetTeams.map(team => {
-          const manualText = schedule[day]?.[team.id]?.text || '';
-          // Clean up manual text from auto-synced entries to avoid redundancy
-          const filteredLines = manualText.split('\n').filter(line => {
-            const trimmed = line.trim();
-            return !trimmed.startsWith('Cliente:') && 
-                   !trimmed.startsWith('• [OBRA]') && 
-                   !trimmed.startsWith('• [SERVIÇO]');
-          });
-          return filteredLines.join('\n');
-        })
-      ];
-    });
 
-    autoTable(doc, {
-      startY: 35,
-      head: head,
-      body: body,
-      theme: 'grid',
-      styles: { fontSize: 10, cellPadding: 3 },
-      headStyles: { fillColor: '#1e2f3e', textColor: '#ffffff' },
-      didParseCell: (data: any) => {
-        if (data.section === 'body' && data.column.index > 0) {
-          const team = targetTeams[data.column.index - 1];
-          if (!team) return;
-          const day = DAYS[data.row.index];
-          const cellData = schedule[day]?.[team.id];
-          if (cellData?.color) {
-            data.cell.styles.fillColor = cellData.color;
-            const colorObj = COLORS.find(c => c.bg === cellData.color);
-            if (colorObj?.isDark) {
-              data.cell.styles.textColor = '#ffffff';
+      const pageWidth = doc.internal.pageSize.getWidth();
+
+      // Top Header Bar
+      doc.setFillColor(30, 47, 62); // #1e2f3e
+      doc.rect(0, 0, pageWidth, 22, 'F');
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(15);
+      doc.text("CBC ENERGIAS RENOVÁVEIS - ESCALA SEMANAL DE TRABALHO", 14, 11);
+
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(9);
+      doc.setTextColor(203, 213, 225); // slate-300
+      doc.text(`Período: ${weekRange}  |  Equipes Ativas: ${targetTeams.length}`, 14, 18);
+
+      const timestamp = `Gerado em: ${new Date().toLocaleString('pt-BR')}`;
+      doc.text(timestamp, pageWidth - 14, 18, { align: 'right' });
+
+      const head = [['Dia / Data', ...targetTeams.map(t => t.name)]];
+      const body = DAYS.map((day, i) => {
+        const fullDate = weekDatesFull[i];
+        let dayText = `${day}\n(${weekDates[i]})`;
+
+        return [
+          dayText,
+          ...targetTeams.map(team => {
+            const teamName = team.name.trim().toLowerCase();
+            const cellItems: string[] = [];
+
+            // 1. Manual Text entered by user (excluding automated prefix relics)
+            const manualText = schedule[day]?.[team.id]?.text || '';
+            const filteredManual = manualText
+              .split('\n')
+              .map(l => l.trim())
+              .filter(l => {
+                return l.length > 0 && 
+                  !l.startsWith('Cliente:') && 
+                  !l.startsWith('• [OBRA]') && 
+                  !l.startsWith('• [SERVIÇO]') &&
+                  !l.startsWith('• [ADMIN]') &&
+                  !l.startsWith('• [ATEND. ADMIN]');
+              });
+
+            if (filteredManual.length > 0) {
+              cellItems.push(filteredManual.join('\n'));
+            }
+
+            // 2. Matching Obras
+            const matchingObras = obras.filter(o => {
+              const obraEquipe = (o.equipe || '').trim().toLowerCase();
+              return obraEquipe === teamName && (o.dataObra || '').split('T')[0] === fullDate;
+            });
+
+            matchingObras.forEach(o => {
+              let obraDesc = `• [OBRA] ${o.cliente}`;
+              if (o.quantidadePlacas > 0) obraDesc += ` (${o.quantidadePlacas} PL)`;
+              if (o.situacao && o.situacao !== 'Em Andamento') obraDesc += ` [${o.situacao}]`;
+              if (o.observacoes) obraDesc += `\n  Obs: ${o.observacoes}`;
+              cellItems.push(obraDesc);
+            });
+
+            // 3. Matching Serviços (including Atendimento Administrativo)
+            const matchingServicos = servicos.filter(s => {
+              const eqS = (s.equipeServico || '').trim().toLowerCase();
+              const eqI = (s.equipeInstalou || '').trim().toLowerCase();
+              return (eqS === teamName || eqI === teamName) && (s.dataServico || '').split('T')[0] === fullDate;
+            });
+
+            matchingServicos.forEach(s => {
+              const isAdm = s.tipoAtendimento === 'Administrativo';
+              const tag = isAdm ? '[ATEND. ADMIN]' : '[SERVIÇO]';
+              let servDesc = `• ${tag} ${s.cliente}`;
+              if (s.servico) servDesc += ` (${s.servico})`;
+              if (s.situacao && s.situacao !== 'Em Andamento') servDesc += ` [${s.situacao}]`;
+              if (s.observacao) servDesc += `\n  Obs: ${s.observacao}`;
+              cellItems.push(servDesc);
+            });
+
+            return cellItems.length > 0 ? cellItems.join('\n\n') : '-';
+          })
+        ];
+      });
+
+      const colCount = targetTeams.length + 1;
+      const fontSize = colCount > 9 ? 6 : colCount > 6 ? 7 : 8;
+
+      autoTable(doc, {
+        startY: 26,
+        head: head,
+        body: body,
+        theme: 'grid',
+        styles: { 
+          fontSize: fontSize, 
+          cellPadding: 2,
+          valign: 'top',
+          overflow: 'linebreak',
+          lineColor: [226, 232, 240], // slate-200
+          lineWidth: 0.2
+        },
+        headStyles: { 
+          fillColor: [30, 47, 62], 
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          halign: 'center',
+          valign: 'middle',
+          fontSize: fontSize + 0.5
+        },
+        columnStyles: {
+          0: { 
+            cellWidth: 26, 
+            fontStyle: 'bold', 
+            fillColor: [248, 250, 252], 
+            textColor: [30, 47, 62],
+            halign: 'center' 
+          }
+        },
+        didParseCell: (data: any) => {
+          if (data.section === 'body' && data.column.index > 0) {
+            const team = targetTeams[data.column.index - 1];
+            if (!team) return;
+            const day = DAYS[data.row.index];
+            const cellData = schedule[day]?.[team.id];
+            if (cellData?.color && cellData.color !== '#ffffff') {
+              data.cell.styles.fillColor = cellData.color;
+              const colorObj = COLORS.find(c => c.bg === cellData.color);
+              if (colorObj?.isDark) {
+                data.cell.styles.textColor = '#ffffff';
+              } else {
+                data.cell.styles.textColor = '#1e2f3e';
+              }
             } else {
-              data.cell.styles.textColor = '#1e2f3e';
+              // Highlight lightly if cell contains administrative appointment
+              const cellText = String(data.cell.raw || '');
+              if (cellText.includes('[ATEND. ADMIN]')) {
+                data.cell.styles.fillColor = [250, 245, 255]; // light purple bg
+              }
             }
           }
         }
-      }
-    });
+      });
 
-    doc.save(`escala_${weekRange.replace(/ /g, '_')}.pdf`);
+      const sanitizedRange = weekRange.replace(/[/\\?%*:|"<> ]/g, '_');
+      doc.save(`escala_semanal_${sanitizedRange}.pdf`);
+      addToast("Escala Semanal exportada para PDF com sucesso!");
+    } catch (err: any) {
+      console.error("Erro ao gerar PDF da escala:", err);
+      addToast(`Erro ao exportar PDF: ${err?.message || 'Falha inesperada'}`);
+    }
   };
 
   return (
@@ -1004,7 +1095,9 @@ export default function EscalaView({
                                 )}
                               </div>
                             ))}
-                            {matchingServicos.map(s => (
+                            {matchingServicos.map(s => {
+                              const isAdm = s.tipoAtendimento === 'Administrativo';
+                              return (
                               <div 
                                 key={s.firebaseId || s.id} 
                                 onClick={() => setSelectedDetails({ type: 'servico', item: s })}
@@ -1014,13 +1107,24 @@ export default function EscalaView({
                                     : s.situacao === 'Concluído'
                                     ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
                                     : isDark 
-                                    ? 'bg-white/10 text-white border-white/20' 
+                                    ? (isAdm ? 'bg-purple-950/70 text-purple-200 border-purple-500/50' : 'bg-white/10 text-white border-white/20')
+                                    : isAdm
+                                    ? 'bg-purple-50 text-purple-950 border-purple-300 ring-1 ring-purple-400/40 shadow-xs'
                                     : 'bg-white text-blue-700 border-blue-100'
                                 }`}
                               >
                                 <div className="flex items-center justify-between mb-1 gap-1">
                                   <div className="flex items-center gap-1 min-w-0">
-                                    <Wrench size={10} className="opacity-70 shrink-0" />
+                                    {isAdm ? (
+                                      <Briefcase size={10} className="text-purple-600 shrink-0" />
+                                    ) : (
+                                      <Wrench size={10} className="opacity-70 shrink-0" />
+                                    )}
+                                    {isAdm && (
+                                      <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-1 py-0.2 rounded shrink-0">
+                                        ADMIN
+                                      </span>
+                                    )}
                                     <select
                                       value={s.situacao || 'Em Andamento'}
                                       onClick={(e) => e.stopPropagation()}
@@ -1032,9 +1136,11 @@ export default function EscalaView({
                                           ? 'bg-slate-200 text-slate-700 border-slate-300'
                                           : s.situacao === 'Pendente'
                                           ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                          : isAdm
+                                          ? 'bg-purple-100 text-purple-900 border-purple-300'
                                           : 'bg-blue-100 text-blue-800 border-blue-300'
                                       }`}
-                                      title="Alterar status deste agendamento de serviço"
+                                      title="Alterar status deste agendamento"
                                     >
                                       <option value="Em Andamento">Em Andamento</option>
                                       <option value="Concluído">Concluído</option>
@@ -1045,8 +1151,10 @@ export default function EscalaView({
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-blue-600 transition-colors ${s.situacao === 'Concluído' ? 'line-through' : ''}`}
-                                    title="Clique para ver detalhes organizados"
+                                    className={`font-bold truncate text-[10px] flex-1 cursor-pointer transition-colors ${
+                                      isAdm ? 'hover:text-purple-700 text-purple-950' : 'hover:text-blue-600 text-blue-900'
+                                    } ${s.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                    title={`Clique para ver detalhes${isAdm ? ' (Atendimento Administrativo)' : ''}`}
                                   >
                                     {s.cliente}
                                   </span>
@@ -1069,7 +1177,7 @@ export default function EscalaView({
                                         const url = generateServicoGCalUrl(s, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className="p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded transition-colors"
+                                      className={`p-0.5 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80'}`}
                                       title="Anexar ao Google Agenda"
                                     >
                                       <CalendarClock size={10} />
@@ -1079,7 +1187,7 @@ export default function EscalaView({
                                         e.stopPropagation(); 
                                         onEditServico?.(s); 
                                       }}
-                                      className="p-0.5 text-blue-500 hover:text-blue-700 hover:bg-slate-100/50 rounded transition-colors"
+                                      className={`p-0.5 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
                                       title="Editar Registro"
                                     >
                                       <Edit size={10} />
@@ -1087,7 +1195,7 @@ export default function EscalaView({
                                     {s.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
-                                        className="p-0.5 text-blue-500 hover:text-blue-700 hover:bg-slate-100/50 rounded transition-colors"
+                                        className={`p-0.5 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
                                         title="Ver TXT"
                                       >
                                         <FileText size={10} />
@@ -1101,7 +1209,7 @@ export default function EscalaView({
                                       e.stopPropagation();
                                       setViewingObs({
                                         cliente: s.cliente,
-                                        tipo: 'Agendamento de Serviço',
+                                        tipo: isAdm ? 'Atendimento Administrativo' : 'Agendamento de Serviço',
                                         observacao: s.observacao,
                                         data: s.dataServico ? formatDateBR(s.dataServico) : undefined
                                       });
@@ -1116,7 +1224,8 @@ export default function EscalaView({
                                   </div>
                                 )}
                               </div>
-                            ))}
+                            );
+                            })}
                           </div>
                         )}
                         {/* Cell Actions Menu */}
@@ -1541,13 +1650,13 @@ export default function EscalaView({
                           </div>
 
                           <div className="bg-slate-50 p-3 rounded-xl border border-slate-100 flex items-center gap-3">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isObra ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>
-                              {isObra ? <Zap size={16} /> : <Wrench size={16} />}
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${isObra ? 'bg-indigo-100 text-indigo-700' : servicoItem?.tipoAtendimento === 'Administrativo' ? 'bg-purple-100 text-purple-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                              {isObra ? <Zap size={16} /> : servicoItem?.tipoAtendimento === 'Administrativo' ? <Briefcase size={16} /> : <Wrench size={16} />}
                             </div>
                             <div className="min-w-0">
                               <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Categoria</span>
                               <span className="text-xs font-extrabold text-slate-700 truncate block">
-                                {isObra ? 'Instalação Solar' : 'Manutenção'}
+                                {isObra ? 'Instalação Solar' : servicoItem?.tipoAtendimento === 'Administrativo' ? 'Atendimento Administrativo' : 'Atendimento Técnico'}
                               </span>
                             </div>
                           </div>

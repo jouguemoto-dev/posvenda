@@ -12,7 +12,8 @@ export function buildObraGCalTitle(obra: Partial<Obra>, teamOverride?: string): 
 export function buildServicoGCalTitle(servico: Partial<Servico>, teamOverride?: string): string {
   const team = teamOverride || servico.equipeServico || servico.equipeInstalou || 'Sem Equipe';
   const cliente = servico.cliente || 'Cliente';
-  return `${cliente}, ${team}`;
+  const tag = servico.tipoAtendimento === 'Administrativo' ? '[ADMIN] ' : '';
+  return `${tag}${cliente}, ${team}`;
 }
 
 export function createGoogleCalendarUrl(params: {
@@ -104,6 +105,7 @@ export function generateServicoGCalUrl(servico: Servico, dateOverride?: string, 
   const details = [
     `👤 Cliente: ${servico.cliente}`,
     `🔢 Registro: #${servico.numeroRegistro}`,
+    `📋 Tipo: ${servico.tipoAtendimento === 'Administrativo' ? '💼 Atendimento Administrativo' : '🔧 Atendimento Técnico'}`,
     `🛠️ Equipe: ${team}`,
     `🔧 Serviço: ${servico.servico || 'Não informado'}`,
     `💼 Vendedor: ${servico.vendedor || '---'}`,

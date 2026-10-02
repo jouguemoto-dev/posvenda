@@ -42,6 +42,7 @@ import {
   Activity,
   Cpu,
   Wrench,
+  Briefcase,
   Cloud,
   ChevronLeft,
   Palette,
@@ -430,6 +431,7 @@ export default function App() {
   const [servicoFormData, setServicoFormData] = useState<Partial<any>>({
     situacao: 'Pendente',
     prioridade: 'Média',
+    tipoAtendimento: 'Técnico',
     cliente: '',
     vendedor: '',
     local: '',
@@ -868,6 +870,7 @@ export default function App() {
       if (filtros.vendedor && !normalizeStr(servico.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
       if (filtros.equipe && servico.equipeServico !== filtros.equipe && servico.equipeInstalou !== filtros.equipe) return false;
       if (filtros.formaPagamento && servico.formaPagamento !== filtros.formaPagamento) return false;
+      if (filtros.tipoAtendimento && (servico.tipoAtendimento || 'Técnico') !== filtros.tipoAtendimento) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfigServicos;
@@ -918,6 +921,7 @@ export default function App() {
       if (filtros.vendedor && !normalizeStr(s.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
       if (filtros.equipe && s.equipeServico !== filtros.equipe && s.equipeInstalou !== filtros.equipe) return false;
       if (filtros.formaPagamento && s.formaPagamento !== filtros.formaPagamento) return false;
+      if (filtros.tipoAtendimento && (s.tipoAtendimento || 'Técnico') !== filtros.tipoAtendimento) return false;
 
       // Aplicar filtros específicos da seção de concluídos
       if (filtrosArquivados.cliente && !matchesRealtimeSearch(s, filtrosArquivados.cliente)) return false;
@@ -1518,6 +1522,7 @@ export default function App() {
         : String(servicos.length + 1).padStart(3, '0'),
       situacao: servicoFormData.situacao as Situacao,
       prioridade: servicoFormData.prioridade as Prioridade,
+      tipoAtendimento: (servicoFormData.tipoAtendimento || 'Técnico') as 'Técnico' | 'Administrativo',
       cliente: servicoFormData.cliente || '',
       vendedor: servicoFormData.vendedor || '',
       local: servicoFormData.local || '',
@@ -1612,6 +1617,7 @@ export default function App() {
     setServicoFormData({
       situacao: 'Pendente',
       prioridade: 'Média',
+      tipoAtendimento: 'Técnico',
       cliente: '',
       vendedor: '',
       local: '',
@@ -1655,7 +1661,8 @@ export default function App() {
 
   const handleServicoEdit = (servico: any) => {
     setServicoFormData({
-      ...servico
+      ...servico,
+      tipoAtendimento: servico.tipoAtendimento || 'Técnico'
     });
 
     const equipeServicoExists = equipes.some(e => e.nome === servico.equipeServico);
@@ -3476,22 +3483,52 @@ export default function App() {
             </div>
           )}
           {activeTab === 'servicos' && (
-            <div className="flex flex-wrap items-center gap-3 pt-2 border-t border-slate-100">
-              <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Visualização:</span>
-              <button 
-                onClick={() => setHideScheduledServicos(!hideScheduledServicos)}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideScheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}
-              >
-                <div className={`w-1.5 h-1.5 rounded-full ${hideScheduledServicos ? 'bg-slate-300' : 'bg-indigo-500 animate-pulse'}`} />
-                Serviços Agendados
-              </button>
-              <button 
-                onClick={() => setHideUnscheduledServicos(!hideUnscheduledServicos)}
-                className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideUnscheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}
-              >
-                <div className={`w-1.5 h-1.5 rounded-full ${hideUnscheduledServicos ? 'bg-slate-300' : 'bg-orange-500 animate-pulse'}`} />
-                Serviços Sem Data
-              </button>
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-slate-100">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Visualização:</span>
+                <button 
+                  onClick={() => setHideScheduledServicos(!hideScheduledServicos)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideScheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${hideScheduledServicos ? 'bg-slate-300' : 'bg-indigo-500 animate-pulse'}`} />
+                  Serviços Agendados
+                </button>
+                <button 
+                  onClick={() => setHideUnscheduledServicos(!hideUnscheduledServicos)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideUnscheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${hideUnscheduledServicos ? 'bg-slate-300' : 'bg-orange-500 animate-pulse'}`} />
+                  Serviços Sem Data
+                </button>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Tipo:</span>
+                <button
+                  onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: '' }))}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
+                    !filtros.tipoAtendimento ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  }`}
+                >
+                  Todos
+                </button>
+                <button
+                  onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: 'Técnico' }))}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 ${
+                    filtros.tipoAtendimento === 'Técnico' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60'
+                  }`}
+                >
+                  <Wrench size={10} /> Técnicos
+                </button>
+                <button
+                  onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: 'Administrativo' }))}
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 ${
+                    filtros.tipoAtendimento === 'Administrativo' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+                  }`}
+                >
+                  <Briefcase size={10} /> Administrativos
+                </button>
+              </div>
             </div>
           )}
         </section>
@@ -6190,6 +6227,65 @@ export default function App() {
                 </form>
               ) : (
                 <form onSubmit={handleServicoSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                  {/* Section: Tipo de Atendimento (Técnico vs Administrativo) */}
+                  <div className="bg-gradient-to-r from-slate-50 via-purple-50/30 to-indigo-50/40 p-4 sm:p-5 rounded-2xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-3">
+                      <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <Briefcase size={15} className="text-indigo-600" />
+                        Tipo de Atendimento
+                      </label>
+                      <span className="text-[11px] font-semibold text-slate-500">
+                        Classificação do agendamento
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <button
+                        type="button"
+                        onClick={() => setServicoFormData(prev => ({ ...prev, tipoAtendimento: 'Técnico' }))}
+                        className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left cursor-pointer ${
+                          (servicoFormData.tipoAtendimento || 'Técnico') === 'Técnico'
+                            ? 'bg-blue-50/90 border-blue-500 text-blue-950 shadow-sm ring-2 ring-blue-400/30'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className={`p-2.5 rounded-xl shrink-0 ${
+                          (servicoFormData.tipoAtendimento || 'Técnico') === 'Técnico' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          <Wrench size={18} />
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-xs text-slate-900">Atendimento Técnico</div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Manutenção, vistoria, reparos em campo</div>
+                        </div>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setServicoFormData(prev => ({ ...prev, tipoAtendimento: 'Administrativo' }))}
+                        className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left cursor-pointer ${
+                          servicoFormData.tipoAtendimento === 'Administrativo'
+                            ? 'bg-purple-50/95 border-purple-500 text-purple-950 shadow-sm ring-2 ring-purple-400/40'
+                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                        }`}
+                      >
+                        <div className={`p-2.5 rounded-xl shrink-0 ${
+                          servicoFormData.tipoAtendimento === 'Administrativo' ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                        }`}>
+                          <Briefcase size={18} />
+                        </div>
+                        <div>
+                          <div className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                            <span>Atendimento Administrativo</span>
+                            <span className="px-1.5 py-0.2 rounded-full text-[8px] bg-purple-200 text-purple-900 uppercase font-black tracking-wider">
+                              Cor Diferenciada
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-slate-500 mt-0.5">Concessionária, contratos, cartório, escritório, financeiro</div>
+                        </div>
+                      </button>
+                    </div>
+                  </div>
+
                   {/* Section: Identificação do Serviço */}
                   <div className="space-y-4">
                     <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">

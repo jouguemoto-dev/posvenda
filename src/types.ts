@@ -43,6 +43,7 @@ export interface Servico {
   numeroRegistro: string;
   situacao: Situacao;
   prioridade: Prioridade;
+  tipoAtendimento?: 'Técnico' | 'Administrativo';
   dataAtendimento: string;
   cliente: string;
   local: string;
@@ -96,6 +97,7 @@ export interface Filtros {
   vendedor: string;
   equipe: string;
   formaPagamento?: string;
+  tipoAtendimento?: string;
 }
 
 export interface TeamMember {
