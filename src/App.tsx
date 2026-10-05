@@ -6369,40 +6369,40 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col"
+              className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
             >
-              <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
-                <div className="flex items-center gap-3">
-                  <div className="bg-white/20 p-2 rounded-lg">
-                    {(activeTab === 'obras' ? editandoId : editandoServicoId) ? <Edit size={24} /> : <Plus size={24} />}
+              <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white shrink-0">
+                <div className="flex items-center gap-2">
+                  <div className="bg-white/20 p-1.5 rounded-lg">
+                    {(activeTab === 'obras' ? editandoId : editandoServicoId) ? <Edit size={18} /> : <Plus size={18} />}
                   </div>
-                  <h2 className="text-xl font-bold">
+                  <h2 className="text-sm sm:text-base font-bold">
                     {activeTab === 'obras' 
                       ? (editandoId ? `Editando Registro #${formData.numeroRegistro}` : 'Novo Registro de Obra')
                       : (editandoServicoId ? `Editando Serviço #${servicoFormData.numeroRegistro}` : 'Novo Agendamento de Serviço')
                     }
                   </h2>
                 </div>
-                <button onClick={activeTab === 'obras' ? resetForm : resetServicoForm} className="p-2 hover:bg-white/10 rounded-full transition-colors">
-                  <X size={24} />
+                <button onClick={activeTab === 'obras' ? resetForm : resetServicoForm} className="p-1 hover:bg-white/10 rounded-lg transition-colors">
+                  <X size={18} />
                 </button>
               </div>
 
               {activeTab === 'obras' ? (
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 scrollbar-hide text-xs">
                   {/* Section: Identificação */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <UserIcon size={16} />
+                  <div className="space-y-1.5">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pb-0.5 border-b border-slate-100">
+                      <UserIcon size={13} />
                       Identificação e Status
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
                       <FormField label="Situação">
                         <select 
                           name="situacao"
                           value={formData.situacao}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         >
                           <option value="Pendente">Pendente</option>
                           <option value="Em Andamento">Em Andamento</option>
@@ -6416,7 +6416,7 @@ export default function App() {
                           disabled={!canEditAllFields}
                           value={formData.prioridade}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         >
                           <option value="Alta">🔴 Alta</option>
                           <option value="Média">🟡 Média</option>
@@ -6432,18 +6432,18 @@ export default function App() {
                           value={formData.cliente}
                           onChange={handleInputChange}
                           placeholder="Nome do cliente"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         />
                       </FormField>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
                       <FormField label="Vendedor">
                         <select 
                           name="vendedor"
                           disabled={!canEditAllFields}
                           value={formData.vendedor}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         >
                           <option value="">Selecione um vendedor</option>
                           {vendedores.filter(v => v.ativo).map(v => (
@@ -6458,7 +6458,7 @@ export default function App() {
                           disabled={!canEditAllFields}
                           value={formData.inversor}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         >
                           <option value="">Selecione um inversor</option>
                           {inversores.filter(i => i.ativo).map(i => (
@@ -6469,7 +6469,7 @@ export default function App() {
                       </FormField>
                       <FormField label="Local da Obra">
                         <div className="relative">
-                          <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <MapPin size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                           <input 
                             type="text" 
                             name="local"
@@ -6477,7 +6477,7 @@ export default function App() {
                             value={formData.local}
                             onChange={handleInputChange}
                             placeholder="Endereço ou cidade"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                           />
                         </div>
                       </FormField>
@@ -6485,69 +6485,67 @@ export default function App() {
                   </div>
 
                   {/* Section: Datas e Prazos */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <Calendar size={16} />
+                  <div className="space-y-1.5">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pb-0.5 border-b border-slate-100">
+                      <Calendar size={13} />
                       Datas e Prazos
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <FormField label="Data do Contrato">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 sm:gap-2.5">
+                      <FormField label="Data Contrato">
                         <input 
                           type="date" 
                           name="dataContrato"
                           disabled={!canEditAllFields}
                           value={formData.dataContrato}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         />
                       </FormField>
-                      <FormField label="Chegada das Placas">
+                      <FormField label="Chegada Placas">
                         <input 
                           type="date" 
                           name="dataChegadaPlacas"
                           disabled={!canEditAllFields}
                           value={formData.dataChegadaPlacas}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         />
                       </FormField>
                       <FormField label="Dias Corridos">
-                        <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-500 font-medium">
+                        <div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-bold text-xs">
                           {diasCorridos} dias
                         </div>
                       </FormField>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField label="Data Prevista da Obra">
+                      <FormField label="Data Prevista Obra">
                         <input 
                           type="date" 
                           name="dataObra"
                           disabled={!canEditAllFields}
                           value={formData.dataObra}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         />
                       </FormField>
-                      <FormField label="Data de Conclusão">
+                      <FormField label="Data Conclusão">
                         <input 
                           type="date" 
                           name="dataConclusao"
                           value={formData.dataConclusao}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
                       </FormField>
                     </div>
                   </div>
 
                   {/* Section: Financeiro e Equipe */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <DollarSign size={16} />
+                  <div className="space-y-1.5">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pb-0.5 border-b border-slate-100">
+                      <DollarSign size={13} />
                       Financeiro e Execução
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                      <FormField label="Quantidade de Placas">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 sm:gap-2.5">
+                      <FormField label="Qtd Placas">
                         <input 
                           type="number" 
                           name="quantidadePlacas"
@@ -6555,11 +6553,11 @@ export default function App() {
                           min="0"
                           value={isNaN(Number(formData.quantidadePlacas)) ? '' : formData.quantidadePlacas}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         />
                       </FormField>
-                      <FormField label="Valor Mão de Obra (R$)">
-                        <div className="space-y-2">
+                      <FormField label="Mão de Obra">
+                        <div className="space-y-1">
                           <select 
                             name="valorMaoObra"
                             disabled={!canEditAllFields}
@@ -6568,55 +6566,55 @@ export default function App() {
                               const val = Number(e.target.value);
                               setFormData(prev => ({ ...prev, valorMaoObra: val }));
                             }}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                           >
-                            <option value="60">R$ 60,00</option>
-                            <option value="70">R$ 70,00</option>
-                            <option value="80">R$ 80,00</option>
-                            <option value="100">R$ 100,00</option>
+                            <option value="60">R$ 60</option>
+                            <option value="70">R$ 70</option>
+                            <option value="80">R$ 80</option>
+                            <option value="100">R$ 100</option>
                             <option value="0">Outros</option>
                           </select>
                           {formData.valorMaoObra === 0 && (
                             <input 
                               type="number" 
                               disabled={!canEditAllFields}
-                              placeholder="Valor personalizado"
+                              placeholder="Valor..."
                               value={isNaN(Number(valorMaoObraOutros)) ? '' : valorMaoObraOutros}
                               onChange={(e) => setValorMaoObraOutros(e.target.value)}
-                              className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                              className="w-full bg-white border border-indigo-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50"
                             />
                           )}
                         </div>
                       </FormField>
-                      <FormField label="Valor Total a Receber">
-                        <div className="w-full bg-indigo-50 border border-indigo-100 rounded-xl px-4 py-2.5 text-indigo-700 font-bold text-lg">
+                      <FormField label="Total a Receber">
+                        <div className="w-full bg-indigo-50 border border-indigo-100 rounded-lg px-2.5 py-1.5 text-indigo-700 font-bold text-xs truncate">
                           R$ {valorReceberCalculado.toLocaleString('pt-BR')}
                         </div>
                       </FormField>
-                      <FormField label="Forma de Pagamento">
+                      <FormField label="Forma Pgto">
                         <select 
                           name="formaPagamento"
                           disabled={!canEditAllFields}
                           value={formData.formaPagamento}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         >
-                          <option value="">Selecione a forma</option>
+                          <option value="">Selecione</option>
                           {formasPagamento.filter(f => f.ativo).map(f => (
                             <option key={f.id} value={f.nome}>{f.nome}</option>
                           ))}
                           <option value="Outros">Outros</option>
                         </select>
                       </FormField>
-                      <FormField label="Situação do Pagamento">
+                      <FormField label="Status Pgto">
                         <select 
                           name="situacaoPagamento"
                           disabled={!canEditAllFields}
                           value={formData.situacaoPagamento || ''}
                           onChange={handleInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         >
-                          <option value="">Selecione o status</option>
+                          <option value="">Selecione</option>
                           <option value="À Vista">À Vista</option>
                           <option value="Pago">Pago</option>
                           <option value="A Pagar">A Pagar</option>
@@ -6625,99 +6623,18 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Section: Arquivo TXT */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <FileText size={16} />
-                      Arquivo TXT (Orçamento/Detalhes)
-                    </h3>
-                    <div className="bg-slate-50 border-2 border-dashed border-slate-200 rounded-3xl p-6 transition-all hover:border-indigo-300 group">
-                      {formData.txtFile ? (
-                        <div className="space-y-4">
-                          <div className="flex items-center justify-between bg-white p-4 rounded-2xl border border-slate-100 shadow-sm">
-                            <div className="flex items-center gap-3">
-                              <div className="bg-indigo-50 p-2 rounded-lg text-indigo-600">
-                                <FileText size={20} />
-                              </div>
-                              <div>
-                                <p className="text-sm font-bold text-slate-700">{formData.txtFile.name}</p>
-                                <p className="text-[10px] text-slate-400 uppercase font-black tracking-widest">Arquivo Carregado</p>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <button 
-                                type="button"
-                                onClick={() => setFormData(prev => ({ ...prev, txtFile: undefined }))}
-                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all"
-                                title="Remover"
-                              >
-                                <Trash2 size={18} />
-                              </button>
-                            </div>
-                          </div>
-                          <textarea
-                            value={formData.txtFile.content}
-                            onChange={(e) => setFormData(prev => ({ 
-                              ...prev, 
-                              txtFile: prev.txtFile ? { ...prev.txtFile, content: e.target.value } : undefined 
-                            }))}
-                            rows={8}
-                            placeholder="Conteúdo do arquivo..."
-                            className="w-full bg-white border border-slate-200 rounded-2xl p-4 text-sm font-mono outline-none focus:ring-2 focus:ring-indigo-500 shadow-inner resize-y"
-                          />
-                        </div>
-                      ) : (
-                        <div className="flex flex-col items-center justify-center text-center space-y-3">
-                          <div className="bg-slate-100 p-4 rounded-full text-slate-400 group-hover:bg-indigo-50 group-hover:text-indigo-500 transition-colors">
-                            <Upload size={32} />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-slate-600">Arraste um arquivo .txt ou clique para selecionar</p>
-                            <p className="text-xs text-slate-400">Importe orçamentos ou detalhes técnicos</p>
-                          </div>
-                          <input 
-                            type="file" 
-                            accept=".txt"
-                            onChange={handleTxtFileUpload}
-                            className="hidden"
-                            id="txt-upload"
-                          />
-                          <div className="flex items-center gap-3">
-                            <label 
-                              htmlFor="txt-upload"
-                              className="px-6 py-2 bg-white border border-slate-200 rounded-full text-sm font-bold text-slate-600 cursor-pointer hover:bg-slate-50 hover:border-indigo-300 hover:text-indigo-600 transition-all shadow-sm flex items-center gap-2"
-                            >
-                              <Upload size={16} />
-                              Selecionar Arquivo
-                            </label>
-                            <button
-                              type="button"
-                              onClick={() => setFormData(prev => ({ 
-                                ...prev, 
-                                txtFile: { name: 'Texto Colado.txt', content: '' } 
-                              }))}
-                              className="px-6 py-2 bg-indigo-600 border border-indigo-700 rounded-full text-sm font-bold text-white cursor-pointer hover:bg-indigo-700 transition-all shadow-sm flex items-center gap-2 active:scale-95"
-                            >
-                              <Clipboard size={16} />
-                              Colar Texto
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Section: Equipe e Observações */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5">
                     <FormField label="Equipe Responsável">
-                      <div className="space-y-2">
+                      <div className="space-y-1">
                         <div className="relative">
-                          <Users size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
+                          <Users size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                           <select 
                             name="equipe"
                             disabled={!canEditAllFields}
                             value={formData.equipe}
                             onChange={handleInputChange}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                           >
                             <option value="">Selecione uma equipe</option>
                             {equipes.filter(e => e.ativo).map(e => (
@@ -6728,119 +6645,197 @@ export default function App() {
                         </div>
                         {formData.equipe === 'Outros' && (
                           <input 
-                            type="text"
+                            type="text" 
                             disabled={!canEditAllFields}
                             placeholder="Nome da equipe personalizada"
                             value={equipeOutros}
                             onChange={(e) => setEquipeOutros(e.target.value)}
-                            className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                            className="w-full bg-white border border-indigo-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-indigo-500"
                           />
                         )}
                       </div>
                     </FormField>
                     <FormField label="Observações Adicionais">
-                        <textarea 
-                          name="observacoes"
-                          value={formData.observacoes}
-                          onChange={handleInputChange}
-                          rows={1}
-                          placeholder="Detalhes importantes..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
-                        />
-                      </FormField>
+                      <textarea 
+                        name="observacoes"
+                        value={formData.observacoes}
+                        onChange={handleInputChange}
+                        rows={1}
+                        placeholder="Detalhes importantes..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium"
+                      />
+                    </FormField>
                   </div>
 
-                  <div className="pt-4 flex items-center justify-end gap-4">
+                  {/* Section: Arquivo TXT (Compacto) */}
+                  <div className="space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                        <FileText size={13} />
+                        Arquivo TXT (Orçamento/Detalhes)
+                      </span>
+                      {formData.txtFile && (
+                        <button 
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, txtFile: undefined }))}
+                          className="text-[10px] text-red-500 hover:underline font-bold flex items-center gap-1"
+                        >
+                          <Trash2 size={11} /> Remover TXT
+                        </button>
+                      )}
+                    </div>
+                    <div className="bg-slate-50/80 border border-dashed border-slate-200 rounded-xl p-2 transition-all hover:border-indigo-300">
+                      {formData.txtFile ? (
+                        <div className="space-y-1.5">
+                          <div className="flex items-center justify-between text-xs font-bold text-slate-700 px-1">
+                            <span className="truncate">{formData.txtFile.name}</span>
+                            <span className="text-[9px] uppercase font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded">Carregado</span>
+                          </div>
+                          <textarea
+                            value={formData.txtFile.content}
+                            onChange={(e) => setFormData(prev => ({ 
+                              ...prev, 
+                              txtFile: prev.txtFile ? { ...prev.txtFile, content: e.target.value } : undefined 
+                            }))}
+                            rows={3}
+                            placeholder="Conteúdo do arquivo..."
+                            className="w-full bg-white border border-slate-200 rounded-lg p-2 text-xs font-mono outline-none focus:ring-1 focus:ring-indigo-500 resize-y"
+                          />
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-between gap-2 px-1">
+                          <div className="flex items-center gap-2">
+                            <div className="bg-slate-100 p-1.5 rounded-lg text-slate-400 shrink-0">
+                              <Upload size={14} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-bold text-slate-600">Arquivo .txt do orçamento</p>
+                              <p className="text-[10px] text-slate-400">Importe arquivo ou cole texto</p>
+                            </div>
+                          </div>
+                          <input 
+                            type="file" 
+                            accept=".txt"
+                            onChange={handleTxtFileUpload}
+                            className="hidden"
+                            id="txt-upload"
+                          />
+                          <div className="flex items-center gap-1.5 shrink-0">
+                            <label 
+                              htmlFor="txt-upload"
+                              className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-bold text-slate-600 cursor-pointer hover:bg-slate-50 transition-all shadow-2xs flex items-center gap-1"
+                            >
+                              <Upload size={12} />
+                              Selecionar
+                            </label>
+                            <button
+                              type="button"
+                              onClick={() => setFormData(prev => ({ 
+                                ...prev, 
+                                txtFile: { name: 'Texto Colado.txt', content: '' } 
+                              }))}
+                              className="px-2.5 py-1 bg-indigo-600 text-white rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all shadow-2xs flex items-center gap-1"
+                            >
+                              <Clipboard size={12} />
+                              Colar
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
                     <button 
                       type="button" 
                       onClick={resetForm}
-                      className="px-6 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                     >
                       Cancelar
                     </button>
                     <button 
                       type="submit"
-                      className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-200"
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
                     >
-                      <Save size={20} />
+                      <Save size={14} />
                       Salvar Registro
                     </button>
                   </div>
                 </form>
               ) : (
-                <form onSubmit={handleServicoSubmit} className="flex-1 overflow-y-auto p-8 space-y-8 scrollbar-hide">
+                <form onSubmit={handleServicoSubmit} className="flex-1 overflow-y-auto px-4 py-3 space-y-2.5 scrollbar-hide text-xs">
                   {/* Section: Tipo de Atendimento (Técnico vs Administrativo) */}
-                  <div className="bg-gradient-to-r from-slate-50 via-purple-50/30 to-indigo-50/40 p-4 sm:p-5 rounded-2xl border border-slate-200">
-                    <div className="flex items-center justify-between mb-3">
-                      <label className="text-xs font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
-                        <Briefcase size={15} className="text-indigo-600" />
+                  <div className="bg-gradient-to-r from-slate-50 via-purple-50/30 to-indigo-50/40 p-2 sm:p-2.5 rounded-xl border border-slate-200">
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="text-[11px] font-black uppercase tracking-wider text-slate-700 flex items-center gap-1.5">
+                        <Briefcase size={13} className="text-indigo-600" />
                         Tipo de Atendimento
                       </label>
-                      <span className="text-[11px] font-semibold text-slate-500">
+                      <span className="text-[10px] font-semibold text-slate-500">
                         Classificação do agendamento
                       </span>
                     </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <button
                         type="button"
                         onClick={() => setServicoFormData(prev => ({ ...prev, tipoAtendimento: 'Técnico' }))}
-                        className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left cursor-pointer ${
+                        className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all text-left cursor-pointer ${
                           (servicoFormData.tipoAtendimento || 'Técnico') === 'Técnico'
-                            ? 'bg-blue-50/90 border-blue-500 text-blue-950 shadow-sm ring-2 ring-blue-400/30'
+                            ? 'bg-blue-50/90 border-blue-500 text-blue-950 shadow-2xs ring-1 ring-blue-400/30'
                             : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                         }`}
                       >
-                        <div className={`p-2.5 rounded-xl shrink-0 ${
-                          (servicoFormData.tipoAtendimento || 'Técnico') === 'Técnico' ? 'bg-blue-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                        <div className={`p-1.5 rounded-lg shrink-0 ${
+                          (servicoFormData.tipoAtendimento || 'Técnico') === 'Técnico' ? 'bg-blue-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-500'
                         }`}>
-                          <Wrench size={18} />
+                          <Wrench size={15} />
                         </div>
                         <div>
-                          <div className="font-extrabold text-xs text-slate-900">Atendimento Técnico</div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Manutenção, vistoria, reparos em campo</div>
+                          <div className="font-extrabold text-xs text-slate-900 leading-tight">Atendimento Técnico</div>
+                          <div className="text-[10px] text-slate-500">Manutenção, vistoria, reparos em campo</div>
                         </div>
                       </button>
 
                       <button
                         type="button"
                         onClick={() => setServicoFormData(prev => ({ ...prev, tipoAtendimento: 'Administrativo' }))}
-                        className={`flex items-center gap-3 p-3.5 rounded-xl border-2 transition-all text-left cursor-pointer ${
+                        className={`flex items-center gap-2.5 p-2 rounded-lg border transition-all text-left cursor-pointer ${
                           servicoFormData.tipoAtendimento === 'Administrativo'
-                            ? 'bg-purple-50/95 border-purple-500 text-purple-950 shadow-sm ring-2 ring-purple-400/40'
+                            ? 'bg-purple-50/95 border-purple-500 text-purple-950 shadow-2xs ring-1 ring-purple-400/40'
                             : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
                         }`}
                       >
-                        <div className={`p-2.5 rounded-xl shrink-0 ${
-                          servicoFormData.tipoAtendimento === 'Administrativo' ? 'bg-purple-600 text-white shadow-sm' : 'bg-slate-100 text-slate-500'
+                        <div className={`p-1.5 rounded-lg shrink-0 ${
+                          servicoFormData.tipoAtendimento === 'Administrativo' ? 'bg-purple-600 text-white shadow-2xs' : 'bg-slate-100 text-slate-500'
                         }`}>
-                          <Briefcase size={18} />
+                          <Briefcase size={15} />
                         </div>
                         <div>
-                          <div className="font-extrabold text-xs text-slate-900 flex items-center gap-1.5">
+                          <div className="font-extrabold text-xs text-slate-900 flex items-center gap-1 leading-tight">
                             <span>Atendimento Administrativo</span>
-                            <span className="px-1.5 py-0.2 rounded-full text-[8px] bg-purple-200 text-purple-900 uppercase font-black tracking-wider">
-                              Cor Diferenciada
+                            <span className="px-1 py-0.2 rounded text-[8px] bg-purple-200 text-purple-900 uppercase font-black tracking-wider">
+                              Admin
                             </span>
                           </div>
-                          <div className="text-[10px] text-slate-500 mt-0.5">Concessionária, contratos, cartório, escritório, financeiro</div>
+                          <div className="text-[10px] text-slate-500">Concessionária, contratos, cartório, escritório</div>
                         </div>
                       </button>
                     </div>
                   </div>
 
                   {/* Section: Identificação do Serviço */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <UserIcon size={16} />
+                  <div className="space-y-1.5">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pb-0.5 border-b border-slate-100">
+                      <UserIcon size={13} />
                       Identificação e Status
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
                       <FormField label="Situação">
                         <select 
                           name="situacao"
                           value={servicoFormData.situacao}
                           onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         >
                           <option value="Pendente">Pendente</option>
                           <option value="Em Andamento">Em Andamento</option>
@@ -6853,7 +6848,7 @@ export default function App() {
                           name="prioridade"
                           value={servicoFormData.prioridade}
                           onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         >
                           <option value="Alta">🔴 Alta</option>
                           <option value="Média">🟡 Média</option>
@@ -6871,28 +6866,28 @@ export default function App() {
                               onChange={handleServicoInputChange}
                               onFocus={() => setShowClientSuggestions(true)}
                               placeholder="Nome do cliente (ou busque por obras)"
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-4 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 transition-all font-medium text-slate-800"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 transition-all font-medium text-slate-800"
                               autoComplete="off"
                             />
                             <button
                               type="button"
                               onClick={() => setShowClientSuggestions(!showClientSuggestions)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-indigo-600 transition-colors"
+                              className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 text-slate-400 hover:text-indigo-600 transition-colors"
                               title="Buscar clientes cadastrados em Obras"
                             >
-                              <Search size={18} />
+                              <Search size={14} />
                             </button>
                           </div>
                           
                           {showClientSuggestions && (
-                            <div className="absolute z-50 left-0 right-0 mt-1 max-h-64 overflow-y-auto bg-white border border-slate-200 rounded-2xl shadow-xl divide-y divide-slate-100">
-                              <div className="px-4 py-2 bg-slate-50 text-[10px] uppercase font-black tracking-widest text-slate-400 flex items-center justify-between">
+                            <div className="absolute z-50 left-0 right-0 mt-1 max-h-48 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl divide-y divide-slate-100">
+                              <div className="px-3 py-1.5 bg-slate-50 text-[9px] uppercase font-black tracking-widest text-slate-400 flex items-center justify-between">
                                 <span>{(servicoFormData.cliente || '').trim() ? 'Resultados em Obras' : 'Obras Recentes'}</span>
-                                <span className="font-mono lowercase font-normal text-slate-400">({matchingObras.length} encontradas)</span>
+                                <span className="font-mono lowercase font-normal text-slate-400">({matchingObras.length})</span>
                               </div>
                               {matchingObras.length === 0 ? (
-                                <div className="p-4 text-center text-sm text-slate-400">
-                                  Nenhum cliente ou obra de referência encontrado.
+                                <div className="p-3 text-center text-xs text-slate-400">
+                                  Nenhum cliente ou obra encontrado.
                                 </div>
                               ) : (
                                 matchingObras.map((obra) => (
@@ -6900,29 +6895,21 @@ export default function App() {
                                     key={obra.id}
                                     type="button"
                                     onClick={() => selectObraForServico(obra)}
-                                    className="w-full text-left px-4 py-3 hover:bg-indigo-50/50 transition-colors flex items-start gap-3"
+                                    className="w-full text-left px-3 py-2 hover:bg-indigo-50/50 transition-colors flex items-start gap-2.5"
                                   >
-                                    <div className="bg-indigo-50 text-indigo-600 p-1.5 rounded-lg mt-0.5 text-xs font-mono font-bold shrink-0">
+                                    <div className="bg-indigo-50 text-indigo-600 p-1 rounded mt-0.5 text-[10px] font-mono font-bold shrink-0">
                                       #{obra.numeroRegistro}
                                     </div>
                                     <div className="min-w-0 flex-1">
-                                      <div className="font-semibold text-sm text-slate-800 truncate">
+                                      <div className="font-semibold text-xs text-slate-800 truncate">
                                         {obra.cliente}
                                       </div>
-                                      <div className="flex items-center gap-2 mt-1 text-xs text-slate-400 font-medium whitespace-nowrap">
-                                        <div className="flex items-center gap-1 shrink-0 truncate">
-                                          <MapPin size={12} />
-                                          <span className="truncate max-w-[150px]">{obra.local}</span>
-                                        </div>
+                                      <div className="flex items-center gap-1.5 mt-0.5 text-[10px] text-slate-400 font-medium whitespace-nowrap">
+                                        <span className="truncate max-w-[120px]">{obra.local}</span>
                                         <span className="text-slate-200 font-normal">|</span>
                                         <span className="truncate">Vend: {obra.vendedor || '---'}</span>
                                       </div>
                                     </div>
-                                    {obra.formaPagamento && (
-                                      <span className="shrink-0 bg-slate-100 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider self-center">
-                                        {obra.formaPagamento}
-                                      </span>
-                                    )}
                                   </button>
                                 ))
                               )}
@@ -6931,18 +6918,18 @@ export default function App() {
                         </div>
                       </FormField>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
                       <FormField label="Data Atendimento">
                         <input 
                           type="date" 
                           name="dataAtendimento"
                           value={servicoFormData.dataAtendimento}
                           onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
                       </FormField>
                       <FormField label="Dias Corridos">
-                        <div className="w-full bg-slate-100 border border-slate-200 rounded-xl px-4 py-2.5 text-slate-500 font-medium">
+                        <div className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-slate-600 font-bold text-xs">
                           {diasCorridosServico} dias
                         </div>
                       </FormField>
@@ -6951,7 +6938,7 @@ export default function App() {
                           name="vendedor"
                           value={servicoFormData.vendedor}
                           onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         >
                           <option value="">Selecione um vendedor</option>
                           {vendedores.filter(v => v.ativo).map(v => (
@@ -6964,37 +6951,37 @@ export default function App() {
                   </div>
 
                   {/* Section: Detalhes do Serviço */}
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                      <ClipboardList size={16} />
+                  <div className="space-y-1.5">
+                    <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 pb-0.5 border-b border-slate-100">
+                      <ClipboardList size={13} />
                       Detalhes do Serviço
                     </h3>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <FormField label="Local">
-                        <div className="relative">
-                          <MapPin size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" />
-                          <input 
-                            type="text" 
-                            name="local"
-                            value={servicoFormData.local}
-                            onChange={handleServicoInputChange}
-                            placeholder="Endereço do serviço"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-11 pr-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                          />
-                        </div>
-                      </FormField>
-                      <FormField label="Serviço">
+                    <div className="grid grid-cols-1 md:grid-cols-5 gap-2 sm:gap-2.5">
+                      <div className="md:col-span-2">
+                        <FormField label="Local do Serviço">
+                          <div className="relative">
+                            <MapPin size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                            <input 
+                              type="text" 
+                              name="local"
+                              value={servicoFormData.local}
+                              onChange={handleServicoInputChange}
+                              placeholder="Endereço do serviço"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
+                            />
+                          </div>
+                        </FormField>
+                      </div>
+                      <FormField label="Tipo de Serviço">
                         <input 
                           type="text" 
                           name="servico"
                           value={servicoFormData.servico}
                           onChange={handleServicoInputChange}
-                          placeholder="Tipo de serviço"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          placeholder="Ex: Vistoria, Reparo"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
                       </FormField>
-                    </div>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                       <FormField label="Valor (R$)">
                         <input 
                           type="number" 
@@ -7002,16 +6989,15 @@ export default function App() {
                           value={isNaN(Number(servicoFormData.valor)) ? '' : servicoFormData.valor}
                           onChange={handleServicoInputChange}
                           placeholder="0,00"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
                       </FormField>
-
-                      <FormField label="Forma de Pagamento">
+                      <FormField label="Forma Pgto">
                         <select 
                           name="formaPagamento"
                           value={servicoFormData.formaPagamento}
                           onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         >
                           <option value="">Selecione</option>
                           {formasPagamento.filter(f => f.ativo).map(f => (
@@ -7019,41 +7005,26 @@ export default function App() {
                           ))}
                         </select>
                       </FormField>
-                      <FormField label="Situação do Pagamento">
-                        <select 
-                          name="situacaoPagamento"
-                          value={servicoFormData.situacaoPagamento || ''}
-                          onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                        >
-                          <option value="">Selecione o status</option>
-                          <option value="À Vista">À Vista</option>
-                          <option value="Pago">Pago</option>
-                          <option value="A Pagar">A Pagar</option>
-                        </select>
-                      </FormField>
                     </div>
 
                     {/* Alocação de Equipes */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
                       {/* Equipes Designadas para o Serviço (Multi-select) */}
-                      <div className="md:col-span-2 space-y-3 bg-gradient-to-br from-indigo-50/70 via-slate-50 to-indigo-50/30 p-4 rounded-2xl border-2 border-indigo-200/80 shadow-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 pb-2">
-                          <label className="text-xs font-black text-slate-800 flex items-center gap-2">
-                            <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
-                              <Users size={14} />
-                            </div>
-                            <span>Equipes Designadas para o Serviço</span>
-                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                      <div className="md:col-span-2 space-y-1.5 bg-gradient-to-br from-indigo-50/70 via-slate-50 to-indigo-50/30 p-2.5 rounded-xl border border-indigo-200/80 shadow-2xs">
+                        <div className="flex flex-wrap items-center justify-between gap-1 border-b border-indigo-100 pb-1">
+                          <label className="text-xs font-black text-slate-800 flex items-center gap-1.5">
+                            <Users size={13} className="text-indigo-600" />
+                            <span>Equipes Designadas</span>
+                            <span className="text-[9px] font-bold text-indigo-700 bg-indigo-100 px-1.5 py-0.2 rounded-full uppercase tracking-wider">
                               Multi-Equipes
                             </span>
                           </label>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1.5">
                             {selectedServicoTeamsList.length > 0 && (
                               <button
                                 type="button"
                                 onClick={clearServicoTeams}
-                                className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline px-1.5 py-0.5 rounded cursor-pointer"
+                                className="text-[10px] font-bold text-rose-600 hover:text-rose-700 hover:underline cursor-pointer"
                               >
                                 Limpar
                               </button>
@@ -7061,7 +7032,7 @@ export default function App() {
                             <button
                               type="button"
                               onClick={selectAllServicoTeams}
-                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline px-1.5 py-0.5 rounded cursor-pointer"
+                              className="text-[10px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline cursor-pointer"
                             >
                               Marcar todas
                             </button>
@@ -7070,50 +7041,42 @@ export default function App() {
 
                         {/* Selected Teams Badge Summary */}
                         {selectedServicoTeamsList.length > 0 ? (
-                          <div className="p-2.5 bg-white rounded-xl border border-indigo-200 shadow-2xs space-y-1.5">
+                          <div className="p-1.5 bg-white rounded-lg border border-indigo-200 shadow-2xs space-y-1">
                             <div className="flex items-center justify-between">
-                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
-                                <CheckCircle2 size={12} className="text-emerald-600" />
-                                Equipes escaladas ({selectedServicoTeamsList.length}):
-                              </span>
-                              <span className="text-[10px] text-indigo-600 font-medium">
-                                Aparecerá na escala semanal de cada equipe selecionada
+                              <span className="text-[9px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                <CheckCircle2 size={11} className="text-emerald-600" />
+                                Escaladas ({selectedServicoTeamsList.length}):
                               </span>
                             </div>
-                            <div className="flex flex-wrap gap-1.5">
+                            <div className="flex flex-wrap gap-1">
                               {selectedServicoTeamsList.map(tName => (
                                 <span
                                   key={tName}
-                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-xs group transition-all"
+                                  className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-bold bg-indigo-600 text-white shadow-2xs"
                                 >
                                   <span>{tName}</span>
                                   <button
                                     type="button"
                                     onClick={() => removeServicoTeam(tName)}
-                                    className="text-indigo-200 hover:text-white hover:bg-indigo-700/60 rounded-full p-0.5 transition-colors cursor-pointer"
+                                    className="text-indigo-200 hover:text-white rounded-full p-0.2 transition-colors cursor-pointer"
                                     title={`Remover ${tName}`}
                                   >
-                                    <X size={12} />
+                                    <X size={10} />
                                   </button>
                                 </span>
                               ))}
                             </div>
                           </div>
                         ) : (
-                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center gap-2">
-                            <AlertCircle size={16} className="text-amber-600 shrink-0" />
-                            <span>
-                              <strong>Nenhuma equipe selecionada.</strong> Clique nas equipes abaixo para selecionar 1 ou mais equipes para atender este serviço.
-                            </span>
+                          <div className="p-2 bg-amber-50 border border-amber-200 rounded-lg text-[11px] text-amber-900 flex items-center gap-1.5">
+                            <AlertCircle size={13} className="text-amber-600 shrink-0" />
+                            <span>Nenhuma equipe selecionada. Clique abaixo para escolher.</span>
                           </div>
                         )}
 
                         {/* Quick toggle chips */}
-                        <div className="space-y-1.5">
-                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
-                            Equipes disponíveis (clique para adicionar ou remover):
-                          </span>
-                          <div className="flex flex-wrap gap-1.5">
+                        <div className="space-y-1">
+                          <div className="flex flex-wrap gap-1">
                             {equipes.filter(e => e.ativo).map(eq => {
                               const isSelected = selectedServicoTeamsList.some(t => t.toLowerCase() === eq.nome.trim().toLowerCase());
                               return (
@@ -7121,18 +7084,18 @@ export default function App() {
                                   key={eq.id}
                                   type="button"
                                   onClick={() => toggleServicoTeam(eq.nome)}
-                                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                                  className={`px-2.5 py-1 rounded-lg text-xs font-bold transition-all flex items-center gap-1 cursor-pointer select-none ${
                                     isSelected
-                                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/50 scale-[1.03]'
-                                      : 'bg-white hover:bg-indigo-50/60 text-slate-700 border border-slate-200 hover:border-indigo-300'
+                                      ? 'bg-indigo-600 text-white shadow-xs'
+                                      : 'bg-white hover:bg-indigo-50/60 text-slate-700 border border-slate-200'
                                   }`}
                                 >
-                                  <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`} />
+                                  <span className={`w-1.5 h-1.5 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`} />
                                   <span>{eq.nome}</span>
                                   {isSelected ? (
-                                    <Check size={12} className="stroke-[3]" />
+                                    <Check size={10} className="stroke-[3]" />
                                   ) : (
-                                    <Plus size={12} className="opacity-40" />
+                                    <Plus size={10} className="opacity-40" />
                                   )}
                                 </button>
                               );
@@ -7141,10 +7104,10 @@ export default function App() {
                         </div>
 
                         {/* Custom Team input */}
-                        <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
+                        <div className="pt-1 border-t border-slate-200/80 flex items-center gap-1.5">
                           <input
                             type="text"
-                            placeholder="Outra equipe ou terceiro (digite o nome)..."
+                            placeholder="Outra equipe/terceiro..."
                             value={equipeServicoOutros}
                             onChange={(e) => setEquipeServicoOutros(e.target.value)}
                             onKeyDown={(e) => {
@@ -7155,7 +7118,7 @@ export default function App() {
                                 }
                               }
                             }}
-                            className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium placeholder:text-slate-400"
+                            className="flex-1 bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium placeholder:text-slate-400"
                           />
                           <button
                             type="button"
@@ -7165,23 +7128,23 @@ export default function App() {
                               }
                             }}
                             disabled={!equipeServicoOutros.trim()}
-                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 shrink-0"
+                            className="px-3 py-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-lg text-xs font-bold transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 shrink-0"
                           >
-                            <Plus size={14} />
-                            <span>Adicionar</span>
+                            <Plus size={12} />
+                            <span>Add</span>
                           </button>
                         </div>
                       </div>
 
-                      {/* Equipe que Instalou */}
-                      <div className="space-y-2">
-                        <FormField label="Equipe que Instalou (Histórico)">
-                          <div className="space-y-2">
+                      {/* Equipe que Instalou & Status Pgto */}
+                      <div className="space-y-1.5">
+                        <FormField label="Equipe que Instalou">
+                          <div className="space-y-1">
                             <select 
                               name="equipeInstalou"
                               value={servicoFormData.equipeInstalou}
                               onChange={handleServicoInputChange}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-medium"
                             >
                               <option value="">Selecione a equipe</option>
                               {equipes.filter(e => e.ativo).map(e => (
@@ -7195,24 +7158,35 @@ export default function App() {
                                 placeholder="Nome da equipe personalizada"
                                 value={equipeInstalouOutros}
                                 onChange={(e) => setEquipeInstalouOutros(e.target.value)}
-                                className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                                className="w-full bg-white border border-indigo-200 rounded-lg px-2.5 py-1 outline-none focus:ring-1 focus:ring-indigo-500 text-xs"
                               />
                             )}
                           </div>
                         </FormField>
-                        <div className="p-3 bg-slate-100 rounded-xl text-[11px] text-slate-500 leading-tight">
-                          Equipe que originalmente montou a usina solar deste cliente.
-                        </div>
+                        <FormField label="Status Pgto">
+                          <select 
+                            name="situacaoPagamento"
+                            value={servicoFormData.situacaoPagamento || ''}
+                            onChange={handleServicoInputChange}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500 text-xs font-medium"
+                          >
+                            <option value="">Selecione o status</option>
+                            <option value="À Vista">À Vista</option>
+                            <option value="Pago">Pago</option>
+                            <option value="A Pagar">A Pagar</option>
+                          </select>
+                        </FormField>
                       </div>
                     </div>
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-2 sm:gap-2.5">
                       <FormField label="Data do Serviço">
                         <input 
                           type="date" 
                           name="dataServico"
                           value={servicoFormData.dataServico}
                           onChange={handleServicoInputChange}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
                       </FormField>
                       <FormField label="Observação">
@@ -7222,25 +7196,25 @@ export default function App() {
                           onChange={handleServicoInputChange}
                           rows={1}
                           placeholder="Observações do serviço..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 resize-none"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium"
                         />
                       </FormField>
                     </div>
                   </div>
 
-                  <div className="pt-4 flex items-center justify-end gap-4">
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
                     <button 
                       type="button" 
                       onClick={resetServicoForm}
-                      className="px-6 py-3 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                      className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
                     >
                       Cancelar
                     </button>
                     <button 
                       type="submit"
-                      className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-10 py-3 rounded-xl font-bold transition-all active:scale-95 shadow-lg shadow-indigo-200"
+                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
                     >
-                      <Save size={20} />
+                      <Save size={14} />
                       Salvar Serviço
                     </button>
                   </div>
@@ -7266,36 +7240,36 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl p-8 space-y-6"
+              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-4 space-y-3"
             >
-              <div className="flex items-center justify-between">
-                <div className="space-y-1">
-                  <h2 className="text-xl font-bold flex items-center gap-2">
-                    <FileSpreadsheet className="text-emerald-600" />
+              <div className="flex items-center justify-between pb-1 border-b border-slate-100">
+                <div className="space-y-0.5">
+                  <h2 className="text-base font-bold flex items-center gap-1.5">
+                    <FileSpreadsheet className="text-emerald-600" size={18} />
                     Importar da Planilha
                   </h2>
-                  <p className="text-xs text-slate-500">
+                  <p className="text-[11px] text-slate-500">
                     Siga a ordem das colunas para uma importação correta.
                   </p>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1.5">
                   <button 
                     onClick={downloadImportTemplate}
-                    className="flex items-center gap-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-all border border-indigo-100"
+                    className="flex items-center gap-1 text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2.5 py-1 rounded-lg transition-all border border-indigo-100"
                   >
-                    <Download size={14} />
+                    <Download size={13} />
                     Baixar Modelo
                   </button>
                   <button onClick={() => setIsImportModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1">
-                    <X size={24} />
+                    <X size={18} />
                   </button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <Upload size={16} className="text-indigo-600" />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
+                <div className="space-y-1.5">
+                  <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <Upload size={14} className="text-indigo-600" />
                     Opção 1: Upload de Arquivo
                   </h3>
                   <div className="relative group">
@@ -7305,74 +7279,74 @@ export default function App() {
                       onChange={handleFileImport}
                       className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
                     />
-                    <div className="border-2 border-dashed border-slate-200 rounded-2xl p-8 text-center group-hover:border-indigo-400 group-hover:bg-indigo-50 transition-all">
-                      <FileSpreadsheet size={32} className="mx-auto text-slate-400 group-hover:text-indigo-500 mb-2" />
-                      <p className="text-sm font-bold text-slate-600">Clique ou arraste o arquivo</p>
+                    <div className="border border-dashed border-slate-200 rounded-xl p-3 text-center group-hover:border-indigo-400 group-hover:bg-indigo-50/50 transition-all">
+                      <FileSpreadsheet size={22} className="mx-auto text-slate-400 group-hover:text-indigo-500 mb-1" />
+                      <p className="text-xs font-bold text-slate-600">Clique ou arraste o arquivo</p>
                       <p className="text-[10px] text-slate-400">Suporta .xlsx, .xls e .json</p>
                     </div>
                   </div>
                 </div>
 
-                <div className="space-y-4">
-                  <h3 className="text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <ClipboardList size={16} className="text-indigo-600" />
+                <div className="space-y-1.5">
+                  <h3 className="text-xs font-bold text-slate-700 flex items-center gap-1.5">
+                    <ClipboardList size={14} className="text-indigo-600" />
                     Opção 2: Colar Dados
                   </h3>
                   <textarea 
                     value={importText}
                     onChange={(e) => setImportText(e.target.value)}
-                    placeholder="Cole aqui as linhas da sua planilha (sem o cabeçalho)..."
-                    className="w-full h-[124px] bg-slate-50 border border-slate-200 rounded-2xl p-4 font-mono text-xs outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Cole aqui as linhas da sua planilha..."
+                    className="w-full h-[68px] bg-slate-50 border border-slate-200 rounded-xl p-2 font-mono text-xs outline-none focus:ring-1 focus:ring-indigo-500 resize-none"
                   />
                   <button 
                     onClick={handlePasteImport}
-                    className="w-full bg-indigo-600 text-white py-3 rounded-xl font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                    className="w-full bg-indigo-600 text-white py-1.5 rounded-lg font-bold text-xs hover:bg-indigo-700 transition-all shadow-xs"
                   >
                     Importar Texto Colado
                   </button>
                 </div>
               </div>
 
-              <div className="bg-slate-50 rounded-xl p-4 border border-slate-200">
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Ordem das Colunas para Importação</h3>
+              <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-200">
+                <h3 className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">Ordem das Colunas para Importação</h3>
                 {activeTab === 'obras' ? (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] font-medium text-slate-600">
-                    <div className="bg-white p-1.5 rounded border border-slate-100">1. Situação</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">2. Prioridade</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">3. Cliente</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">4. Vendedor</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">5. Local</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">6. Chegada Placas</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">7. Contrato</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">8. Qtd Placas</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">9. Valor Mão Obra</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">10. Data Obra</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">11. Conclusão</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">12. Equipe</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">13. Inversor</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">14. Forma Pagamento</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">15. Observações</div>
+                  <div className="grid grid-cols-3 md:grid-cols-5 gap-1 text-[9px] font-medium text-slate-600">
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">1. Situação</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">2. Prioridade</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">3. Cliente</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">4. Vendedor</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">5. Local</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">6. Chegada Placas</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">7. Contrato</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">8. Qtd Placas</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">9. Vlr Mão Obra</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">10. Data Obra</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">11. Conclusão</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">12. Equipe</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">13. Inversor</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">14. Forma Pgto</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">15. Observações</div>
                   </div>
                 ) : (
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-[10px] font-medium text-slate-600">
-                    <div className="bg-white p-1.5 rounded border border-slate-100">1. Situação</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">2. Prioridade</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">3. Atendimento</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">4. Cliente</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">5. Local</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">6. Vendedor</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">7. Equipe Serviço</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">8. Serviço</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">9. Valor</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">10. Equipe Instalou</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">11. Data Serviço</div>
-                    <div className="bg-white p-1.5 rounded border border-slate-100">12. Observação</div>
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-1 text-[9px] font-medium text-slate-600">
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">1. Situação</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">2. Prioridade</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">3. Atendimento</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">4. Cliente</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">5. Local</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">6. Vendedor</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">7. Equipe Serviço</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">8. Serviço</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">9. Valor</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">10. Eq. Instalou</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">11. Data Serviço</div>
+                    <div className="bg-white p-1 rounded border border-slate-100 truncate">12. Observação</div>
                   </div>
                 )}
               </div>
 
-              <div className="flex justify-end">
-                <button onClick={() => setIsImportModalOpen(false)} className="px-6 py-2 rounded-xl font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Fechar</button>
+              <div className="flex justify-end pt-1">
+                <button onClick={() => setIsImportModalOpen(false)} className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors">Fechar</button>
               </div>
             </motion.div>
           </div>
@@ -7441,20 +7415,20 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+              className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
             >
               {/* Header */}
-              <div className="p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
-                <div className="flex items-center gap-4">
-                  <div className="bg-white/10 p-3 rounded-2xl backdrop-blur-md">
-                    <Eye className="text-indigo-400" size={24} />
+              <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-3">
+                  <div className="bg-white/10 p-2 rounded-xl backdrop-blur-md">
+                    <Eye className="text-indigo-400" size={18} />
                   </div>
                   <div>
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="bg-indigo-500 text-white text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="bg-indigo-500 text-white text-[9px] font-bold px-1.5 py-0.2 rounded uppercase tracking-wider">
                         #{selectedObra ? selectedObra.numeroRegistro : selectedServico?.numeroRegistro}
                       </span>
-                      <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                      <span className={`text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.2 rounded border ${
                         (selectedObra?.prioridade || selectedServico?.prioridade) === 'Alta' 
                           ? 'bg-red-500/20 text-red-200 border-red-500/30' 
                           : (selectedObra?.prioridade || selectedServico?.prioridade) === 'Média'
@@ -7464,43 +7438,43 @@ export default function App() {
                         {selectedObra ? selectedObra.prioridade : selectedServico?.prioridade}
                       </span>
                     </div>
-                    <h2 className="text-xl font-bold leading-tight">
+                    <h2 className="text-base font-bold leading-tight">
                       {selectedObra ? selectedObra.cliente : selectedServico?.cliente}
                     </h2>
                   </div>
                 </div>
                 <button 
                   onClick={() => { setIsDetailsModalOpen(false); setSelectedObra(null); setSelectedServico(null); }} 
-                  className="p-2 hover:bg-white/10 rounded-full transition-colors"
+                  className="p-1 hover:bg-white/10 rounded-lg transition-colors"
                 >
-                  <X size={24} />
+                  <X size={18} />
                 </button>
               </div>
               
               {/* Content */}
-              <div className="flex-1 overflow-y-auto p-8 scrollbar-hide">
-                <div className="space-y-10">
+              <div className="flex-1 overflow-y-auto px-4 py-3 scrollbar-hide">
+                <div className="space-y-3">
                   {selectedObra ? (
                     <>
                       {/* Section: Status & General */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <DetailItem label="Situação" value={<StatusBadge status={selectedObra.situacao} />} icon={<Activity size={14} />} />
-                        <DetailItem label="Vendedor" value={selectedObra.vendedor || '---'} icon={<UserIcon size={14} />} />
-                        <DetailItem label="Inversor" value={selectedObra.inversor || '---'} icon={<Cpu size={14} />} />
-                        <div className="md:col-span-2">
-                          <DetailItem label="Local da Obra" value={selectedObra.local || '---'} icon={<MapPin size={14} />} />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+                        <DetailItem label="Situação" value={<StatusBadge status={selectedObra.situacao} />} icon={<Activity size={12} />} />
+                        <DetailItem label="Vendedor" value={selectedObra.vendedor || '---'} icon={<UserIcon size={12} />} />
+                        <DetailItem label="Inversor" value={selectedObra.inversor || '---'} icon={<Cpu size={12} />} />
+                        <DetailItem label="Equipe Responsável" value={selectedObra.equipe || '---'} icon={<Users size={12} />} />
+                        <div className="col-span-2 md:col-span-4">
+                          <DetailItem label="Local da Obra" value={selectedObra.local || '---'} icon={<MapPin size={12} />} />
                         </div>
-                        <DetailItem label="Equipe Responsável" value={selectedObra.equipe || '---'} icon={<Users size={14} />} />
                       </div>
 
                       <hr className="border-slate-100" />
 
                       {/* Section: Dates */}
                       <div>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                          <Calendar size={14} /> Cronograma
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                          <Calendar size={12} /> Cronograma
                         </h3>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
                           <DetailItem label="Contrato" value={formatDateBR(selectedObra.dataContrato)} />
                           <DetailItem label="Chegada Placas" value={selectedObra.dataChegadaPlacas ? formatDateBR(selectedObra.dataChegadaPlacas) : '---'} />
                           <DetailItem label="Data da Obra" value={selectedObra.dataObra ? formatDateBR(selectedObra.dataObra) : '---'} />
@@ -7512,56 +7486,19 @@ export default function App() {
 
                       {/* Section: Finance */}
                       <div>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                          <DollarSign size={14} /> Financeiro & Técnico
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                          <DollarSign size={12} /> Financeiro & Técnico
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-2.5">
                           <DetailItem label="Valor Total" value={`R$ ${selectedObra.valorReceber.toLocaleString('pt-BR')}`} />
-                          <DetailItem label="Qtd. Placas" value={`${selectedObra.quantidadePlacas} unidades`} />
+                          <DetailItem label="Qtd. Placas" value={`${selectedObra.quantidadePlacas} un`} />
                           <DetailItem label="Mão de Obra (un)" value={`R$ ${selectedObra.valorMaoObra.toLocaleString('pt-BR')}`} />
-                          <div className="md:col-span-2">
-                            <DetailItem label="Forma de Pagamento" value={selectedObra.formaPagamento || '---'} />
-                          </div>
-                          <div>
-                            <DetailItem label="Situação de Pagamento" value={selectedObra.situacaoPagamento || '---'} />
-                          </div>
+                          <DetailItem label="Forma Pgto" value={selectedObra.formaPagamento || '---'} />
+                          <DetailItem label="Status Pgto" value={selectedObra.situacaoPagamento || '---'} />
                         </div>
                       </div>
 
                       <hr className="border-slate-100" />
-
-                      {/* Section: Arquivo TXT Display */}
-                      {selectedObra.txtFile && (
-                        <div className="space-y-4">
-                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <FileText size={14} /> Arquivo TXT: {selectedObra.txtFile.name}
-                          </h3>
-                          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                            <pre className="text-slate-700 font-mono text-xs leading-relaxed overflow-x-auto max-h-[400px] whitespace-pre-wrap">
-                              {selectedObra.txtFile.content}
-                            </pre>
-                            <div className="mt-4 flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const blob = new Blob([selectedObra.txtFile!.content], { type: 'text/plain' });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = selectedObra.txtFile!.name;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100"
-                              >
-                                <Download size={14} />
-                                Baixar Arquivo .txt
-                              </button>
-                            </div>
-                          </div>
-                          <hr className="border-slate-100" />
-                        </div>
-                      )}
 
                       {/* Section: Observations Destacadas */}
                       <div 
@@ -7575,7 +7512,7 @@ export default function App() {
                             });
                           }
                         }}
-                        className={`p-5 rounded-2xl border-2 shadow-xs space-y-2 transition-all ${
+                        className={`p-2.5 rounded-xl border shadow-2xs space-y-1 transition-all ${
                           selectedObra.observacoes 
                             ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group' 
                             : 'bg-slate-50 border-slate-200 opacity-80'
@@ -7583,42 +7520,69 @@ export default function App() {
                         title={selectedObra.observacoes ? "Clique para abrir apenas a observação com letra maior" : undefined}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-amber-500 text-white p-1.5 rounded-lg shadow-xs">
-                              <FileText size={15} className="stroke-[2.5]" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="bg-amber-500 text-white p-1 rounded shadow-2xs">
+                              <FileText size={12} className="stroke-[2.5]" />
                             </span>
-                            <div>
-                              <span className="text-xs font-black text-amber-950 uppercase tracking-wider block">
-                                Observações da Obra
-                              </span>
-                              <span className="text-[10px] font-semibold text-amber-700">Anotações e instruções registradas</span>
-                            </div>
+                            <span className="text-[11px] font-black text-amber-950 uppercase tracking-wider">
+                              Observações da Obra
+                            </span>
                           </div>
                           {selectedObra.observacoes && (
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2.5 py-1 rounded-md group-hover:bg-amber-300 transition-colors">
-                              🔍 Clique para ampliar
+                            <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded group-hover:bg-amber-300 transition-colors">
+                              🔍 Ampliar
                             </span>
                           )}
                         </div>
-                        <div className="bg-white/95 p-3.5 rounded-xl border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed shadow-2xs">
+                        <div className="bg-white/95 p-2 rounded-lg border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed">
                           {selectedObra.observacoes || 'Nenhuma observação registrada.'}
                         </div>
                       </div>
+
+                      {/* Section: Arquivo TXT Display */}
+                      {selectedObra.txtFile && (
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <FileText size={12} /> Arquivo TXT: {selectedObra.txtFile.name}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const blob = new Blob([selectedObra.txtFile!.content], { type: 'text/plain' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = selectedObra.txtFile!.name;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-[10px] hover:bg-indigo-100 transition-all border border-indigo-100"
+                            >
+                              <Download size={11} />
+                              Baixar .txt
+                            </button>
+                          </div>
+                          <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                            <pre className="text-slate-700 font-mono text-[11px] leading-relaxed overflow-x-auto max-h-[140px] whitespace-pre-wrap">
+                              {selectedObra.txtFile.content}
+                            </pre>
+                          </div>
+                        </div>
+                      )}
                     </>
                   ) : selectedServico ? (
                     <>
                       {/* Section: Status & General */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <DetailItem label="Situação" value={<StatusBadge status={selectedServico.situacao} />} icon={<Activity size={14} />} />
-                        <DetailItem label="Vendedor" value={selectedServico.vendedor || '---'} icon={<UserIcon size={14} />} />
-                        <DetailItem label="Atendimento" value={formatDateBR(selectedServico.dataAtendimento)} icon={<Calendar size={14} />} />
-                        <DetailItem label="Forma de Pagamento" value={selectedServico.formaPagamento || '---'} icon={<DollarSign size={14} />} />
-                        <DetailItem label="Situação de Pagamento" value={selectedServico.situacaoPagamento || '---'} icon={<DollarSign size={14} />} />
-                        <div className="md:col-span-1">
-                          <DetailItem label="Valor do Serviço" value={`R$ ${Number(selectedServico.valor).toLocaleString('pt-BR')}`} icon={<DollarSign size={14} />} />
-                        </div>
-                        <div className="md:col-span-2">
-                          <DetailItem label="Local do Serviço" value={selectedServico.local || '---'} icon={<MapPin size={14} />} />
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-2.5">
+                        <DetailItem label="Situação" value={<StatusBadge status={selectedServico.situacao} />} icon={<Activity size={12} />} />
+                        <DetailItem label="Vendedor" value={selectedServico.vendedor || '---'} icon={<UserIcon size={12} />} />
+                        <DetailItem label="Atendimento" value={formatDateBR(selectedServico.dataAtendimento)} icon={<Calendar size={12} />} />
+                        <DetailItem label="Valor" value={`R$ ${Number(selectedServico.valor).toLocaleString('pt-BR')}`} icon={<DollarSign size={12} />} />
+                        <DetailItem label="Forma Pgto" value={selectedServico.formaPagamento || '---'} icon={<DollarSign size={12} />} />
+                        <DetailItem label="Status Pgto" value={selectedServico.situacaoPagamento || '---'} icon={<DollarSign size={12} />} />
+                        <div className="col-span-2">
+                          <DetailItem label="Local do Serviço" value={selectedServico.local || '---'} icon={<MapPin size={12} />} />
                         </div>
                       </div>
 
@@ -7626,21 +7590,22 @@ export default function App() {
 
                       {/* Section: Service Details */}
                       <div>
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-4 flex items-center gap-2">
-                          <Wrench size={14} /> Detalhes Técnicos
+                        <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5">
+                          <Wrench size={12} /> Detalhes Técnicos
                         </h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-2 sm:gap-2.5">
                           <DetailItem label="Tipo de Serviço" value={selectedServico.servico || '---'} />
                           <DetailItem label="Data do Serviço" value={selectedServico.dataServico ? formatDateBR(selectedServico.dataServico) : '---'} />
-                          <div>
-                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                          <DetailItem label="Equipe que Instalou" value={selectedServico.equipeInstalou || '---'} />
+                          <div className="md:col-span-3">
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">
                               {getServicoTeams(selectedServico).length > 1 ? 'Equipes de Serviço (Múltiplas)' : 'Equipe de Serviço'}
                             </span>
-                            <div className="flex flex-wrap gap-1 mt-0.5">
+                            <div className="flex flex-wrap gap-1">
                               {getServicoTeams(selectedServico).length > 0 ? (
                                 getServicoTeams(selectedServico).map((t: string) => (
-                                  <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-50 text-indigo-800 border border-indigo-200">
-                                    <Users size={12} className="text-indigo-600" />
+                                  <span key={t} className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] font-black bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                    <Users size={11} className="text-indigo-600" />
                                     {t}
                                   </span>
                                 ))
@@ -7649,7 +7614,6 @@ export default function App() {
                               )}
                             </div>
                           </div>
-                          <DetailItem label="Equipe que Instalou" value={selectedServico.equipeInstalou || '---'} />
                         </div>
                       </div>
 
@@ -7667,7 +7631,7 @@ export default function App() {
                             });
                           }
                         }}
-                        className={`p-5 rounded-2xl border-2 shadow-xs space-y-2 transition-all ${
+                        className={`p-2.5 rounded-xl border shadow-2xs space-y-1 transition-all ${
                           selectedServico.observacao 
                             ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group' 
                             : 'bg-slate-50 border-slate-200 opacity-80'
@@ -7675,58 +7639,53 @@ export default function App() {
                         title={selectedServico.observacao ? "Clique para abrir apenas a observação com letra maior" : undefined}
                       >
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-amber-500 text-white p-1.5 rounded-lg shadow-xs">
-                              <FileText size={15} className="stroke-[2.5]" />
+                          <div className="flex items-center gap-1.5">
+                            <span className="bg-amber-500 text-white p-1 rounded shadow-2xs">
+                              <FileText size={12} className="stroke-[2.5]" />
                             </span>
-                            <div>
-                              <span className="text-xs font-black text-amber-950 uppercase tracking-wider block">
-                                Observações do Agendamento de Serviço
-                              </span>
-                              <span className="text-[10px] font-semibold text-amber-700">Anotações e instruções registradas</span>
-                            </div>
+                            <span className="text-[11px] font-black text-amber-950 uppercase tracking-wider">
+                              Observações do Agendamento
+                            </span>
                           </div>
                           {selectedServico.observacao && (
-                            <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2.5 py-1 rounded-md group-hover:bg-amber-300 transition-colors">
-                              🔍 Clique para ampliar
+                            <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded group-hover:bg-amber-300 transition-colors">
+                              🔍 Ampliar
                             </span>
                           )}
                         </div>
-                        <div className="bg-white/95 p-3.5 rounded-xl border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed shadow-2xs">
+                        <div className="bg-white/95 p-2 rounded-lg border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed">
                           {selectedServico.observacao || 'Nenhuma observação registrada.'}
                         </div>
                       </div>
 
-                      <hr className="border-slate-100" />
-
                       {/* Section: Arquivo TXT Display */}
                       {selectedServico.txtFile && (
-                        <div className="space-y-4">
-                          <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-2">
-                            <FileText size={14} /> Arquivo TXT: {selectedServico.txtFile.name}
-                          </h3>
-                          <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 shadow-sm transition-all hover:shadow-md">
-                            <pre className="text-slate-700 font-mono text-xs leading-relaxed overflow-x-auto max-h-[400px] whitespace-pre-wrap">
+                        <div className="space-y-1.5 pt-1">
+                          <div className="flex items-center justify-between">
+                            <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
+                              <FileText size={12} /> Arquivo TXT: {selectedServico.txtFile.name}
+                            </h3>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const blob = new Blob([selectedServico.txtFile!.content], { type: 'text/plain' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = selectedServico.txtFile!.name;
+                                a.click();
+                                URL.revokeObjectURL(url);
+                              }}
+                              className="flex items-center gap-1 px-2.5 py-1 bg-indigo-50 text-indigo-600 rounded-lg font-bold text-[10px] hover:bg-indigo-100 transition-all border border-indigo-100"
+                            >
+                              <Download size={11} />
+                              Baixar .txt
+                            </button>
+                          </div>
+                          <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                            <pre className="text-slate-700 font-mono text-[11px] leading-relaxed overflow-x-auto max-h-[140px] whitespace-pre-wrap">
                               {selectedServico.txtFile.content}
                             </pre>
-                            <div className="mt-4 flex justify-end">
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const blob = new Blob([selectedServico.txtFile!.content], { type: 'text/plain' });
-                                  const url = URL.createObjectURL(blob);
-                                  const a = document.createElement('a');
-                                  a.href = url;
-                                  a.download = selectedServico.txtFile!.name;
-                                  a.click();
-                                  URL.revokeObjectURL(url);
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100"
-                              >
-                                <Download size={14} />
-                                Baixar Arquivo .txt
-                              </button>
-                            </div>
                           </div>
                         </div>
                       )}
@@ -7736,28 +7695,28 @@ export default function App() {
               </div>
               
               {/* Footer */}
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4 shrink-0">
-                <div className="flex items-center gap-2">
+              <div className="px-4 py-2 bg-slate-50 border-t border-slate-100 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <div className="flex items-center gap-1.5">
                   {selectedObra && (
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1.5">
                       <button 
                         onClick={() => exportarIndividualPDF(selectedObra)}
-                        className="flex items-center gap-2 text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 px-4 py-2.5 rounded-xl transition-all shadow-md shadow-indigo-100"
+                        className="flex items-center gap-1 text-xs font-bold bg-indigo-600 text-white hover:bg-indigo-700 px-3 py-1.5 rounded-lg transition-all shadow-2xs"
                       >
-                        <Download size={16} />
-                        Exportar PDF
+                        <Download size={13} />
+                        PDF
                       </button>
                       <button 
                         onClick={() => exportarIndividualTXT(selectedObra)}
-                        className="flex items-center gap-2 text-xs font-bold text-slate-500 hover:bg-slate-100 px-4 py-2.5 rounded-xl transition-all border border-slate-200"
+                        className="flex items-center gap-1 text-xs font-bold text-slate-600 hover:bg-slate-100 px-3 py-1.5 rounded-lg transition-all border border-slate-200"
                       >
-                        <FileText size={16} />
+                        <FileText size={13} />
                         TXT
                       </button>
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   {(selectedObra?.dataObra || selectedServico?.dataServico) && (
                     <button 
                       onClick={() => {
@@ -7768,16 +7727,16 @@ export default function App() {
                           : '';
                         if (url) window.open(url, '_blank');
                       }}
-                      className="bg-blue-600 text-white px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-200 active:scale-95 flex items-center gap-2"
-                      title="Anexar este agendamento ao Google Agenda"
+                      className="bg-blue-600 text-white px-3.5 py-1.5 rounded-lg text-xs font-bold hover:bg-blue-700 transition-all shadow-2xs active:scale-95 flex items-center gap-1.5"
+                      title="Anexar ao Google Agenda"
                     >
-                      <CalendarClock size={16} />
+                      <CalendarClock size={13} />
                       Google Agenda
                     </button>
                   )}
                   <button 
                     onClick={() => { setIsDetailsModalOpen(false); setSelectedObra(null); setSelectedServico(null); }}
-                    className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-200 rounded-xl transition-all"
+                    className="px-3.5 py-1.5 text-xs font-bold text-slate-600 hover:bg-slate-200 rounded-lg transition-all"
                   >
                     Fechar
                   </button>
@@ -7789,7 +7748,7 @@ export default function App() {
                       setSelectedObra(null);
                       setSelectedServico(null);
                     }}
-                    className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl text-sm font-bold hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-200 active:scale-95"
+                    className="bg-indigo-600 text-white px-5 py-1.5 rounded-lg text-xs font-bold hover:bg-indigo-700 transition-all shadow-xs active:scale-95"
                   >
                     Editar Registro
                   </button>
@@ -7981,63 +7940,63 @@ export default function App() {
               {/* Body */}
               <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
                 {/* Form column */}
-                <div className="w-full md:w-2/5 p-6 border-b md:border-b-0 md:border-r border-slate-100 overflow-y-auto bg-slate-50">
-                  <h3 className="text-sm font-black text-slate-800 uppercase tracking-wider mb-4">
+                <div className="w-full md:w-2/5 p-4 border-b md:border-b-0 md:border-r border-slate-100 overflow-y-auto bg-slate-50">
+                  <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2.5">
                     {editingLembreteId ? "📝 Editar Alarme" : "🔔 Criar Novo Alarme"}
                   </h3>
-                  <div className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block font-sans">
+                  <div className="space-y-2">
+                    <div className="space-y-0.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                         O que deixar bem visível? (Ex: Placas Solares) *
                       </label>
                       <input 
                         type="text" 
                         value={lembreteFormData.titulo || ''}
                         onChange={(e) => setLembreteFormData(prev => ({ ...prev, titulo: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-sm"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-xs"
                         placeholder="Nome do produto/placa/equipamento..."
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block font-sans">
+                    <div className="space-y-0.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                         Dia Marcado para Alarme *
                       </label>
                       <input 
                         type="date" 
                         value={lembreteFormData.dataAlarme || localTodayStr}
                         onChange={(e) => setLembreteFormData(prev => ({ ...prev, dataAlarme: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 font-semibold text-slate-700 text-sm"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500 font-semibold text-slate-700 text-xs"
                       />
                     </div>
 
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-bold text-slate-600 uppercase tracking-widest block font-sans">
+                    <div className="space-y-0.5">
+                      <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
                         Descrição / Instrução Adicional
                       </label>
                       <textarea 
-                        rows={3}
+                        rows={2}
                         value={lembreteFormData.descricao || ''}
                         onChange={(e) => setLembreteFormData(prev => ({ ...prev, descricao: e.target.value }))}
-                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 outline-none focus:ring-2 focus:ring-indigo-500 leading-relaxed text-sm"
-                        placeholder="Ex: Deixar as placas no portão lateral direito..."
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 outline-none focus:ring-1 focus:ring-indigo-500 leading-normal text-xs resize-none"
+                        placeholder="Ex: Deixar as placas no portão lateral..."
                       />
                     </div>
 
-                    <div className="flex items-center gap-3 bg-white p-3.5 rounded-xl border border-slate-200 shadow-sm">
+                    <div className="flex items-center gap-2 bg-white p-2 rounded-lg border border-slate-200 shadow-2xs">
                       <input 
                         type="checkbox" 
                         id="reminder-important"
                         checked={!!lembreteFormData.importante}
                         onChange={(e) => setLembreteFormData(prev => ({ ...prev, importante: e.target.checked }))}
-                        className="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                        className="w-3.5 h-3.5 text-red-600 rounded focus:ring-red-500"
                       />
-                      <label htmlFor="reminder-important" className="text-sm font-bold text-slate-700 cursor-pointer flex items-center gap-1.5">
+                      <label htmlFor="reminder-important" className="text-xs font-bold text-slate-700 cursor-pointer flex items-center gap-1">
                         Alerta Urgente/Esforço Máximo! 🚨
                       </label>
                     </div>
 
-                    <div className="pt-2 flex gap-3">
+                    <div className="pt-1 flex gap-2">
                       {editingLembreteId && (
                         <button
                           type="button"
@@ -8051,14 +8010,14 @@ export default function App() {
                               concluido: false
                             });
                           }}
-                          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-3 px-4 rounded-xl transition-all"
+                          className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold py-1.5 px-3 rounded-lg text-xs transition-all"
                         >
                           Cancelar
                         </button>
                       )}
                       <button 
                         onClick={handleSaveLembrete}
-                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-black py-3 px-4 rounded-xl transition-all shadow-md shadow-indigo-100 text-center"
+                        className="flex-1 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-1.5 px-3 rounded-lg text-xs transition-all shadow-xs text-center"
                       >
                         {editingLembreteId ? "Salvar Lembrete" : "Criar Alarme"}
                       </button>
@@ -8699,8 +8658,8 @@ function PriorityBadge({ priority }: { priority: Prioridade }) {
 
 function FormField({ label, children }: { label: string, children: React.ReactNode }) {
   return (
-    <div className="space-y-1.5">
-      <label className="text-xs font-bold text-slate-500 ml-1">{label}</label>
+    <div className="space-y-0.5">
+      <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 ml-0.5 leading-none block">{label}</label>
       {children}
     </div>
   );

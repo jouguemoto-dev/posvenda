@@ -140,71 +140,71 @@ export default function EscalaView({
   const [tempDate, setTempDate] = useState('');
   const [tempTeam, setTempTeam] = useState('');
   const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
-  // Tamanho da letra da escala: padrão 'large' (2x maior) conforme solicitado
-  const [fontSizeLevel, setFontSizeLevel] = useState<'normal' | 'large' | 'xlarge'>('large');
+  // Tamanho da letra da escala: padrão 'normal' (1x) e organizado
+  const [fontSizeLevel, setFontSizeLevel] = useState<'normal' | 'large' | 'xlarge'>('normal');
 
   const fontConfig = useMemo(() => {
-    if (fontSizeLevel === 'normal') {
+    if (fontSizeLevel === 'large') {
       return {
-        cardPadding: 'py-1 px-1.5 rounded-lg space-y-0.5',
-        clientName: 'text-[10px] font-bold',
-        statusSelect: 'text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded',
-        placasBadge: 'text-[9px] font-black italic px-1 rounded',
-        concluirBtn: 'px-1.5 py-0.5 rounded font-black text-[8px] uppercase tracking-wider',
-        checkIconSize: 10,
-        actionIconSize: 10,
-        actionBtnPadding: 'p-0.5',
-        obsTag: 'text-[7.5px] uppercase font-black px-1 py-0.2 rounded',
-        obsText: 'text-[8.5px] font-bold',
-        obsBox: 'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded-md',
-        textarea: 'text-[10px] font-medium h-12',
+        cardPadding: 'p-2 rounded-xl',
+        clientName: 'text-[12.5px] font-black leading-snug line-clamp-2',
+        statusSelect: 'text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
+        placasBadge: 'text-[9.5px] font-black italic px-1.5 py-0.2 rounded',
+        concluirBtn: 'px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider',
+        checkIconSize: 11,
+        actionIconSize: 12,
+        actionBtnPadding: 'p-1',
+        obsTag: 'text-[8.5px] uppercase font-black px-1.5 py-0.2 rounded',
+        obsText: 'text-[9.5px] font-semibold',
+        obsBox: 'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded',
+        textarea: 'text-[11px] font-medium h-8',
         cellMinHeight: 'min-h-[90px]',
-        dayText: 'text-xs font-bold',
-        dateText: 'text-[10px] font-medium',
-        adminDayBadge: 'text-[8px] font-black px-1.5 py-0.5',
-        adminIconSize: 8,
+        dayText: 'text-sm font-bold',
+        dateText: 'text-[11px] font-medium',
+        adminDayBadge: 'text-[9px] font-bold px-1.5 py-0.5',
+        adminIconSize: 9,
       };
     }
     if (fontSizeLevel === 'xlarge') {
       return {
-        cardPadding: 'py-2 px-2.5 rounded-xl space-y-1',
-        clientName: 'text-[16px] sm:text-[17px] font-black leading-snug tracking-tight',
-        statusSelect: 'text-[13px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md',
-        placasBadge: 'text-[14px] font-black italic px-2 py-0.5 rounded-md',
-        concluirBtn: 'px-2.5 py-1 rounded-md font-black text-[13px] uppercase tracking-wider',
-        checkIconSize: 15,
-        actionIconSize: 15,
-        actionBtnPadding: 'p-1',
-        obsTag: 'text-[12px] uppercase font-black px-2 py-0.5 rounded',
-        obsText: 'text-[13px] sm:text-[14px] font-bold',
-        obsBox: 'mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md',
-        textarea: 'text-[15px] sm:text-[16px] font-bold h-14',
-        cellMinHeight: 'min-h-[140px]',
+        cardPadding: 'p-2.5 rounded-xl',
+        clientName: 'text-[14px] font-black leading-snug line-clamp-2',
+        statusSelect: 'text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded',
+        placasBadge: 'text-[11px] font-black italic px-2 py-0.5 rounded',
+        concluirBtn: 'px-2.5 py-1 rounded font-bold text-[10px] uppercase tracking-wider',
+        checkIconSize: 13,
+        actionIconSize: 14,
+        actionBtnPadding: 'p-1.5',
+        obsTag: 'text-[10px] uppercase font-black px-2 py-0.5 rounded',
+        obsText: 'text-[11px] font-semibold',
+        obsBox: 'mt-1.5 flex items-center gap-1.5 px-2 py-0.5 rounded',
+        textarea: 'text-[12px] font-medium h-9',
+        cellMinHeight: 'min-h-[105px]',
         dayText: 'text-base font-black',
-        dateText: 'text-sm font-bold',
-        adminDayBadge: 'text-[12px] font-black px-2 py-1',
-        adminIconSize: 13,
+        dateText: 'text-xs font-bold',
+        adminDayBadge: 'text-[10px] font-black px-2 py-0.5',
+        adminIconSize: 10,
       };
     }
-    // Padrão: 'large' (2x mais legível/ampliado)
+    // Padrão: 'normal' (1x - limpo, legível e organizado)
     return {
-      cardPadding: 'py-1.5 px-2 rounded-xl space-y-1',
-      clientName: 'text-[14px] sm:text-[15px] font-black leading-tight tracking-tight',
-      statusSelect: 'text-[11px] sm:text-[12px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md',
-      placasBadge: 'text-[12px] sm:text-[13px] font-black italic px-1.5 py-0.5 rounded-md',
-      concluirBtn: 'px-2 py-0.5 rounded-md font-black text-[11px] sm:text-[12px] uppercase tracking-wider',
-      checkIconSize: 13,
-      actionIconSize: 13,
-      actionBtnPadding: 'p-0.5 sm:p-1',
-      obsTag: 'text-[10px] uppercase font-black px-1.5 py-0.5 rounded',
-      obsText: 'text-[11px] sm:text-[12px] font-bold',
-      obsBox: 'mt-1.5 flex items-center gap-1 px-2 py-0.5 rounded-md',
-      textarea: 'text-[13px] sm:text-[14px] font-bold h-12',
-      cellMinHeight: 'min-h-[115px]',
-      dayText: 'text-sm sm:text-base font-black',
-      dateText: 'text-xs sm:text-[13px] font-bold',
-      adminDayBadge: 'text-[10px] sm:text-[11px] font-black px-2 py-0.5',
-      adminIconSize: 11,
+      cardPadding: 'p-1.5 rounded-xl',
+      clientName: 'text-[11px] font-black leading-snug line-clamp-2',
+      statusSelect: 'text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
+      placasBadge: 'text-[8.5px] font-black italic px-1.5 py-0.2 rounded',
+      concluirBtn: 'px-1.5 py-0.5 rounded font-bold text-[8.5px] uppercase tracking-wider',
+      checkIconSize: 10,
+      actionIconSize: 11,
+      actionBtnPadding: 'p-1',
+      obsTag: 'text-[7.5px] uppercase font-black px-1 py-0.2 rounded',
+      obsText: 'text-[8.5px] font-semibold',
+      obsBox: 'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded',
+      textarea: 'text-[10px] font-medium h-7 min-h-[28px]',
+      cellMinHeight: 'min-h-[85px]',
+      dayText: 'text-xs font-bold',
+      dateText: 'text-[10px] font-medium',
+      adminDayBadge: 'text-[8px] font-black px-1.5 py-0.5',
+      adminIconSize: 8,
     };
   }, [fontSizeLevel]);
 
@@ -871,7 +871,7 @@ export default function EscalaView({
               onClick={() => setFontSizeLevel('normal')}
               className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all ${
                 fontSizeLevel === 'normal'
-                  ? 'bg-slate-800 text-white shadow-xs'
+                  ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
               title="Tamanho Normal (1x)"
@@ -885,7 +885,7 @@ export default function EscalaView({
                   ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300'
                   : 'text-slate-600 hover:bg-slate-100'
               }`}
-              title="Tamanho 2x Maior (Padrão Ampliado)"
+              title="Tamanho 2x Maior"
             >
               2x
             </button>
@@ -1118,19 +1118,20 @@ export default function EscalaView({
                               <div 
                                 key={o.firebaseId || o.id} 
                                 onClick={() => setSelectedDetails({ type: 'obra', item: o })}
-                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-sm border transition-all hover:scale-[1.01] cursor-pointer ${
+                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${
                                   o.situacao === 'Em Espera' 
-                                    ? 'bg-slate-100 text-slate-500 border-slate-200' 
+                                    ? 'bg-slate-50 text-slate-600 border-slate-200' 
                                     : o.situacao === 'Concluído'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
+                                    ? 'bg-emerald-50/70 text-emerald-900 border-emerald-200' 
                                     : isDark 
                                     ? 'bg-white/10 text-white border-white/20' 
-                                    : 'bg-white text-indigo-700 border-indigo-100'
+                                    : 'bg-white text-slate-800 border-slate-200/90'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-0.5 gap-1">
+                                {/* Linha 1: Status & Placas */}
+                                <div className="flex items-center justify-between gap-1 mb-1">
                                   <div className="flex items-center gap-1 min-w-0">
-                                    <ClipboardList size={fontConfig.actionIconSize} className="opacity-70 shrink-0" />
+                                    <ClipboardList size={11} className="text-indigo-600 opacity-80 shrink-0" />
                                     <select
                                       value={o.situacao || 'Em Andamento'}
                                       onClick={(e) => e.stopPropagation()}
@@ -1153,38 +1154,46 @@ export default function EscalaView({
                                     </select>
                                   </div>
                                   {o.quantidadePlacas > 0 && (
-                                    <span className={`${fontConfig.placasBadge} opacity-95 text-indigo-950 bg-indigo-100/80 border border-indigo-200/60 shrink-0`}>
+                                    <span className={`${fontConfig.placasBadge} text-indigo-950 bg-indigo-50 border border-indigo-200/70 shrink-0`}>
                                       {o.quantidadePlacas} PL
                                     </span>
                                   )}
                                 </div>
-                                <div className="flex items-center gap-1 overflow-hidden">
+
+                                {/* Linha 2: Nome do Cliente (Linha inteira dedicada, sem ser esmagado!) */}
+                                <div className="my-0.5">
                                   <span 
-                                    className={`font-black truncate flex-1 cursor-pointer hover:text-indigo-600 transition-colors ${fontConfig.clientName} ${o.situacao === 'Concluído' ? 'line-through opacity-70' : ''}`}
-                                    title="Clique para ver detalhes organizados"
+                                    className={`font-black ${fontConfig.clientName} block cursor-pointer transition-colors ${
+                                      o.situacao === 'Concluído' ? 'line-through opacity-60 text-slate-500' : isDark ? 'text-white' : 'text-slate-900 hover:text-indigo-600'
+                                    }`}
+                                    title={o.cliente}
                                   >
                                     {o.cliente}
                                   </span>
-                                  <div className="flex items-center gap-0.5 flex-none select-none">
-                                    <button 
-                                      onClick={(e) => handleQuickStatusChangeObra(o, o.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
-                                      className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
-                                        o.situacao === 'Concluído'
-                                          ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 ring-1 ring-emerald-300/60'
-                                          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-300 bg-white'
-                                      }`}
-                                      title={o.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
-                                    >
-                                      <Check size={fontConfig.checkIconSize} className={o.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
-                                      <span className="hidden sm:inline">{o.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
-                                    </button>
+                                </div>
+
+                                {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
+                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100 select-none">
+                                  <button 
+                                    onClick={(e) => handleQuickStatusChangeObra(o, o.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
+                                    className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
+                                      o.situacao === 'Concluído'
+                                        ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300'
+                                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
+                                    }`}
+                                    title={o.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
+                                  >
+                                    <Check size={fontConfig.checkIconSize} className={o.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                    <span>{o.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
+                                  </button>
+                                  <div className="flex items-center gap-0.5">
                                     <button 
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const url = generateObraGCalUrl(o, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className={`${fontConfig.actionBtnPadding} text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded transition-colors`}
+                                      className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
                                       title="Anexar ao Google Agenda"
                                     >
                                       <CalendarClock size={fontConfig.actionIconSize} />
@@ -1194,7 +1203,7 @@ export default function EscalaView({
                                         e.stopPropagation(); 
                                         onEditObra?.(o); 
                                       }}
-                                      className={`${fontConfig.actionBtnPadding} text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors`}
+                                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
                                       title="Editar Registro"
                                     >
                                       <Edit size={fontConfig.actionIconSize} />
@@ -1202,7 +1211,7 @@ export default function EscalaView({
                                     {o.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
-                                        className={`${fontConfig.actionBtnPadding} text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors`}
+                                        className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
                                         title="Ver TXT"
                                       >
                                         <FileText size={fontConfig.actionIconSize} />
@@ -1210,6 +1219,8 @@ export default function EscalaView({
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Linha 4: Observações */}
                                 {o.observacoes && (
                                   <div 
                                     onClick={(e) => {
@@ -1221,10 +1232,10 @@ export default function EscalaView({
                                         data: o.dataObra ? formatDateBR(o.dataObra) : undefined
                                       });
                                     }}
-                                    className={`${fontConfig.obsBox} bg-amber-100/90 text-amber-950 border border-amber-300 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors`} 
-                                    title={`Clique para abrir observação: ${o.observacoes}`}
+                                    className={`${fontConfig.obsBox} bg-amber-50 text-amber-950 border border-amber-200/80 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
+                                    title={`Observação: ${o.observacoes}`}
                                   >
-                                    <span className={`bg-amber-300 text-amber-900 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
+                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
                                       OBS
                                     </span>
                                     <span className={`truncate flex-1 ${fontConfig.obsText}`}>{o.observacoes}</span>
@@ -1240,27 +1251,28 @@ export default function EscalaView({
                               <div 
                                 key={s.firebaseId || s.id} 
                                 onClick={() => setSelectedDetails({ type: 'servico', item: s })}
-                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-sm border transition-all hover:scale-[1.01] cursor-pointer ${
+                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${
                                   s.situacao === 'Em Espera'
-                                    ? 'bg-slate-100 text-slate-500 border-slate-200'
+                                    ? 'bg-slate-50 text-slate-600 border-slate-200'
                                     : s.situacao === 'Concluído'
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-100 opacity-70'
+                                    ? 'bg-emerald-50/70 text-emerald-900 border-emerald-200'
                                     : isDark 
                                     ? (isAdm ? 'bg-purple-950/70 text-purple-200 border-purple-500/50' : 'bg-white/10 text-white border-white/20')
                                     : isAdm
-                                    ? 'bg-purple-50 text-purple-950 border-purple-300 ring-1 ring-purple-400/40 shadow-xs'
-                                    : 'bg-white text-blue-700 border-blue-100'
+                                    ? 'bg-purple-50/80 text-purple-950 border-purple-300 ring-1 ring-purple-400/30'
+                                    : 'bg-white text-slate-800 border-slate-200/90'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-0.5 gap-1">
+                                {/* Linha 1: Status & Tags (Admin / Equipes) */}
+                                <div className="flex items-center justify-between gap-1 mb-1">
                                   <div className="flex items-center gap-1 min-w-0">
                                     {isAdm ? (
-                                      <Briefcase size={fontConfig.actionIconSize} className="text-purple-600 shrink-0" />
+                                      <Briefcase size={11} className="text-purple-600 shrink-0" />
                                     ) : (
-                                      <Wrench size={fontConfig.actionIconSize} className="opacity-70 shrink-0" />
+                                      <Wrench size={11} className="text-blue-600 opacity-80 shrink-0" />
                                     )}
                                     {isAdm && (
-                                      <span className={`${fontConfig.obsTag} bg-purple-200 text-purple-900 shrink-0`}>
+                                      <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-1 py-0.2 rounded shrink-0">
                                         ADMIN
                                       </span>
                                     )}
@@ -1287,44 +1299,51 @@ export default function EscalaView({
                                       <option value="Em Espera">Em Espera</option>
                                     </select>
                                   </div>
-                                </div>
-                                <div className="flex items-center gap-1 overflow-hidden">
-                                  <span 
-                                    className={`font-black truncate flex-1 cursor-pointer transition-colors ${fontConfig.clientName} ${
-                                      isAdm ? 'hover:text-purple-700 text-purple-950' : 'hover:text-blue-600 text-blue-900'
-                                    } ${s.situacao === 'Concluído' ? 'line-through opacity-70' : ''}`}
-                                    title={`Clique para ver detalhes${isAdm ? ' (Atendimento Administrativo)' : ''}`}
-                                  >
-                                    {s.cliente}
-                                  </span>
                                   {hasMultipleTeams && (
                                     <span 
-                                      className="text-[9px] font-black uppercase tracking-wider bg-indigo-100/90 text-indigo-900 px-1 py-0.2 rounded border border-indigo-200 shrink-0" 
+                                      className="text-[8px] font-black uppercase tracking-wider bg-indigo-100/90 text-indigo-900 px-1 py-0.2 rounded border border-indigo-200 shrink-0" 
                                       title={`Equipes neste serviço: ${sTeams.join(' + ')}`}
                                     >
                                       +{sTeams.length}eq
                                     </span>
                                   )}
-                                  <div className="flex items-center gap-0.5 flex-none select-none">
-                                    <button 
-                                      onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
-                                      className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
-                                        s.situacao === 'Concluído'
-                                          ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 ring-1 ring-emerald-300/60'
-                                          : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-300 bg-white'
-                                      }`}
-                                      title={s.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
-                                    >
-                                      <Check size={fontConfig.checkIconSize} className={s.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
-                                      <span className="hidden sm:inline">{s.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
-                                    </button>
+                                </div>
+
+                                {/* Linha 2: Nome do Cliente (Linha inteira dedicada!) */}
+                                <div className="my-0.5">
+                                  <span 
+                                    className={`font-black ${fontConfig.clientName} block cursor-pointer transition-colors ${
+                                      isAdm ? 'hover:text-purple-700 text-purple-950' : 'hover:text-blue-600 text-slate-900'
+                                    } ${s.situacao === 'Concluído' ? 'line-through opacity-60 text-slate-500' : ''}`}
+                                    title={s.cliente}
+                                  >
+                                    {s.cliente}
+                                  </span>
+                                </div>
+
+                                {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
+                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100 select-none">
+                                  <button 
+                                    onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
+                                    className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
+                                      s.situacao === 'Concluído'
+                                        ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300'
+                                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
+                                    }`}
+                                    title={s.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
+                                  >
+                                    <Check size={fontConfig.checkIconSize} className={s.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                    <span>{s.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
+                                  </button>
+
+                                  <div className="flex items-center gap-0.5">
                                     <button 
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         const url = generateServicoGCalUrl(s, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className={`${fontConfig.actionBtnPadding} rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80'}`}
+                                      className={`p-1 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80'}`}
                                       title="Anexar ao Google Agenda"
                                     >
                                       <CalendarClock size={fontConfig.actionIconSize} />
@@ -1334,7 +1353,7 @@ export default function EscalaView({
                                         e.stopPropagation(); 
                                         onEditServico?.(s); 
                                       }}
-                                      className={`${fontConfig.actionBtnPadding} rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
+                                      className={`p-1 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50'}`}
                                       title="Editar Registro"
                                     >
                                       <Edit size={fontConfig.actionIconSize} />
@@ -1342,7 +1361,7 @@ export default function EscalaView({
                                     {s.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
-                                        className={`${fontConfig.actionBtnPadding} rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
+                                        className={`p-1 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50'}`}
                                         title="Ver TXT"
                                       >
                                         <FileText size={fontConfig.actionIconSize} />
@@ -1350,6 +1369,8 @@ export default function EscalaView({
                                     )}
                                   </div>
                                 </div>
+
+                                {/* Linha 4: Observações */}
                                 {s.observacao && (
                                   <div 
                                     onClick={(e) => {
@@ -1361,10 +1382,10 @@ export default function EscalaView({
                                         data: s.dataServico ? formatDateBR(s.dataServico) : undefined
                                       });
                                     }}
-                                    className={`${fontConfig.obsBox} bg-amber-100/90 text-amber-950 border border-amber-300 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors`} 
-                                    title={`Clique para abrir observação: ${s.observacao}`}
+                                    className={`${fontConfig.obsBox} bg-amber-50 text-amber-950 border border-amber-200/80 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
+                                    title={`Observação: ${s.observacao}`}
                                   >
-                                    <span className={`bg-amber-300 text-amber-900 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
+                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
                                       OBS
                                     </span>
                                     <span className={`truncate flex-1 ${fontConfig.obsText}`}>{s.observacao}</span>
