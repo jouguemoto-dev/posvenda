@@ -29,7 +29,7 @@ import {
   Tooltip, 
   ResponsiveContainer 
 } from 'recharts';
-import { Obra, Servico, Equipe, Vendedor } from '../types';
+import { Obra, Servico, Equipe, Vendedor, getServicoTeams } from '../types';
 import Proactive3DaysAlert from './Proactive3DaysAlert';
 
 interface DashboardViewProps {
@@ -124,7 +124,9 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
   const uniqueEquipesFromData = useMemo(() => {
     const list = new Set<string>();
     obras.forEach(o => { if (o.equipe) list.add(o.equipe.trim()); });
-    servicos.forEach(s => { if (s.equipeServico) list.add(s.equipeServico.trim()); });
+    servicos.forEach(s => { 
+      getServicoTeams(s).forEach(t => list.add(t));
+    });
     equipes.forEach(eq => { if (eq.nome) list.add(eq.nome.trim()); });
     return Array.from(list).sort();
   }, [obras, servicos, equipes]);
@@ -175,7 +177,10 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
       // 1. Vendedor
       if (filterVendedor && s.vendedor !== filterVendedor) return false;
       // 2. Equipe
-      if (filterEquipe && s.equipeServico !== filterEquipe) return false;
+      if (filterEquipe) {
+        const sTeams = getServicoTeams(s);
+        if (!sTeams.some(t => t.trim().toLowerCase() === filterEquipe.trim().toLowerCase())) return false;
+      }
       // 3. Prioridade
       if (filterPrioridade && s.prioridade !== filterPrioridade) return false;
       // 3.5. Forma de Pagamento

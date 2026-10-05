@@ -65,7 +65,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Obra, Servico, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule, Lembrete } from './types';
+import { Obra, Servico, Situacao, Prioridade, Filtros, User, UserRole, Vendedor, Equipe, Inversor, FormaPagamento, TeamMember, Schedule, Lembrete, getServicoTeams } from './types';
 import { 
   generateObraGCalUrl, 
   generateServicoGCalUrl, 
@@ -382,6 +382,7 @@ export default function App() {
   const [hideUnscheduledObras, setHideUnscheduledObras] = useState(false);
   const [hideScheduledServicos, setHideScheduledServicos] = useState(false);
   const [hideUnscheduledServicos, setHideUnscheduledServicos] = useState(false);
+  const [showAdministrativeSection, setShowAdministrativeSection] = useState(true);
 
   const [sortConfig, setSortConfig] = useState<{ key: keyof Obra; direction: 'asc' | 'desc' }>({
     key: 'id',
@@ -437,6 +438,7 @@ export default function App() {
     local: '',
     dataAtendimento: new Date().toISOString().split('T')[0],
     equipeServico: '',
+    equipes: [] as string[],
     servico: '',
     valor: 0,
     equipeInstalou: '',
@@ -571,8 +573,25 @@ export default function App() {
       }
     }
 
+    let finalDisplay = displayValue;
+    if (type === 'servico' && field === 'equipeServico') {
+      const teams = currentValue ? currentValue.split(/[,;/]/).map((t: string) => t.trim()).filter(Boolean) : [];
+      if (teams.length > 1) {
+        finalDisplay = (
+          <div className="font-medium text-indigo-900 bg-indigo-50/90 hover:bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200/90 shadow-2xs transition-all cursor-pointer inline-flex items-center gap-1.5" title={`Equipes alocadas: ${teams.join(', ')}`}>
+            <Users size={12} className="text-indigo-600 shrink-0" />
+            <span className="font-bold text-[11px] truncate max-w-[150px]">{teams.join(' + ')}</span>
+            <span className="text-[8.5px] bg-indigo-200 text-indigo-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
+              {teams.length} eq
+            </span>
+            <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+          </div>
+        );
+      }
+    }
+
     const textValue = currentValue || '---';
-    const displayElement = displayValue || (
+    const displayElement = finalDisplay || (
       <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1 group-hover/cell:border-slate-200">
         {textValue}
         <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 transition-opacity whitespace-nowrap text-indigo-500" />
@@ -592,6 +611,28 @@ export default function App() {
       >
         {displayElement}
       </td>
+    );
+  };
+
+  const renderServicoEquipeBadge = (servico: any) => {
+    const sTeams = getServicoTeams(servico);
+    if (sTeams.length > 1) {
+      return (
+        <div className="font-medium text-indigo-900 bg-indigo-50/80 hover:bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200/90 shadow-2xs transition-all cursor-pointer inline-flex items-center gap-1.5" title={`Equipes alocadas: ${sTeams.join(', ')}`}>
+          <Users size={12} className="text-indigo-600 shrink-0" />
+          <span className="font-bold text-[11px] truncate max-w-[150px]">{sTeams.join(' + ')}</span>
+          <span className="text-[8.5px] bg-indigo-200 text-indigo-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
+            {sTeams.length} eq
+          </span>
+          <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+        </div>
+      );
+    }
+    return (
+      <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+        <span>{servico.equipeServico || '---'}</span>
+        <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+      </div>
     );
   };
 
@@ -622,6 +663,94 @@ export default function App() {
       situacaoPagamento: obra.situacaoPagamento || ''
     }));
     setShowClientSuggestions(false);
+  };
+
+  // Helper for multi-team selection in Agendamento de Serviços
+  const selectedServicoTeamsList: string[] = useMemo(() => {
+    if (Array.isArray(servicoFormData.equipes) && servicoFormData.equipes.length > 0) {
+      return servicoFormData.equipes.map((t: any) => String(t).trim()).filter(Boolean);
+    }
+    if (servicoFormData.equipeServico) {
+      return String(servicoFormData.equipeServico).split(/[,;/]/).map(t => t.trim()).filter(Boolean);
+    }
+    return [];
+  }, [servicoFormData.equipes, servicoFormData.equipeServico]);
+
+  const toggleServicoTeam = (teamName: string) => {
+    const trimmed = teamName.trim();
+    if (!trimmed) return;
+    setServicoFormData(prev => {
+      const currentTeams: string[] = Array.isArray(prev.equipes) && prev.equipes.length > 0
+        ? [...prev.equipes]
+        : (prev.equipeServico ? String(prev.equipeServico).split(/[,;/]/).map((t: string) => t.trim()).filter(Boolean) : []);
+      const existsIndex = currentTeams.findIndex(t => t.toLowerCase() === trimmed.toLowerCase());
+      let updatedTeams: string[];
+      if (existsIndex >= 0) {
+        updatedTeams = currentTeams.filter((_, idx) => idx !== existsIndex);
+      } else {
+        updatedTeams = [...currentTeams, trimmed];
+      }
+      return {
+        ...prev,
+        equipes: updatedTeams,
+        equipeServico: updatedTeams.join(', ')
+      };
+    });
+  };
+
+  const addCustomServicoTeam = (customName: string) => {
+    const trimmed = customName.trim();
+    if (!trimmed) return;
+    setServicoFormData(prev => {
+      const currentTeams: string[] = Array.isArray(prev.equipes) && prev.equipes.length > 0
+        ? [...prev.equipes]
+        : (prev.equipeServico ? String(prev.equipeServico).split(/[,;/]/).map((t: string) => t.trim()).filter(Boolean) : []);
+      if (currentTeams.some(t => t.toLowerCase() === trimmed.toLowerCase())) {
+        return prev;
+      }
+      const updatedTeams = [...currentTeams, trimmed];
+      return {
+        ...prev,
+        equipes: updatedTeams,
+        equipeServico: updatedTeams.join(', ')
+      };
+    });
+    setEquipeServicoOutros('');
+  };
+
+  const removeServicoTeam = (teamName: string) => {
+    setServicoFormData(prev => {
+      const currentTeams: string[] = Array.isArray(prev.equipes) && prev.equipes.length > 0
+        ? [...prev.equipes]
+        : (prev.equipeServico ? String(prev.equipeServico).split(/[,;/]/).map((t: string) => t.trim()).filter(Boolean) : []);
+      const updatedTeams = currentTeams.filter(t => t.toLowerCase() !== teamName.trim().toLowerCase());
+      return {
+        ...prev,
+        equipes: updatedTeams,
+        equipeServico: updatedTeams.join(', ')
+      };
+    });
+  };
+
+  const selectAllServicoTeams = () => {
+    const activeNames = equipes.filter(e => e.ativo).map(e => e.nome.trim());
+    setServicoFormData(prev => {
+      const current = Array.isArray(prev.equipes) ? prev.equipes : [];
+      const merged = Array.from(new Set([...current, ...activeNames]));
+      return {
+        ...prev,
+        equipes: merged,
+        equipeServico: merged.join(', ')
+      };
+    });
+  };
+
+  const clearServicoTeams = () => {
+    setServicoFormData(prev => ({
+      ...prev,
+      equipes: [],
+      equipeServico: ''
+    }));
   };
 
   useEffect(() => {
@@ -862,15 +991,18 @@ export default function App() {
     });
   }, [obras, filtros, filtrosArquivados, sortConfig]);
 
-  const filteredServicos = useMemo(() => {
+  const baseFilteredServicos = useMemo(() => {
     return servicos.filter(servico => {
       if (filtros.situacao && servico.situacao !== filtros.situacao) return false;
       if (filtros.prioridade && servico.prioridade !== filtros.prioridade) return false;
       if (filtros.cliente && !matchesRealtimeSearch(servico, filtros.cliente)) return false;
       if (filtros.vendedor && !normalizeStr(servico.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
-      if (filtros.equipe && servico.equipeServico !== filtros.equipe && servico.equipeInstalou !== filtros.equipe) return false;
+      if (filtros.equipe) {
+        const sTeams = getServicoTeams(servico);
+        const matchesEq = sTeams.some(t => t.trim().toLowerCase() === filtros.equipe.trim().toLowerCase());
+        if (!matchesEq) return false;
+      }
       if (filtros.formaPagamento && servico.formaPagamento !== filtros.formaPagamento) return false;
-      if (filtros.tipoAtendimento && (servico.tipoAtendimento || 'Técnico') !== filtros.tipoAtendimento) return false;
       return true;
     }).sort((a, b) => {
       const { key, direction } = sortConfigServicos;
@@ -884,14 +1016,19 @@ export default function App() {
       if (valA > valB) return direction === 'asc' ? 1 : -1;
       return 0;
     });
-  }, [servicos, filtros, sortConfigServicos]);
+  }, [servicos, filtros.situacao, filtros.prioridade, filtros.cliente, filtros.vendedor, filtros.equipe, filtros.formaPagamento, sortConfigServicos]);
+
+  const baseActiveServicos = useMemo(() => {
+    if (filtros.situacao === 'Concluído') {
+      return baseFilteredServicos;
+    }
+    return baseFilteredServicos.filter(s => s.situacao !== 'Concluído');
+  }, [baseFilteredServicos, filtros.situacao]);
 
   const activeServicos = useMemo(() => {
-    if (filtros.situacao === 'Concluído') {
-      return filteredServicos;
-    }
-    return filteredServicos.filter(s => s.situacao !== 'Concluído');
-  }, [filteredServicos, filtros.situacao]);
+    if (!filtros.tipoAtendimento) return baseActiveServicos;
+    return baseActiveServicos.filter(s => (s.tipoAtendimento || 'Técnico') === filtros.tipoAtendimento);
+  }, [baseActiveServicos, filtros.tipoAtendimento]);
 
   const scheduledServicosList = useMemo(() => {
     if (hideScheduledServicos) return [];
@@ -902,6 +1039,14 @@ export default function App() {
     if (hideUnscheduledServicos) return [];
     return activeServicos.filter(s => !s.dataServico || s.dataServico === '');
   }, [activeServicos, hideUnscheduledServicos]);
+
+  const administrativeServicosList = useMemo(() => {
+    return baseActiveServicos.filter(s => s.tipoAtendimento === 'Administrativo');
+  }, [baseActiveServicos]);
+
+  const technicalServicosList = useMemo(() => {
+    return baseActiveServicos.filter(s => (s.tipoAtendimento || 'Técnico') === 'Técnico');
+  }, [baseActiveServicos]);
 
   const inProgressServicos = useMemo(() => {
     return activeServicos.filter(s => s.situacao === 'Em Andamento');
@@ -919,7 +1064,11 @@ export default function App() {
       if (filtros.prioridade && s.prioridade !== filtros.prioridade) return false;
       if (filtros.cliente && !matchesRealtimeSearch(s, filtros.cliente)) return false;
       if (filtros.vendedor && !normalizeStr(s.vendedor).includes(normalizeStr(filtros.vendedor))) return false;
-      if (filtros.equipe && s.equipeServico !== filtros.equipe && s.equipeInstalou !== filtros.equipe) return false;
+      if (filtros.equipe) {
+        const sTeams = getServicoTeams(s);
+        const matchesEq = sTeams.some(t => t.trim().toLowerCase() === filtros.equipe.trim().toLowerCase());
+        if (!matchesEq) return false;
+      }
       if (filtros.formaPagamento && s.formaPagamento !== filtros.formaPagamento) return false;
       if (filtros.tipoAtendimento && (s.tipoAtendimento || 'Técnico') !== filtros.tipoAtendimento) return false;
 
@@ -1365,7 +1514,11 @@ export default function App() {
 
     const details = isObra 
       ? `👤 Cliente: ${item.cliente}\n🔢 Registro: #${item.numeroRegistro}\n🛠️ Equipe: ${item.equipe || 'Sem Equipe'}\n☀️ Placas: ${item.quantidadePlacas || 0} módulos\n📍 Endereço: ${item.local || 'Não informado'}\n📝 Obs: ${item.observacoes || ''}`
-      : `👤 Cliente: ${item.cliente}\n🔢 Registro: #${item.numeroRegistro}\n🛠️ Equipe: ${item.equipeServico || item.equipeInstalou || 'Sem Equipe'}\n🔧 Serviço: ${item.servico || ''}\n📍 Endereço: ${item.local || 'Não informado'}\n📝 Obs: ${item.observacao || ''}`;
+      : (() => {
+          const sTeams = getServicoTeams(item as Servico);
+          const teamLabel = sTeams.length > 0 ? sTeams.join(' + ') : ((item as Servico).equipeServico || (item as Servico).equipeInstalou || 'Sem Equipe');
+          return `👤 Cliente: ${item.cliente}\n🔢 Registro: #${item.numeroRegistro}\n🛠️ Equipe${sTeams.length > 1 ? 's' : ''}: ${teamLabel}\n🔧 Serviço: ${(item as Servico).servico || ''}\n📍 Endereço: ${item.local || 'Não informado'}\n📝 Obs: ${(item as Servico).observacao || ''}`;
+        })();
 
     const token = getGoogleAccessToken();
     const gcalUrl = isObra 
@@ -1514,7 +1667,15 @@ export default function App() {
     e.preventDefault();
     if (!user) return;
     
-    const finalEquipeServico = servicoFormData.equipeServico === 'Outros' ? equipeServicoOutros : servicoFormData.equipeServico;
+    const teamsFromChips: string[] = Array.isArray(servicoFormData.equipes) && servicoFormData.equipes.length > 0
+      ? [...servicoFormData.equipes]
+      : (servicoFormData.equipeServico ? servicoFormData.equipeServico.split(/[,;/]/).map((t: string) => t.trim()).filter(Boolean) : []);
+    
+    if (equipeServicoOutros.trim() && !teamsFromChips.includes(equipeServicoOutros.trim())) {
+      teamsFromChips.push(equipeServicoOutros.trim());
+    }
+
+    const finalEquipeServico = teamsFromChips.join(', ');
     const finalEquipeInstalou = servicoFormData.equipeInstalou === 'Outros' ? equipeInstalouOutros : servicoFormData.equipeInstalou;
     const servicoData = {
       numeroRegistro: editandoServicoId 
@@ -1527,6 +1688,7 @@ export default function App() {
       vendedor: servicoFormData.vendedor || '',
       local: servicoFormData.local || '',
       dataAtendimento: servicoFormData.dataAtendimento || '',
+      equipes: teamsFromChips,
       equipeServico: finalEquipeServico || '',
       servico: servicoFormData.servico || '',
       valor: Number(servicoFormData.valor) || 0,
@@ -1553,8 +1715,8 @@ export default function App() {
         });
       }
       if (servicoData.dataServico) {
-        const teamToSync = servicoData.equipeServico || servicoData.equipeInstalou;
-        if (teamToSync) {
+        const teamsToSync = teamsFromChips.length > 0 ? teamsFromChips : (finalEquipeInstalou ? [finalEquipeInstalou] : []);
+        for (const teamToSync of teamsToSync) {
           await syncToWeeklySchedule(servicoData.dataServico, teamToSync, servicoData.cliente, servicoData.servico);
         }
         triggerAutoGoogleCalendar('servico', servicoData);
@@ -1622,6 +1784,7 @@ export default function App() {
       vendedor: '',
       local: '',
       dataAtendimento: new Date().toISOString().split('T')[0],
+      equipes: [],
       equipeServico: '',
       servico: '',
       valor: 0,
@@ -1660,13 +1823,16 @@ export default function App() {
   };
 
   const handleServicoEdit = (servico: any) => {
+    const teamsList = getServicoTeams(servico);
     setServicoFormData({
       ...servico,
-      tipoAtendimento: servico.tipoAtendimento || 'Técnico'
+      tipoAtendimento: servico.tipoAtendimento || 'Técnico',
+      equipes: teamsList,
+      equipeServico: servico.equipeServico || teamsList.join(', ')
     });
 
     const equipeServicoExists = equipes.some(e => e.nome === servico.equipeServico);
-    if (servico.equipeServico && !equipeServicoExists) {
+    if (servico.equipeServico && !equipeServicoExists && teamsList.length <= 1) {
       setServicoFormData(prev => ({ ...prev, equipeServico: 'Outros' }));
       setEquipeServicoOutros(servico.equipeServico);
     } else {
@@ -1799,15 +1965,25 @@ export default function App() {
     if (!servicoToUpdate?.firebaseId) return;
 
     const updatedData: any = { [field]: value, updatedAt: serverTimestamp() };
+    if (field === 'equipeServico') {
+      const splitTeams = typeof value === 'string' 
+        ? value.split(/[,;/]/).map(t => t.trim()).filter(Boolean) 
+        : (Array.isArray(value) ? value : []);
+      updatedData.equipes = splitTeams;
+    }
 
     try {
       await updateDoc(doc(db, 'servicos', servicoToUpdate.firebaseId), updatedData);
       
       // Sync to schedule if date or team changed
       const finalDateServ = field === 'dataServico' ? value : servicoToUpdate.dataServico;
-      const finalTeamInst = field === 'equipeInstalou' ? value : servicoToUpdate.equipeInstalou;
-      if (finalDateServ && finalTeamInst) {
-        await syncToWeeklySchedule(finalDateServ, finalTeamInst, servicoToUpdate.cliente);
+      if (finalDateServ) {
+        const teamsToSync = field === 'equipeServico' 
+          ? (typeof value === 'string' ? value.split(/[,;/]/).map(t => t.trim()).filter(Boolean) : [])
+          : getServicoTeams({ ...servicoToUpdate, ...updatedData });
+        for (const t of teamsToSync) {
+          await syncToWeeklySchedule(finalDateServ, t, servicoToUpdate.cliente);
+        }
       }
       if (field === 'dataServico' && value) {
         triggerAutoGoogleCalendar('servico', { ...servicoToUpdate, ...updatedData });
@@ -3487,30 +3663,43 @@ export default function App() {
               <div className="flex flex-wrap items-center gap-2">
                 <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Visualização:</span>
                 <button 
+                  onClick={() => setShowAdministrativeSection(!showAdministrativeSection)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${
+                    !showAdministrativeSection 
+                      ? 'bg-slate-100 text-slate-400 border border-slate-200' 
+                      : 'bg-purple-100 text-purple-800 border border-purple-300 shadow-xs'
+                  }`}
+                  title="Exibir ou ocultar a seção dedicada de atendimentos administrativos"
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full ${!showAdministrativeSection ? 'bg-slate-300' : 'bg-purple-600 animate-pulse'}`} />
+                  <Briefcase size={11} />
+                  Atendimentos Administrativos ({administrativeServicosList.length})
+                </button>
+                <button 
                   onClick={() => setHideScheduledServicos(!hideScheduledServicos)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideScheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-indigo-50 text-indigo-700 border border-indigo-200'}`}
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${hideScheduledServicos ? 'bg-slate-300' : 'bg-indigo-500 animate-pulse'}`} />
-                  Serviços Agendados
+                  Serviços Agendados ({scheduledServicosList.length})
                 </button>
                 <button 
                   onClick={() => setHideUnscheduledServicos(!hideUnscheduledServicos)}
                   className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1.5 ${hideUnscheduledServicos ? 'bg-slate-100 text-slate-400 border border-slate-200' : 'bg-orange-50 text-orange-700 border border-orange-200'}`}
                 >
                   <div className={`w-1.5 h-1.5 rounded-full ${hideUnscheduledServicos ? 'bg-slate-300' : 'bg-orange-500 animate-pulse'}`} />
-                  Serviços Sem Data
+                  Serviços Sem Data ({unscheduledServicosList.length})
                 </button>
               </div>
 
               <div className="flex flex-wrap items-center gap-1.5">
-                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Tipo:</span>
+                <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wider">Filtrar Tipo:</span>
                 <button
                   onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: '' }))}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all ${
                     !filtros.tipoAtendimento ? 'bg-slate-800 text-white' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
                   }`}
                 >
-                  Todos
+                  Todos ({baseActiveServicos.length})
                 </button>
                 <button
                   onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: 'Técnico' }))}
@@ -3518,15 +3707,18 @@ export default function App() {
                     filtros.tipoAtendimento === 'Técnico' ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-700 hover:bg-blue-100 border border-blue-200/60'
                   }`}
                 >
-                  <Wrench size={10} /> Técnicos
+                  <Wrench size={10} /> Técnicos ({technicalServicosList.length})
                 </button>
                 <button
-                  onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: 'Administrativo' }))}
+                  onClick={() => {
+                    setFiltros(prev => ({ ...prev, tipoAtendimento: 'Administrativo' }));
+                    setShowAdministrativeSection(true);
+                  }}
                   className={`px-2.5 py-1 rounded-full text-[10px] font-bold transition-all flex items-center gap-1 ${
-                    filtros.tipoAtendimento === 'Administrativo' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200'
+                    filtros.tipoAtendimento === 'Administrativo' ? 'bg-purple-600 text-white shadow-xs' : 'bg-purple-100 text-purple-800 hover:bg-purple-200 border border-purple-300'
                   }`}
                 >
-                  <Briefcase size={10} /> Administrativos
+                  <Briefcase size={10} /> Administrativos ({administrativeServicosList.length})
                 </button>
               </div>
             </div>
@@ -4579,6 +4771,357 @@ export default function App() {
         </div>
       ) : (
         <div className="space-y-8">
+          {/* KPI Cards: Visão Geral de Serviços & Atendimentos */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 block">Total de Atendimentos</span>
+                <div className="text-2xl font-black text-slate-900 mt-0.5">{baseActiveServicos.length}</div>
+                <span className="text-[10px] text-slate-500 font-semibold">{servicos.length} no histórico completo</span>
+              </div>
+              <div className="p-3 bg-slate-100 rounded-xl text-slate-600">
+                <ClipboardList size={22} />
+              </div>
+            </div>
+
+            <div 
+              onClick={() => setFiltros(prev => ({ ...prev, tipoAtendimento: prev.tipoAtendimento === 'Técnico' ? '' : 'Técnico' }))}
+              className={`p-4 rounded-2xl border shadow-xs flex items-center justify-between cursor-pointer transition-all hover:scale-[1.02] ${
+                filtros.tipoAtendimento === 'Técnico' 
+                  ? 'bg-blue-50/90 border-blue-400 ring-2 ring-blue-300' 
+                  : 'bg-white border-slate-200/80 hover:border-blue-200'
+              }`}
+              title="Clique para filtrar apenas atendimentos técnicos"
+            >
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-blue-600 block flex items-center gap-1">
+                  <Wrench size={12} /> Atend. Técnicos
+                </span>
+                <div className="text-2xl font-black text-blue-950 mt-0.5">
+                  {technicalServicosList.length}
+                </div>
+                <span className="text-[10px] text-blue-600 font-semibold">
+                  {filtros.tipoAtendimento === 'Técnico' ? 'Filtro Ativo ✓' : 'Clique para filtrar'}
+                </span>
+              </div>
+              <div className="p-3 bg-blue-100 rounded-xl text-blue-700">
+                <Wrench size={22} />
+              </div>
+            </div>
+
+            <div 
+              onClick={() => {
+                setFiltros(prev => ({ ...prev, tipoAtendimento: prev.tipoAtendimento === 'Administrativo' ? '' : 'Administrativo' }));
+                setShowAdministrativeSection(true);
+              }}
+              className={`p-4 rounded-2xl border-2 shadow-xs flex items-center justify-between cursor-pointer transition-all hover:scale-[1.02] ${
+                filtros.tipoAtendimento === 'Administrativo'
+                  ? 'bg-purple-100/90 border-purple-500 ring-2 ring-purple-300'
+                  : 'bg-gradient-to-br from-purple-50/80 via-white to-purple-50/40 border-purple-300 hover:border-purple-400'
+              }`}
+              title="Clique para destacar atendimentos administrativos na tela"
+            >
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-purple-700 block flex items-center gap-1">
+                    <Briefcase size={12} /> Administrativos
+                  </span>
+                  <span className="text-[8.5px] font-black bg-purple-200 text-purple-900 px-1.5 py-0.2 rounded-full uppercase">
+                    Na Tela
+                  </span>
+                </div>
+                <div className="text-2xl font-black text-purple-950 mt-0.5">
+                  {administrativeServicosList.length}
+                </div>
+                <span className="text-[10px] text-purple-700 font-semibold">
+                  {filtros.tipoAtendimento === 'Administrativo' ? 'Filtro Ativo ✓' : 'Clique para focar'}
+                </span>
+              </div>
+              <div className="p-3 bg-purple-600 text-white rounded-xl shadow-xs">
+                <Briefcase size={22} />
+              </div>
+            </div>
+
+            <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex items-center justify-between">
+              <div>
+                <span className="text-[10px] font-black uppercase tracking-wider text-indigo-600 block">Agendados vs Espera</span>
+                <div className="text-2xl font-black text-indigo-950 mt-0.5">
+                  {scheduledServicosList.length} <span className="text-sm font-bold text-slate-400">/ {unscheduledServicosList.length}</span>
+                </div>
+                <span className="text-[10px] text-slate-500 font-semibold">{scheduledServicosList.length} com data definida</span>
+              </div>
+              <div className="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                <CalendarClock size={22} />
+              </div>
+            </div>
+          </div>
+
+          {/* Section: Atendimentos Administrativos (Visível na Tela) */}
+          {showAdministrativeSection && (
+            <section id="section-servicos-administrativos" className="bg-white rounded-2xl shadow-sm border-2 border-purple-300 overflow-hidden mb-6">
+              <div className="px-6 py-4 bg-gradient-to-r from-purple-50 via-purple-50/70 to-indigo-50/40 border-b border-purple-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-3">
+                  <div className="p-2.5 bg-purple-600 text-white rounded-2xl shadow-sm">
+                    <Briefcase size={20} />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="font-extrabold text-purple-950 text-base leading-tight">
+                        Atendimentos Administrativos
+                      </h2>
+                      <span className="text-[9px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-2 py-0.5 rounded-full">
+                        Visível na Tela
+                      </span>
+                    </div>
+                    <p className="text-xs text-purple-700 font-medium mt-0.5">
+                      Concessionária, contratos, cartório, escritório, ART, homologação e financeiro
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-purple-700 bg-white px-2.5 py-1 rounded-lg border border-purple-200 shadow-xs">
+                    {administrativeServicosList.length} {administrativeServicosList.length === 1 ? 'registro' : 'registros'}
+                  </span>
+                  <button
+                    onClick={() => {
+                      resetServicoForm();
+                      setServicoFormData(prev => ({ ...prev, tipoAtendimento: 'Administrativo' }));
+                      setIsServicoFormOpen(true);
+                    }}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-bold transition-all active:scale-95 shadow-xs"
+                  >
+                    <Plus size={14} />
+                    Novo Atend. Administrativo
+                  </button>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-purple-50/40 border-b border-purple-100">
+                      <th className="px-3 py-3 w-10">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                          checked={administrativeServicosList.length > 0 && administrativeServicosList.every(s => selectedIds.has(s.id))}
+                          onChange={() => toggleSelectAll(administrativeServicosList)}
+                        />
+                      </th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">N°</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Situação</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Prioridade</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Atendimento</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center">Dias</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Cliente</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Local</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Vendedor</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Responsável / Equipe</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Serviço Administrativo</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data Agendada</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-purple-100/60">
+                    {administrativeServicosList.length > 0 ? (
+                      administrativeServicosList.map(servico => (
+                        <tr 
+                          key={servico.id}
+                          onClick={() => handleServicoEdit(servico)}
+                          className={`cursor-pointer hover:bg-purple-50/40 transition-colors bg-purple-50/15 border-l-4 border-purple-500 ${
+                            selectedIds.has(servico.id) ? 'bg-purple-100/50' : ''
+                          }`}
+                        >
+                          <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                            <input 
+                              type="checkbox" 
+                              className="w-4 h-4 text-purple-600 rounded border-slate-300 focus:ring-purple-500"
+                              checked={selectedIds.has(servico.id)}
+                              onChange={() => toggleSelect(servico.id)}
+                            />
+                          </td>
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <span className="font-mono text-[10px] font-bold text-purple-700 bg-purple-100 px-1.5 py-1 rounded border border-purple-200">
+                              #{servico.numeroRegistro}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            <select 
+                              value={servico.situacao}
+                              onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                servico.situacao === 'Pendente' 
+                                  ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                  : servico.situacao === 'Em Espera'
+                                  ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                  : 'bg-blue-100 text-blue-700 border-blue-200'
+                              }`}
+                            >
+                              <option value="Pendente">Pendente</option>
+                              <option value="Em Andamento">Em Andamento</option>
+                              <option value="Concluído">Concluído</option>
+                              <option value="Em Espera">Em Espera</option>
+                            </select>
+                          </td>
+                          <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                            <select 
+                              value={servico.prioridade}
+                              onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
+                              className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
+                                servico.prioridade === 'Alta' 
+                                  ? 'bg-red-50 text-red-700 border-red-100' 
+                                  : servico.prioridade === 'Média'
+                                  ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                  : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                              }`}
+                            >
+                              <option value="Alta">Alta</option>
+                              <option value="Média">Média</option>
+                              <option value="Baixa">Baixa</option>
+                            </select>
+                          </td>
+                          {renderEditableCell(
+                            servico.id,
+                            'dataAtendimento',
+                            'servico',
+                            servico.dataAtendimento || '',
+                            'date',
+                            <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-purple-50 hover:text-purple-700 px-2 py-1 rounded border border-transparent hover:border-purple-200 hover:shadow-xs transition-all cursor-pointer">
+                              {formatDateBR(servico.dataAtendimento)}
+                            </span>
+                          )}
+                          <td className="px-3 py-3 text-center">
+                            <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
+                              (() => {
+                                const dias = getDaysDiff(servico.dataAtendimento);
+                                return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+                              })()
+                            }`}>
+                              {getDaysDiff(servico.dataAtendimento)} d
+                            </div>
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-purple-700 transition-colors flex items-center gap-1 group/name">
+                              <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                              <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                                Admin
+                              </span>
+                              {servico.txtFile && (
+                                <button 
+                                  onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
+                                  className="p-1 text-purple-500 hover:text-purple-700 transition-all hover:scale-110 flex-none"
+                                  title="Ver TXT"
+                                >
+                                  <FileText size={14} />
+                                </button>
+                              )}
+                            </div>
+                            {servico.observacao && (
+                              <div 
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setViewingObs({
+                                    cliente: servico.cliente,
+                                    tipo: 'Atendimento Administrativo',
+                                    observacao: servico.observacao,
+                                    data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
+                                  });
+                                }}
+                                className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold max-w-[200px] truncate cursor-pointer hover:bg-amber-100"
+                              >
+                                <FileText size={10} className="shrink-0 text-amber-600" />
+                                <span className="truncate">{servico.observacao}</span>
+                              </div>
+                            )}
+                          </td>
+                          <td className="px-3 py-3">
+                            <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                          </td>
+                          {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
+                          {renderEditableCell(
+                            servico.id,
+                            'equipeServico',
+                            'servico',
+                            servico.equipeServico || '',
+                            'equipe',
+                            <div className="font-medium text-slate-700 bg-slate-50 hover:bg-purple-50 hover:text-purple-700 px-2 py-1 rounded border border-transparent hover:border-purple-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                              <span>{servico.equipeServico || 'Escritório / Admin'}</span>
+                              <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-purple-500 shrink-0" />
+                            </div>
+                          )}
+                          <td className="px-3 py-3 text-[10px] font-semibold text-purple-900 min-w-[120px]">{servico.servico || '---'}</td>
+                          <td className="px-3 py-3 text-[15px] font-bold text-slate-900 whitespace-nowrap leading-tight">
+                            R$ {Number(servico.valor || 0).toLocaleString('pt-BR')}
+                          </td>
+                          {renderEditableCell(
+                            servico.id,
+                            'dataServico',
+                            'servico',
+                            servico.dataServico || '',
+                            'date',
+                            <div className="flex flex-col text-slate-600 bg-slate-50 hover:bg-purple-50 hover:text-purple-700 px-2 py-1 rounded border border-transparent hover:border-purple-200 hover:shadow-xs transition-all cursor-pointer">
+                              <span className="font-bold whitespace-nowrap">
+                                {servico.dataServico ? formatDateBR(servico.dataServico) : 'Sem Data'}
+                              </span>
+                              {servico.dataServico && (
+                                <div className="text-[11px] uppercase font-black opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                  <span>{getDayOfWeek(servico.dataServico)}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-purple-500 shrink-0" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <td className="px-3 py-3 whitespace-nowrap">
+                            <span className="text-[10px] font-bold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {servico.formaPagamento || 'Não def.'}
+                            </span>
+                          </td>
+                          <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-end gap-1">
+                              <button 
+                                onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
+                                className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
+                                title="Ver Detalhes"
+                              >
+                                <Eye size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleServicoEdit(servico)}
+                                className="p-1.5 text-slate-400 hover:text-purple-600 transition-colors"
+                                title="Editar"
+                              >
+                                <Edit size={16} />
+                              </button>
+                              {canDelete && (
+                                <button 
+                                  onClick={() => { setServicoToDelete(servico.id); setIsDeleteModalOpen(true); }}
+                                  className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                                  title="Excluir"
+                                >
+                                  <Trash2 size={16} />
+                                </button>
+                              )}
+                            </div>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan={15} className="px-6 py-8 text-center text-slate-400">
+                          <Briefcase size={28} className="mx-auto text-purple-300 mb-2" />
+                          <p className="text-sm font-semibold text-slate-600">Nenhum atendimento administrativo cadastrado no momento.</p>
+                          <p className="text-xs text-slate-400 mt-1">Clique no botão acima para adicionar um novo atendimento administrativo.</p>
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
           {/* Section: Serviços Agendados */}
           {!hideScheduledServicos && (
             <section className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden mb-6">
@@ -4625,6 +5168,14 @@ export default function App() {
                       >
                         <div className="flex items-center gap-1">
                           Prioridade {sortConfigServicos.key === 'prioridade' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('tipoAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Tipo {sortConfigServicos.key === 'tipoAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
                         </div>
                       </th>
                       <th 
@@ -4730,7 +5281,9 @@ export default function App() {
                             exit={{ opacity: 0 }}
                             onClick={() => handleServicoEdit(servico)}
                             className={`cursor-pointer hover:bg-slate-50 transition-colors ${
-                              servico.situacao === 'Em Espera'
+                              servico.tipoAtendimento === 'Administrativo'
+                                ? 'bg-purple-50/25 border-l-4 border-purple-500'
+                                : servico.situacao === 'Em Espera'
                                 ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
                                 : servico.situacao === 'Pendente'
                                 ? 'bg-amber-50/20 border-l-4 border-amber-400'
@@ -4785,6 +5338,21 @@ export default function App() {
                                 <option value="Baixa">Baixa</option>
                               </select>
                             </td>
+                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <select 
+                                value={servico.tipoAtendimento || 'Técnico'}
+                                onChange={(e) => updateServicoQuick(servico.id, 'tipoAtendimento', e.target.value)}
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border outline-none transition-all cursor-pointer ${
+                                  servico.tipoAtendimento === 'Administrativo' 
+                                    ? 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200' 
+                                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                }`}
+                                title="Tipo de Atendimento - Clique para alterar"
+                              >
+                                <option value="Técnico">🔧 Técnico</option>
+                                <option value="Administrativo">💼 Administrativo</option>
+                              </select>
+                            </td>
                             {renderEditableCell(
                               servico.id,
                               'dataAtendimento',
@@ -4808,6 +5376,418 @@ export default function App() {
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
                                 <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                                {servico.tipoAtendimento === 'Administrativo' && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                                    Admin
+                                  </span>
+                                )}
+                                {servico.txtFile && (
+                                  <button 
+                                    onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
+                                    className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
+                                    title="Ver TXT"
+                                  >
+                                    <FileText size={14} />
+                                  </button>
+                                )}
+                              </div>
+                              {servico.observacao && (
+                                <div 
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setViewingObs({
+                                      cliente: servico.cliente,
+                                      tipo: 'Serviço',
+                                      observacao: servico.observacao,
+                                      data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
+                                    });
+                                  }}
+                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  title={`Clique para abrir observação: ${servico.observacao}`}
+                                >
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    OBS
+                                  </span>
+                                  <span className="truncate">{servico.observacao}</span>
+                                </div>
+                              )}
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                            </td>
+                            {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeServico',
+                              'servico',
+                              servico.equipeServico || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeServico || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                              </div>
+                            )}
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            {renderEditableCell(
+                              servico.id,
+                              'equipeInstalou',
+                              'servico',
+                              servico.equipeInstalou || '',
+                              'equipe',
+                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
+                                <span>{servico.equipeInstalou || '---'}</span>
+                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                              </div>
+                            )}
+                            {renderEditableCell(
+                              servico.id,
+                              'dataServico',
+                              'servico',
+                              servico.dataServico || '',
+                              'date',
+                              <div className="flex flex-col text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                <span className="font-bold whitespace-nowrap">{formatDateBR(servico.dataServico)}</span>
+                                <div className="text-[12px] uppercase font-black opacity-80 mt-0.5 flex items-center justify-between gap-1">
+                                  <span>{getDayOfWeek(servico.dataServico)}</span>
+                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
+                                </div>
+                              </div>
+                            )}
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <div 
+                                className="cursor-pointer hover:scale-105 transition-transform inline-block"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingPayment({ id: servico.id.toString(), type: 'servico' });
+                                }}
+                              >
+                                {editingPayment?.id === servico.id.toString() && editingPayment.type === 'servico' ? (
+                                  <select
+                                    autoFocus
+                                    className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
+                                    value={servico.formaPagamento || ''}
+                                    onBlur={() => setEditingPayment(null)}
+                                    onChange={(e) => {
+                                      updateServicoQuick(servico.id, 'formaPagamento', e.target.value);
+                                      setEditingPayment(null);
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                  >
+                                    <option value="">Selecione</option>
+                                    {formasPagamento.filter(f => f.ativo).map(f => (
+                                      <option key={f.id} value={f.nome}>{f.nome}</option>
+                                    ))}
+                                    <option value="Outros">Outros</option>
+                                  </select>
+                                ) : (
+                                  <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
+                                    {servico.formaPagamento || 'DEFINIR PGTO'}
+                                  </div>
+                                )}
+                              </div>
+                            </td>
+                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1">
+                                <button 
+                                  onClick={() => gerarReciboServicoPDF(servico)}
+                                  className="p-1.5 text-slate-400 hover:text-emerald-600 transition-colors"
+                                  title="Gerar Recibo PDF"
+                                >
+                                  <Printer size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
+                                  className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
+                                  title="Ver Detalhes"
+                                >
+                                  <Eye size={16} />
+                                </button>
+                                <button 
+                                  onClick={() => handleServicoEdit(servico)}
+                                  className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
+                                  title="Editar"
+                                >
+                                  <Edit size={16} />
+                                </button>
+                                {canDelete && (
+                                  <button 
+                                    onClick={() => { setServicoToDelete(servico.id); setIsDeleteModalOpen(true); }}
+                                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
+                                    title="Excluir"
+                                  >
+                                    <Trash2 size={16} />
+                                  </button>
+                                )}
+                              </div>
+                            </td>
+                          </motion.tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan={17} className="px-6 py-10 text-center text-slate-400">
+                            Nenhum serviço agendado.
+                          </td>
+                        </tr>
+                      )}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
+              </div>
+            </section>
+          )}
+
+
+            {/* Section: Pendentes */}
+            <section id="section-servicos-sem-data" className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+              <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
+                <h2 className="font-bold text-slate-700 flex items-center gap-2">
+                  <Clock size={18} className="text-amber-500" />
+                  Serviços Sem Data Prevista (Pendentes / Em Espera)
+                </h2>
+                <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
+                  {unscheduledServicosList.length} aguardando
+                </span>
+              </div>
+              <div className="overflow-x-auto scrollbar-hide">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50/50 border-b border-slate-200">
+                      <th className="px-3 py-3 w-10">
+                        <input 
+                          type="checkbox" 
+                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                          checked={unscheduledServicosList.length > 0 && unscheduledServicosList.every(s => selectedIds.has(s.id))}
+                          onChange={() => toggleSelectAll(unscheduledServicosList)}
+                        />
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('numeroRegistro')}
+                      >
+                        <div className="flex items-center gap-1">
+                          N° {sortConfigServicos.key === 'numeroRegistro' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('situacao')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Situação {sortConfigServicos.key === 'situacao' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('prioridade')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Prioridade {sortConfigServicos.key === 'prioridade' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('tipoAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Tipo {sortConfigServicos.key === 'tipoAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Atendimento {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataAtendimento')}
+                      >
+                        <div className="flex items-center justify-center gap-1">
+                          Dias {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('cliente')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Cliente {sortConfigServicos.key === 'cliente' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('local')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Local {sortConfigServicos.key === 'local' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('vendedor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Vendedor {sortConfigServicos.key === 'vendedor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Equipe {sortConfigServicos.key === 'equipeServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('servico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Serviço {sortConfigServicos.key === 'servico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('valor')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Valor {sortConfigServicos.key === 'valor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('equipeInstalou')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Instalou {sortConfigServicos.key === 'equipeInstalou' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('dataServico')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <AnimatePresence mode="popLayout">
+                      {unscheduledServicosList.length > 0 ? (
+                        unscheduledServicosList.map((servico) => (
+                          <motion.tr 
+                            key={servico.id}
+                            layout
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            onClick={() => handleServicoEdit(servico)}
+                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${
+                              servico.tipoAtendimento === 'Administrativo'
+                                ? 'bg-purple-50/25 border-l-4 border-purple-500'
+                                : servico.situacao === 'Em Espera'
+                                ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
+                                : servico.situacao === 'Pendente'
+                                ? 'bg-amber-50/20 border-l-4 border-amber-400'
+                                : 'bg-blue-50/20 border-l-4 border-blue-400'
+                            } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
+                          >
+                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <input 
+                                type="checkbox" 
+                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
+                                checked={selectedIds.has(servico.id)}
+                                onChange={() => toggleSelect(servico.id)}
+                              />
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
+                                #{servico.numeroRegistro}
+                              </span>
+                            </td>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <select 
+                                value={servico.situacao}
+                                onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                  servico.situacao === 'Pendente' 
+                                    ? 'bg-amber-100 text-amber-700 border-amber-200' 
+                                    : servico.situacao === 'Em Espera'
+                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
+                                    : 'bg-blue-100 text-blue-700 border-blue-200'
+                                }`}
+                              >
+                                <option value="Pendente">Pendente</option>
+                                <option value="Em Andamento">Em Andamento</option>
+                                <option value="Concluído">Concluído</option>
+                                <option value="Em Espera">Em Espera</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
+                              <select 
+                                value={servico.prioridade}
+                                onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
+                                  servico.prioridade === 'Alta' 
+                                    ? 'bg-red-50 text-red-700 border-red-100' 
+                                    : servico.prioridade === 'Média'
+                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
+                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                                }`}
+                              >
+                                <option value="Alta">Alta</option>
+                                <option value="Média">Média</option>
+                                <option value="Baixa">Baixa</option>
+                              </select>
+                            </td>
+                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                              <select 
+                                value={servico.tipoAtendimento || 'Técnico'}
+                                onChange={(e) => updateServicoQuick(servico.id, 'tipoAtendimento', e.target.value)}
+                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border outline-none transition-all cursor-pointer ${
+                                  servico.tipoAtendimento === 'Administrativo' 
+                                    ? 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200' 
+                                    : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
+                                }`}
+                                title="Tipo de Atendimento - Clique para alterar"
+                              >
+                                <option value="Técnico">🔧 Técnico</option>
+                                <option value="Administrativo">💼 Administrativo</option>
+                              </select>
+                            </td>
+                            {renderEditableCell(
+                              servico.id,
+                              'dataAtendimento',
+                              'servico',
+                              servico.dataAtendimento || '',
+                              'date',
+                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
+                                {formatDateBR(servico.dataAtendimento)}
+                              </span>
+                            )}
+                            <td className="px-3 py-3 text-center">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
+                                (() => {
+                                  const dias = getDaysDiff(servico.dataAtendimento);
+                                  return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
+                                })()
+                              }`}>
+                                {getDaysDiff(servico.dataAtendimento)} d
+                              </div>
+                            </td>
+                            <td className="px-3 py-3">
+                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                                {servico.tipoAtendimento === 'Administrativo' && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                                    Admin
+                                  </span>
+                                )}
                                 {servico.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
@@ -4953,383 +5933,6 @@ export default function App() {
                       ) : (
                         <tr>
                           <td colSpan={16} className="px-6 py-10 text-center text-slate-400">
-                            Nenhum serviço agendado.
-                          </td>
-                        </tr>
-                      )}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
-
-
-            {/* Section: Pendentes */}
-            <section id="section-servicos-sem-data" className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-              <div className="px-6 py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-                <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                  <Clock size={18} className="text-amber-500" />
-                  Serviços Sem Data Prevista (Pendentes / Em Espera)
-                </h2>
-                <span className="text-xs font-bold text-slate-400 bg-white px-2 py-1 rounded-lg border border-slate-200 shadow-sm">
-                  {unscheduledServicosList.length} aguardando
-                </span>
-              </div>
-              <div className="overflow-x-auto scrollbar-hide">
-                <table className="w-full text-left border-collapse">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-200">
-                      <th className="px-3 py-3 w-10">
-                        <input 
-                          type="checkbox" 
-                          className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                          checked={unscheduledServicosList.length > 0 && unscheduledServicosList.every(s => selectedIds.has(s.id))}
-                          onChange={() => toggleSelectAll(unscheduledServicosList)}
-                        />
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('numeroRegistro')}
-                      >
-                        <div className="flex items-center gap-1">
-                          N° {sortConfigServicos.key === 'numeroRegistro' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('situacao')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Situação {sortConfigServicos.key === 'situacao' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('prioridade')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Prioridade {sortConfigServicos.key === 'prioridade' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('dataAtendimento')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Atendimento {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-center cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('dataAtendimento')}
-                      >
-                        <div className="flex items-center justify-center gap-1">
-                          Dias {sortConfigServicos.key === 'dataAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('cliente')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Cliente {sortConfigServicos.key === 'cliente' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('local')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Local {sortConfigServicos.key === 'local' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('vendedor')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Vendedor {sortConfigServicos.key === 'vendedor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('equipeServico')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Equipe {sortConfigServicos.key === 'equipeServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('servico')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Serviço {sortConfigServicos.key === 'servico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('valor')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Valor {sortConfigServicos.key === 'valor' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('equipeInstalou')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Instalou {sortConfigServicos.key === 'equipeInstalou' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th 
-                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
-                        onClick={() => handleSortServicos('dataServico')}
-                      >
-                        <div className="flex items-center gap-1">
-                          Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
-                        </div>
-                      </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    <AnimatePresence mode="popLayout">
-                      {unscheduledServicosList.length > 0 ? (
-                        unscheduledServicosList.map((servico) => (
-                          <motion.tr 
-                            key={servico.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            onClick={() => handleServicoEdit(servico)}
-                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${
-                              servico.situacao === 'Em Espera'
-                                ? 'bg-slate-50/20 border-l-4 border-slate-400 opacity-60'
-                                : servico.situacao === 'Pendente'
-                                ? 'bg-amber-50/20 border-l-4 border-amber-400'
-                                : 'bg-blue-50/20 border-l-4 border-blue-400'
-                            } ${selectedIds.has(servico.id) ? 'bg-indigo-100/50' : ''}`}
-                          >
-                            <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
-                              <input 
-                                type="checkbox" 
-                                className="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500"
-                                checked={selectedIds.has(servico.id)}
-                                onChange={() => toggleSelect(servico.id)}
-                              />
-                            </td>
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <span className="font-mono text-[10px] font-bold text-indigo-600 bg-indigo-50 px-1.5 py-1 rounded border border-indigo-100">
-                                #{servico.numeroRegistro}
-                              </span>
-                            </td>
-                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                              <select 
-                                value={servico.situacao}
-                                onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
-                                  servico.situacao === 'Pendente' 
-                                    ? 'bg-amber-100 text-amber-700 border-amber-200' 
-                                    : servico.situacao === 'Em Espera'
-                                    ? 'bg-slate-100 text-slate-700 border-slate-200'
-                                    : 'bg-blue-100 text-blue-700 border-blue-200'
-                                }`}
-                              >
-                                <option value="Pendente">Pendente</option>
-                                <option value="Em Andamento">Em Andamento</option>
-                                <option value="Concluído">Concluído</option>
-                                <option value="Em Espera">Em Espera</option>
-                              </select>
-                            </td>
-                            <td className="px-3 py-3" onClick={(e) => e.stopPropagation()}>
-                              <select 
-                                value={servico.prioridade}
-                                onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
-                                  servico.prioridade === 'Alta' 
-                                    ? 'bg-red-50 text-red-700 border-red-100' 
-                                    : servico.prioridade === 'Média'
-                                    ? 'bg-amber-50 text-amber-700 border-amber-100'
-                                    : 'bg-emerald-50 text-emerald-700 border-emerald-100'
-                                }`}
-                              >
-                                <option value="Alta">Alta</option>
-                                <option value="Média">Média</option>
-                                <option value="Baixa">Baixa</option>
-                              </select>
-                            </td>
-                            {renderEditableCell(
-                              servico.id,
-                              'dataAtendimento',
-                              'servico',
-                              servico.dataAtendimento || '',
-                              'date',
-                              <span className="text-[10px] font-semibold text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
-                                {formatDateBR(servico.dataAtendimento)}
-                              </span>
-                            )}
-                            <td className="px-3 py-3 text-center">
-                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
-                                (() => {
-                                  const dias = getDaysDiff(servico.dataAtendimento);
-                                  return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
-                                })()
-                              }`}>
-                                {getDaysDiff(servico.dataAtendimento)} d
-                              </div>
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
-                                {servico.txtFile && (
-                                  <button 
-                                    onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
-                                    className="p-1 text-indigo-500 hover:text-indigo-700 transition-all hover:scale-110 flex-none"
-                                    title="Ver TXT"
-                                  >
-                                    <FileText size={14} />
-                                  </button>
-                                )}
-                              </div>
-                              {servico.observacao && (
-                                <div 
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    setViewingObs({
-                                      cliente: servico.cliente,
-                                      tipo: 'Serviço',
-                                      observacao: servico.observacao,
-                                      data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
-                                    });
-                                  }}
-                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
-                                  title={`Clique para abrir observação: ${servico.observacao}`}
-                                >
-                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
-                                    OBS
-                                  </span>
-                                  <span className="truncate">{servico.observacao}</span>
-                                </div>
-                              )}
-                            </td>
-                            <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
-                            </td>
-                            {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
-                            {renderEditableCell(
-                              servico.id,
-                              'equipeServico',
-                              'servico',
-                              servico.equipeServico || '',
-                              'equipe',
-                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
-                                <span>{servico.equipeServico || '---'}</span>
-                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
-                              </div>
-                            )}
-                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
-                            {renderEditableCell(
-                              servico.id,
-                              'equipeInstalou',
-                              'servico',
-                              servico.equipeInstalou || '',
-                              'equipe',
-                              <div className="font-medium text-slate-700 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer inline-flex items-center gap-1">
-                                <span>{servico.equipeInstalou || '---'}</span>
-                                <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
-                              </div>
-                            )}
-                            {renderEditableCell(
-                              servico.id,
-                              'dataServico',
-                              'servico',
-                              servico.dataServico || '',
-                              'date',
-                              <div className="flex flex-col text-slate-600 bg-slate-50 hover:bg-indigo-50 hover:text-indigo-700 px-2 py-1 rounded border border-transparent hover:border-indigo-200 hover:shadow-xs transition-all cursor-pointer">
-                                <span className="font-bold whitespace-nowrap">{formatDateBR(servico.dataServico)}</span>
-                                <div className="text-[12px] uppercase font-black opacity-80 mt-0.5 flex items-center justify-between gap-1">
-                                  <span>{getDayOfWeek(servico.dataServico)}</span>
-                                  <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
-                                </div>
-                              </div>
-                            )}
-                            <td className="px-3 py-3 whitespace-nowrap">
-                              <div 
-                                className="cursor-pointer hover:scale-105 transition-transform inline-block"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setEditingPayment({ id: servico.id.toString(), type: 'servico' });
-                                }}
-                              >
-                                {editingPayment?.id === servico.id.toString() && editingPayment.type === 'servico' ? (
-                                  <select
-                                    autoFocus
-                                    className="text-[10px] bg-white border border-indigo-300 rounded px-1 outline-none"
-                                    value={servico.formaPagamento || ''}
-                                    onBlur={() => setEditingPayment(null)}
-                                    onChange={(e) => {
-                                      updateServicoQuick(servico.id, 'formaPagamento', e.target.value);
-                                      setEditingPayment(null);
-                                    }}
-                                    onClick={(e) => e.stopPropagation()}
-                                  >
-                                    <option value="">Selecione</option>
-                                    {formasPagamento.filter(f => f.ativo).map(f => (
-                                      <option key={f.id} value={f.nome}>{f.nome}</option>
-                                    ))}
-                                    <option value="Outros">Outros</option>
-                                  </select>
-                                ) : (
-                                  <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
-                                    {servico.formaPagamento || 'DEFINIR PGTO'}
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
-                              <div className="flex items-center justify-end gap-1">
-                                <button 
-                                  onClick={() => gerarReciboServicoPDF(servico)}
-                                  className="p-1.5 text-slate-400 hover:text-emerald-600 transition-colors"
-                                  title="Gerar Recibo PDF"
-                                >
-                                  <Printer size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
-                                  className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
-                                  title="Ver Detalhes"
-                                >
-                                  <Eye size={16} />
-                                </button>
-                                <button 
-                                  onClick={() => handleServicoEdit(servico)}
-                                  className="p-1.5 text-slate-400 hover:text-indigo-600 transition-colors"
-                                  title="Editar"
-                                >
-                                  <Edit size={16} />
-                                </button>
-                                {canDelete && (
-                                  <button 
-                                    onClick={() => { setServicoToDelete(servico.id); setIsDeleteModalOpen(true); }}
-                                    className="p-1.5 text-slate-400 hover:text-red-600 transition-colors"
-                                    title="Excluir"
-                                  >
-                                    <Trash2 size={16} />
-                                  </button>
-                                )}
-                              </div>
-                            </td>
-                          </motion.tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan={15} className="px-6 py-10 text-center text-slate-400">
                             Nenhum serviço sem data prevista.
                           </td>
                         </tr>
@@ -5438,6 +6041,14 @@ export default function App() {
                       </th>
                       <th 
                         className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('tipoAtendimento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Tipo {sortConfigServicos.key === 'tipoAtendimento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
                         onClick={() => handleSortServicos('dataAtendimento')}
                       >
                         <div className="flex items-center gap-1">
@@ -5530,7 +6141,9 @@ export default function App() {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             onClick={() => handleServicoEdit(servico)}
-                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${selectedIds.has(servico.id) ? 'bg-emerald-100/50' : ''}`}
+                            className={`cursor-pointer hover:bg-slate-50 transition-colors ${
+                              servico.tipoAtendimento === 'Administrativo' ? 'bg-purple-50/20 border-l-4 border-purple-500' : ''
+                            } ${selectedIds.has(servico.id) ? 'bg-emerald-100/50' : ''}`}
                           >
                             <td className="px-3 py-3 whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                               <input 
@@ -5561,6 +6174,15 @@ export default function App() {
                                 {servico.prioridade}
                               </span>
                             </td>
+                            <td className="px-3 py-3 whitespace-nowrap">
+                              <span className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded border ${
+                                servico.tipoAtendimento === 'Administrativo'
+                                  ? 'bg-purple-100 text-purple-800 border-purple-300'
+                                  : 'bg-blue-50 text-blue-700 border-blue-200'
+                              }`}>
+                                {servico.tipoAtendimento === 'Administrativo' ? '💼 Administrativo' : '🔧 Técnico'}
+                              </span>
+                            </td>
                             {renderEditableCell(
                               servico.id,
                               'dataAtendimento',
@@ -5579,6 +6201,11 @@ export default function App() {
                             <td className="px-3 py-3">
                               <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
                                 <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                                {servico.tipoAtendimento === 'Administrativo' && (
+                                  <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
+                                    Admin
+                                  </span>
+                                )}
                                 {servico.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(servico.txtFile || null); }}
@@ -5671,7 +6298,7 @@ export default function App() {
                           </motion.tr>
                         ))
                       ) : (
-                        <tr><td colSpan={7} className="px-6 py-8 text-center text-slate-400 italic">Nenhum serviço concluído.</td></tr>
+                        <tr><td colSpan={16} className="px-6 py-8 text-center text-slate-400 italic">Nenhum serviço concluído.</td></tr>
                       )}
                     </AnimatePresence>
                   </tbody>
@@ -6490,56 +7117,178 @@ export default function App() {
                           <option value="A Pagar">A Pagar</option>
                         </select>
                       </FormField>
-                      <FormField label="Equipe Serviço">
-                        <div className="space-y-2">
-                          <select 
-                            name="equipeServico"
-                            value={servicoFormData.equipeServico}
-                            onChange={handleServicoInputChange}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                          >
-                            <option value="">Selecione a equipe</option>
-                            {equipes.filter(e => e.ativo).map(e => (
-                              <option key={e.id} value={e.nome}>{e.nome}</option>
-                            ))}
-                            <option value="Outros">Outros</option>
-                          </select>
-                          {servicoFormData.equipeServico === 'Outros' && (
-                            <input 
-                              type="text"
-                              placeholder="Nome da equipe personalizada"
-                              value={equipeServicoOutros}
-                              onChange={(e) => setEquipeServicoOutros(e.target.value)}
-                              className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                          )}
+                    </div>
+
+                    {/* Alocação de Equipes */}
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      {/* Equipes Designadas para o Serviço (Multi-select) */}
+                      <div className="md:col-span-2 space-y-3 bg-gradient-to-br from-indigo-50/70 via-slate-50 to-indigo-50/30 p-4 rounded-2xl border-2 border-indigo-200/80 shadow-xs">
+                        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-indigo-100 pb-2">
+                          <label className="text-xs font-black text-slate-800 flex items-center gap-2">
+                            <div className="w-6 h-6 rounded-lg bg-indigo-600 text-white flex items-center justify-center">
+                              <Users size={14} />
+                            </div>
+                            <span>Equipes Designadas para o Serviço</span>
+                            <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                              Multi-Equipes
+                            </span>
+                          </label>
+                          <div className="flex items-center gap-2">
+                            {selectedServicoTeamsList.length > 0 && (
+                              <button
+                                type="button"
+                                onClick={clearServicoTeams}
+                                className="text-[11px] font-bold text-rose-600 hover:text-rose-700 hover:underline px-1.5 py-0.5 rounded cursor-pointer"
+                              >
+                                Limpar
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              onClick={selectAllServicoTeams}
+                              className="text-[11px] font-bold text-indigo-600 hover:text-indigo-800 hover:underline px-1.5 py-0.5 rounded cursor-pointer"
+                            >
+                              Marcar todas
+                            </button>
+                          </div>
                         </div>
-                      </FormField>
-                      <FormField label="Equipe que Instalou">
-                        <div className="space-y-2">
-                          <select 
-                            name="equipeInstalou"
-                            value={servicoFormData.equipeInstalou}
-                            onChange={handleServicoInputChange}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                          >
-                            <option value="">Selecione a equipe</option>
-                            {equipes.filter(e => e.ativo).map(e => (
-                              <option key={e.id} value={e.nome}>{e.nome}</option>
-                            ))}
-                            <option value="Outros">Outros</option>
-                          </select>
-                          {servicoFormData.equipeInstalou === 'Outros' && (
-                            <input 
-                              type="text"
-                              placeholder="Nome da equipe personalizada"
-                              value={equipeInstalouOutros}
-                              onChange={(e) => setEquipeInstalouOutros(e.target.value)}
-                              className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500"
-                            />
-                          )}
+
+                        {/* Selected Teams Badge Summary */}
+                        {selectedServicoTeamsList.length > 0 ? (
+                          <div className="p-2.5 bg-white rounded-xl border border-indigo-200 shadow-2xs space-y-1.5">
+                            <div className="flex items-center justify-between">
+                              <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider flex items-center gap-1">
+                                <CheckCircle2 size={12} className="text-emerald-600" />
+                                Equipes escaladas ({selectedServicoTeamsList.length}):
+                              </span>
+                              <span className="text-[10px] text-indigo-600 font-medium">
+                                Aparecerá na escala semanal de cada equipe selecionada
+                              </span>
+                            </div>
+                            <div className="flex flex-wrap gap-1.5">
+                              {selectedServicoTeamsList.map(tName => (
+                                <span
+                                  key={tName}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-xs group transition-all"
+                                >
+                                  <span>{tName}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => removeServicoTeam(tName)}
+                                    className="text-indigo-200 hover:text-white hover:bg-indigo-700/60 rounded-full p-0.5 transition-colors cursor-pointer"
+                                    title={`Remover ${tName}`}
+                                  >
+                                    <X size={12} />
+                                  </button>
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-900 flex items-center gap-2">
+                            <AlertCircle size={16} className="text-amber-600 shrink-0" />
+                            <span>
+                              <strong>Nenhuma equipe selecionada.</strong> Clique nas equipes abaixo para selecionar 1 ou mais equipes para atender este serviço.
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Quick toggle chips */}
+                        <div className="space-y-1.5">
+                          <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">
+                            Equipes disponíveis (clique para adicionar ou remover):
+                          </span>
+                          <div className="flex flex-wrap gap-1.5">
+                            {equipes.filter(e => e.ativo).map(eq => {
+                              const isSelected = selectedServicoTeamsList.some(t => t.toLowerCase() === eq.nome.trim().toLowerCase());
+                              return (
+                                <button
+                                  key={eq.id}
+                                  type="button"
+                                  onClick={() => toggleServicoTeam(eq.nome)}
+                                  className={`px-3 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer select-none ${
+                                    isSelected
+                                      ? 'bg-indigo-600 text-white shadow-md ring-2 ring-indigo-400/50 scale-[1.03]'
+                                      : 'bg-white hover:bg-indigo-50/60 text-slate-700 border border-slate-200 hover:border-indigo-300'
+                                  }`}
+                                >
+                                  <span className={`w-2 h-2 rounded-full ${isSelected ? 'bg-white' : 'bg-slate-300'}`} />
+                                  <span>{eq.nome}</span>
+                                  {isSelected ? (
+                                    <Check size={12} className="stroke-[3]" />
+                                  ) : (
+                                    <Plus size={12} className="opacity-40" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </FormField>
+
+                        {/* Custom Team input */}
+                        <div className="pt-2 border-t border-slate-200/80 flex items-center gap-2">
+                          <input
+                            type="text"
+                            placeholder="Outra equipe ou terceiro (digite o nome)..."
+                            value={equipeServicoOutros}
+                            onChange={(e) => setEquipeServicoOutros(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                if (equipeServicoOutros.trim()) {
+                                  addCustomServicoTeam(equipeServicoOutros);
+                                }
+                              }
+                            }}
+                            className="flex-1 bg-white border border-slate-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:ring-2 focus:ring-indigo-500 font-medium placeholder:text-slate-400"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (equipeServicoOutros.trim()) {
+                                addCustomServicoTeam(equipeServicoOutros);
+                              }
+                            }}
+                            disabled={!equipeServicoOutros.trim()}
+                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-xl text-xs font-bold transition-colors cursor-pointer disabled:cursor-not-allowed flex items-center gap-1 shrink-0"
+                          >
+                            <Plus size={14} />
+                            <span>Adicionar</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Equipe que Instalou */}
+                      <div className="space-y-2">
+                        <FormField label="Equipe que Instalou (Histórico)">
+                          <div className="space-y-2">
+                            <select 
+                              name="equipeInstalou"
+                              value={servicoFormData.equipeInstalou}
+                              onChange={handleServicoInputChange}
+                              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium"
+                            >
+                              <option value="">Selecione a equipe</option>
+                              {equipes.filter(e => e.ativo).map(e => (
+                                <option key={e.id} value={e.nome}>{e.nome}</option>
+                              ))}
+                              <option value="Outros">Outros</option>
+                            </select>
+                            {servicoFormData.equipeInstalou === 'Outros' && (
+                              <input 
+                                type="text" 
+                                placeholder="Nome da equipe personalizada"
+                                value={equipeInstalouOutros}
+                                onChange={(e) => setEquipeInstalouOutros(e.target.value)}
+                                className="w-full bg-white border border-indigo-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-indigo-500 text-xs"
+                              />
+                            )}
+                          </div>
+                        </FormField>
+                        <div className="p-3 bg-slate-100 rounded-xl text-[11px] text-slate-500 leading-tight">
+                          Equipe que originalmente montou a usina solar deste cliente.
+                        </div>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       <FormField label="Data do Serviço">
@@ -6968,7 +7717,23 @@ export default function App() {
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                           <DetailItem label="Tipo de Serviço" value={selectedServico.servico || '---'} />
                           <DetailItem label="Data do Serviço" value={selectedServico.dataServico ? formatDateBR(selectedServico.dataServico) : '---'} />
-                          <DetailItem label="Equipe de Serviço" value={selectedServico.equipeServico || '---'} />
+                          <div>
+                            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">
+                              {getServicoTeams(selectedServico).length > 1 ? 'Equipes de Serviço (Múltiplas)' : 'Equipe de Serviço'}
+                            </span>
+                            <div className="flex flex-wrap gap-1 mt-0.5">
+                              {getServicoTeams(selectedServico).length > 0 ? (
+                                getServicoTeams(selectedServico).map((t: string) => (
+                                  <span key={t} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-black bg-indigo-50 text-indigo-800 border border-indigo-200">
+                                    <Users size={12} className="text-indigo-600" />
+                                    {t}
+                                  </span>
+                                ))
+                              ) : (
+                                <span className="text-xs font-medium text-slate-700">{selectedServico.equipeServico || '---'}</span>
+                              )}
+                            </div>
+                          </div>
                           <DetailItem label="Equipe que Instalou" value={selectedServico.equipeInstalou || '---'} />
                         </div>
                       </div>

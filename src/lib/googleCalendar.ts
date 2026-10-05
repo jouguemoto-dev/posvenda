@@ -1,4 +1,4 @@
-import { Obra, Servico } from '../types';
+import { Obra, Servico, getServicoTeams } from '../types';
 
 export function buildObraGCalTitle(obra: Partial<Obra>, teamOverride?: string): string {
   const team = teamOverride || obra.equipe || 'Sem Equipe';
@@ -10,7 +10,8 @@ export function buildObraGCalTitle(obra: Partial<Obra>, teamOverride?: string): 
 }
 
 export function buildServicoGCalTitle(servico: Partial<Servico>, teamOverride?: string): string {
-  const team = teamOverride || servico.equipeServico || servico.equipeInstalou || 'Sem Equipe';
+  const sTeams = getServicoTeams(servico);
+  const team = teamOverride || (sTeams.length > 0 ? sTeams.join(' + ') : (servico.equipeServico || servico.equipeInstalou || 'Sem Equipe'));
   const cliente = servico.cliente || 'Cliente';
   const tag = servico.tipoAtendimento === 'Administrativo' ? '[ADMIN] ' : '';
   return `${tag}${cliente}, ${team}`;
@@ -99,14 +100,15 @@ export function generateServicoGCalUrl(servico: Servico, dateOverride?: string, 
   const dateStr = dateOverride || servico.dataServico;
   if (!dateStr) return '';
 
-  const team = teamOverride || servico.equipeServico || servico.equipeInstalou || 'Sem Equipe';
+  const sTeams = getServicoTeams(servico);
+  const team = teamOverride || (sTeams.length > 0 ? sTeams.join(' + ') : (servico.equipeServico || servico.equipeInstalou || 'Sem Equipe'));
   const title = buildServicoGCalTitle(servico, team);
 
   const details = [
     `👤 Cliente: ${servico.cliente}`,
     `🔢 Registro: #${servico.numeroRegistro}`,
     `📋 Tipo: ${servico.tipoAtendimento === 'Administrativo' ? '💼 Atendimento Administrativo' : '🔧 Atendimento Técnico'}`,
-    `🛠️ Equipe: ${team}`,
+    `🛠️ Equipe${sTeams.length > 1 ? 's' : ''}: ${team}`,
     `🔧 Serviço: ${servico.servico || 'Não informado'}`,
     `💼 Vendedor: ${servico.vendedor || '---'}`,
     `📍 Endereço: ${servico.local || 'Não informado'}`,

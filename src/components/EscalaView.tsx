@@ -54,7 +54,7 @@ import {
 } from 'firebase/firestore';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { Obra, Servico } from '../types';
+import { Obra, Servico, getServicoTeams } from '../types';
 
 interface Team {
   id: string;
@@ -330,9 +330,8 @@ export default function EscalaView({
       servicos.forEach(s => {
         const datePart = (s.dataServico || '').split('T')[0];
         if (datesSet.has(datePart)) {
-          const sEq = (s.equipeServico || '').trim().toLowerCase();
-          const iEq = (s.equipeInstalou || '').trim().toLowerCase();
-          if (sEq === tName || iEq === tName) {
+          const sTeams = getServicoTeams(s);
+          if (sTeams.some(st => st.trim().toLowerCase() === tName)) {
             count++;
           }
         }
@@ -607,17 +606,22 @@ export default function EscalaView({
               cellItems.push(obraDesc);
             });
 
-            // 3. Matching Serviços (including Atendimento Administrativo)
+            // 3. Matching Serviços (including Atendimento Administrativo and multiple teams)
             const matchingServicos = servicos.filter(s => {
-              const eqS = (s.equipeServico || '').trim().toLowerCase();
-              const eqI = (s.equipeInstalou || '').trim().toLowerCase();
-              return (eqS === teamName || eqI === teamName) && (s.dataServico || '').split('T')[0] === fullDate;
+              const sDate = (s.dataServico || '').split('T')[0];
+              if (sDate !== fullDate) return false;
+              const sTeams = getServicoTeams(s);
+              return sTeams.some(st => st.trim().toLowerCase() === teamName);
             });
 
             matchingServicos.forEach(s => {
               const isAdm = s.tipoAtendimento === 'Administrativo';
               const tag = isAdm ? '[ATEND. ADMIN]' : '[SERVIÇO]';
+              const sTeams = getServicoTeams(s);
               let servDesc = `• ${tag} ${s.cliente}`;
+              if (sTeams.length > 1) {
+                servDesc += ` [Equipes: ${sTeams.join(' + ')}]`;
+              }
               if (s.servico) servDesc += ` (${s.servico})`;
               if (s.situacao && s.situacao !== 'Em Andamento') servDesc += ` [${s.situacao}]`;
               if (s.observacao) servDesc += `\n  Obs: ${s.observacao}`;
@@ -915,6 +919,34 @@ export default function EscalaView({
                         </div>
                         <p className="text-[10px] text-slate-500 font-medium">{weekDates[dayIdx]}</p>
                       </div>
+
+                      {/* Atendimentos Administrativos do Dia Visíveis */}
+                      {(() => {
+                        const fullDate = weekDatesFull[dayIdx];
+                        const dayAdminServicos = servicos.filter(s => {
+                          const sDate = (s.dataServico || '').split('T')[0];
+                          return sDate === fullDate && s.tipoAtendimento === 'Administrativo';
+                        });
+                        if (dayAdminServicos.length === 0) return null;
+                        return (
+                          <div className="mt-1 space-y-1">
+                            {dayAdminServicos.map(as => (
+                              <div
+                                key={as.firebaseId || as.id}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedDetails({ type: 'servico', item: as });
+                                }}
+                                className="px-1.5 py-0.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 text-[8px] font-black cursor-pointer truncate shadow-2xs flex items-center gap-1 transition-all"
+                                title={`Atendimento Administrativo: ${as.cliente} - ${as.servico || 'Sem descrição'}`}
+                              >
+                                <Briefcase size={8} className="shrink-0 text-purple-700" />
+                                <span className="truncate">{as.cliente}</span>
+                              </div>
+                            ))}
+                          </div>
+                        );
+                      })()}
                     </td>
                   {visibleTeams.length === 0 && (
                     <td className="p-3 text-center text-slate-400 italic text-xs bg-slate-50/40">
@@ -941,17 +973,11 @@ export default function EscalaView({
                     });
 
                     const matchingServicos = servicos.filter(s => {
-                      const equipeS = (s.equipeServico || '').trim().toLowerCase();
-                      const equipeI = (s.equipeInstalou || '').trim().toLowerCase();
-                      const teamName = team.name.trim().toLowerCase();
-                      
-                      const isTeamMatch = equipeS === teamName || equipeI === teamName;
-                      if (!isTeamMatch) return false;
-                      
                       const sDate = (s.dataServico || '').split('T')[0];
-                      const isExactDate = sDate === fullDate;
-                      
-                      return isExactDate;
+                      if (sDate !== fullDate) return false;
+                      const teamName = team.name.trim().toLowerCase();
+                      const sTeams = getServicoTeams(s);
+                      return sTeams.some(st => st.trim().toLowerCase() === teamName);
                     });
 
                     return (
@@ -1097,6 +1123,8 @@ export default function EscalaView({
                             ))}
                             {matchingServicos.map(s => {
                               const isAdm = s.tipoAtendimento === 'Administrativo';
+                              const sTeams = getServicoTeams(s);
+                              const hasMultipleTeams = sTeams.length > 1;
                               return (
                               <div 
                                 key={s.firebaseId || s.id} 
@@ -1158,6 +1186,14 @@ export default function EscalaView({
                                   >
                                     {s.cliente}
                                   </span>
+                                  {hasMultipleTeams && (
+                                    <span 
+                                      className="text-[7.5px] font-black uppercase tracking-wider bg-indigo-100/90 text-indigo-900 px-1 py-0.2 rounded border border-indigo-200 shrink-0" 
+                                      title={`Equipes neste serviço: ${sTeams.join(' + ')}`}
+                                    >
+                                      +{sTeams.length}eq
+                                    </span>
+                                  )}
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
                                       onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
@@ -1490,12 +1526,14 @@ export default function EscalaView({
                      `💳 *Forma de Pgto:* ${obraItem.formaPagamento || '---'}\n` +
                      (obraItem.observacoes ? `\n📝 *Anotações:* ${obraItem.observacoes}` : '');
             } else if (!isObra && servicoItem) {
+              const sTeams = getServicoTeams(servicoItem);
+              const teamsStr = tempTeam || (sTeams.length > 0 ? sTeams.join(' + ') : servicoItem.equipeServico) || '---';
               text = `📋 *DADOS DO AGENDAMENTO (SERVIÇO DE MANUTENÇÃO)*\n\n` +
                      `👤 *Cliente:* ${servicoItem.cliente}\n` +
                      `🔢 *Registro:* #${servicoItem.numeroRegistro}\n` +
                      `📍 *Endereço:* ${servicoItem.local || 'Não informado'}\n` +
                      `💼 *Vendedor:* ${servicoItem.vendedor || '---'}\n` +
-                     `🛠️ *Equipe Serviço:* ${tempTeam || servicoItem.equipeServico || '---'}\n` +
+                     `🛠️ *Equipe${sTeams.length > 1 ? 's' : ''} Serviço:* ${teamsStr}\n` +
                      `📅 *Data do Serviço:* ${tempDate ? formatFullDateBR(tempDate) : formatFullDateBR(servicoItem.dataServico)}\n\n` +
                      `⚡ *DETALHES DO SERVIÇO:*\n` +
                      `🔧 *Serviço:* ${servicoItem.servico || '---'}\n` +
@@ -1757,8 +1795,24 @@ export default function EscalaView({
                               <p className="text-xs font-black text-slate-700 mt-1">{(servicoItem as Servico).equipeInstalou || 'Não cadastrada'}</p>
                             </div>
                             <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-100">
-                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">Equipe de Escala</span>
-                              <p className="text-xs font-black text-indigo-600 mt-1">{tempTeam || (servicoItem as Servico).equipeServico || 'Não programada'}</p>
+                              <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide">
+                                {getServicoTeams(servicoItem as Servico).length > 1 ? 'Equipes de Escala (Múltiplas)' : 'Equipe de Escala'}
+                              </span>
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {tempTeam ? (
+                                  <span className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-xs font-black text-indigo-700">
+                                    {tempTeam}
+                                  </span>
+                                ) : getServicoTeams(servicoItem as Servico).length > 0 ? (
+                                  getServicoTeams(servicoItem as Servico).map(t => (
+                                    <span key={t} className="px-2 py-0.5 rounded-md bg-indigo-50 border border-indigo-200 text-xs font-black text-indigo-700">
+                                      {t}
+                                    </span>
+                                  ))
+                                ) : (
+                                  <p className="text-xs font-black text-indigo-600">Não programada</p>
+                                )}
+                              </div>
                             </div>
                           </div>
                         </div>
@@ -2192,7 +2246,12 @@ export default function EscalaView({
 
                   const allItems = [
                     ...weekObras.map(o => ({ type: 'obra' as const, item: o, date: o.dataObra, team: o.equipe })),
-                    ...weekServicos.map(s => ({ type: 'servico' as const, item: s, date: s.dataServico, team: s.equipeServico }))
+                    ...weekServicos.map(s => ({ 
+                      type: 'servico' as const, 
+                      item: s, 
+                      date: s.dataServico, 
+                      team: getServicoTeams(s).length > 0 ? getServicoTeams(s).join(', ') : (s.equipeServico || 'Sem Equipe')
+                    }))
                   ].sort((a, b) => a.date.localeCompare(b.date));
 
                   if (allItems.length === 0) {
@@ -2243,9 +2302,17 @@ export default function EscalaView({
                             <div className="space-y-1">
                               <div className="flex items-center gap-2 flex-wrap">
                                 <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-md ${
-                                  isObra ? 'bg-indigo-100 text-indigo-700' : 'bg-teal-100 text-teal-700'
+                                  isObra 
+                                    ? 'bg-indigo-100 text-indigo-700' 
+                                    : (item as Servico).tipoAtendimento === 'Administrativo'
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : 'bg-teal-100 text-teal-700'
                                 }`}>
-                                  {isObra ? 'Instalação Solar' : 'Serviço Manutenção'}
+                                  {isObra 
+                                    ? 'Instalação Solar' 
+                                    : (item as Servico).tipoAtendimento === 'Administrativo'
+                                    ? 'Atendimento Administrativo'
+                                    : 'Serviço Manutenção'}
                                 </span>
                                 <span className="text-xs font-bold text-slate-800 bg-slate-100 px-2.5 py-0.5 rounded-md">
                                   {formatDateBR(date)} ({getDayOfWeek(date)})

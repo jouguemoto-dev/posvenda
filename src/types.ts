@@ -49,6 +49,7 @@ export interface Servico {
   local: string;
   vendedor: string;
   equipeServico: string;
+  equipes?: string[];
   servico: string;
   valor: number;
   equipeInstalou: string;
@@ -123,4 +124,28 @@ export interface Lembrete {
   createdAt: any;
   obraId?: string | number;
   tipo?: string;
+}
+
+export function getServicoTeams(s: Partial<Servico>): string[] {
+  const result = new Set<string>();
+  if (Array.isArray(s.equipes)) {
+    s.equipes.forEach(eq => {
+      const trimmed = String(eq || '').trim();
+      if (trimmed) result.add(trimmed);
+    });
+  }
+  if (s.equipeServico) {
+    s.equipeServico.split(/[,;/]/).forEach(eq => {
+      const trimmed = eq.trim();
+      if (trimmed) result.add(trimmed);
+    });
+  }
+  // Fallback to equipeInstalou only if no service team was designated
+  if (result.size === 0 && s.equipeInstalou) {
+    s.equipeInstalou.split(/[,;/]/).forEach(eq => {
+      const trimmed = eq.trim();
+      if (trimmed) result.add(trimmed);
+    });
+  }
+  return Array.from(result);
 }
