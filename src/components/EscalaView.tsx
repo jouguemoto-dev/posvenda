@@ -34,7 +34,8 @@ import {
   CalendarClock,
   Eye,
   EyeOff,
-  Filter
+  Filter,
+  Type
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -139,6 +140,73 @@ export default function EscalaView({
   const [tempDate, setTempDate] = useState('');
   const [tempTeam, setTempTeam] = useState('');
   const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
+  // Tamanho da letra da escala: padrão 'large' (2x maior) conforme solicitado
+  const [fontSizeLevel, setFontSizeLevel] = useState<'normal' | 'large' | 'xlarge'>('large');
+
+  const fontConfig = useMemo(() => {
+    if (fontSizeLevel === 'normal') {
+      return {
+        cardPadding: 'py-1 px-1.5 rounded-lg space-y-0.5',
+        clientName: 'text-[10px] font-bold',
+        statusSelect: 'text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded',
+        placasBadge: 'text-[9px] font-black italic px-1 rounded',
+        concluirBtn: 'px-1.5 py-0.5 rounded font-black text-[8px] uppercase tracking-wider',
+        checkIconSize: 10,
+        actionIconSize: 10,
+        actionBtnPadding: 'p-0.5',
+        obsTag: 'text-[7.5px] uppercase font-black px-1 py-0.2 rounded',
+        obsText: 'text-[8.5px] font-bold',
+        obsBox: 'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded-md',
+        textarea: 'text-[10px] font-medium h-12',
+        cellMinHeight: 'min-h-[90px]',
+        dayText: 'text-xs font-bold',
+        dateText: 'text-[10px] font-medium',
+        adminDayBadge: 'text-[8px] font-black px-1.5 py-0.5',
+        adminIconSize: 8,
+      };
+    }
+    if (fontSizeLevel === 'xlarge') {
+      return {
+        cardPadding: 'py-2 px-2.5 rounded-xl space-y-1',
+        clientName: 'text-[16px] sm:text-[17px] font-black leading-snug tracking-tight',
+        statusSelect: 'text-[13px] font-black uppercase tracking-wider px-2.5 py-1 rounded-md',
+        placasBadge: 'text-[14px] font-black italic px-2 py-0.5 rounded-md',
+        concluirBtn: 'px-2.5 py-1 rounded-md font-black text-[13px] uppercase tracking-wider',
+        checkIconSize: 15,
+        actionIconSize: 15,
+        actionBtnPadding: 'p-1',
+        obsTag: 'text-[12px] uppercase font-black px-2 py-0.5 rounded',
+        obsText: 'text-[13px] sm:text-[14px] font-bold',
+        obsBox: 'mt-1.5 flex items-center gap-1.5 px-2.5 py-1 rounded-md',
+        textarea: 'text-[15px] sm:text-[16px] font-bold h-14',
+        cellMinHeight: 'min-h-[140px]',
+        dayText: 'text-base font-black',
+        dateText: 'text-sm font-bold',
+        adminDayBadge: 'text-[12px] font-black px-2 py-1',
+        adminIconSize: 13,
+      };
+    }
+    // Padrão: 'large' (2x mais legível/ampliado)
+    return {
+      cardPadding: 'py-1.5 px-2 rounded-xl space-y-1',
+      clientName: 'text-[14px] sm:text-[15px] font-black leading-tight tracking-tight',
+      statusSelect: 'text-[11px] sm:text-[12px] font-black uppercase tracking-wider px-2 py-0.5 rounded-md',
+      placasBadge: 'text-[12px] sm:text-[13px] font-black italic px-1.5 py-0.5 rounded-md',
+      concluirBtn: 'px-2 py-0.5 rounded-md font-black text-[11px] sm:text-[12px] uppercase tracking-wider',
+      checkIconSize: 13,
+      actionIconSize: 13,
+      actionBtnPadding: 'p-0.5 sm:p-1',
+      obsTag: 'text-[10px] uppercase font-black px-1.5 py-0.5 rounded',
+      obsText: 'text-[11px] sm:text-[12px] font-bold',
+      obsBox: 'mt-1.5 flex items-center gap-1 px-2 py-0.5 rounded-md',
+      textarea: 'text-[13px] sm:text-[14px] font-bold h-12',
+      cellMinHeight: 'min-h-[115px]',
+      dayText: 'text-sm sm:text-base font-black',
+      dateText: 'text-xs sm:text-[13px] font-bold',
+      adminDayBadge: 'text-[10px] sm:text-[11px] font-black px-2 py-0.5',
+      adminIconSize: 11,
+    };
+  }, [fontSizeLevel]);
 
   useEffect(() => {
     if (selectedDetails) {
@@ -793,6 +861,47 @@ export default function EscalaView({
             )}
           </button>
 
+          {/* Controle de Tamanho da Letra (1x, 2x, 2.5x) */}
+          <div className="flex items-center bg-white rounded-2xl border border-slate-200 shadow-sm p-1 gap-1">
+            <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-2 flex items-center gap-1">
+              <Type size={14} className="text-indigo-600" />
+              Fonte:
+            </span>
+            <button
+              onClick={() => setFontSizeLevel('normal')}
+              className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all ${
+                fontSizeLevel === 'normal'
+                  ? 'bg-slate-800 text-white shadow-xs'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+              title="Tamanho Normal (1x)"
+            >
+              1x
+            </button>
+            <button
+              onClick={() => setFontSizeLevel('large')}
+              className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1 ${
+                fontSizeLevel === 'large'
+                  ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+              title="Tamanho 2x Maior (Padrão Ampliado)"
+            >
+              2x
+            </button>
+            <button
+              onClick={() => setFontSizeLevel('xlarge')}
+              className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all ${
+                fontSizeLevel === 'xlarge'
+                  ? 'bg-purple-600 text-white shadow-xs ring-2 ring-purple-300'
+                  : 'text-slate-600 hover:bg-slate-100'
+              }`}
+              title="Tamanho Extra Grande (2.5x)"
+            >
+              2.5x
+            </button>
+          </div>
+
           <button 
             onClick={() => setIsGCalModalOpen(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-2xl font-bold shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95 text-xs sm:text-sm"
@@ -848,12 +957,12 @@ export default function EscalaView({
       {/* Main Table */}
       <div className="flex-1 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col">
         <div className="overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-          <table className={`w-full border-collapse table-fixed ${visibleTeams.length > 5 ? 'min-w-[1200px]' : visibleTeams.length > 3 ? 'min-w-[900px]' : 'min-w-full'}`}>
+          <table className={`w-full border-collapse table-fixed ${visibleTeams.length > 5 ? 'min-w-[1350px]' : visibleTeams.length > 3 ? 'min-w-[980px]' : 'min-w-full'}`}>
             <thead className="sticky top-0 z-30">
               <tr className="bg-[#1e2f3e] text-white">
-                <th className="p-2 text-left font-bold border-r border-white/10 w-28 text-xs">Dia / Data</th>
+                <th className="p-2.5 text-left font-bold border-r border-white/10 w-32 text-xs sm:text-sm">Dia / Data</th>
                 {visibleTeams.map((team, vIdx) => (
-                  <th key={team.id} className="p-2 text-center font-bold border-r border-white/10 text-xs relative group/header">
+                  <th key={team.id} className="p-2.5 text-center font-bold border-r border-white/10 text-xs sm:text-sm relative group/header">
                     <div className="flex items-center justify-center gap-3">
                       <button 
                         onClick={() => moveVisibleTeam(team.id, 'left')}
@@ -865,9 +974,9 @@ export default function EscalaView({
                       </button>
                       
                       <div className="flex flex-col items-center min-w-0">
-                        <span className="truncate max-w-[120px] font-black">{team.name}</span>
+                        <span className="truncate max-w-[140px] font-black text-sm">{team.name}</span>
                         {teamScheduleCounts[team.id] > 0 && (
-                          <span className="text-[8.5px] font-bold text-amber-300 opacity-90 tracking-wide">
+                          <span className="text-[11px] font-bold text-amber-300 opacity-90 tracking-wide">
                             {teamScheduleCounts[team.id]} {teamScheduleCounts[team.id] === 1 ? 'agendamento' : 'agendamentos'}
                           </span>
                         )}
@@ -909,15 +1018,15 @@ export default function EscalaView({
                 const isToday = weekDatesFull[dayIdx] === todayStr;
                 return (
                   <tr key={day} className={`border-b border-slate-200 last:border-0 ${isToday ? 'bg-indigo-50/40' : ''}`}>
-                    <td className={`p-2 border-r border-slate-200 w-28 transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
+                    <td className={`p-2.5 border-r border-slate-200 w-32 transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1">
-                          <p className="font-bold text-[#1e2f3e] text-xs">{day}</p>
+                          <p className={`font-black text-[#1e2f3e] ${fontConfig.dayText}`}>{day}</p>
                           {isToday && (
-                            <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[8px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
+                            <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
                           )}
                         </div>
-                        <p className="text-[10px] text-slate-500 font-medium">{weekDates[dayIdx]}</p>
+                        <p className={`font-semibold text-slate-500 ${fontConfig.dateText}`}>{weekDates[dayIdx]}</p>
                       </div>
 
                       {/* Atendimentos Administrativos do Dia Visíveis */}
@@ -929,7 +1038,7 @@ export default function EscalaView({
                         });
                         if (dayAdminServicos.length === 0) return null;
                         return (
-                          <div className="mt-1 space-y-1">
+                          <div className="mt-1.5 space-y-1">
                             {dayAdminServicos.map(as => (
                               <div
                                 key={as.firebaseId || as.id}
@@ -937,10 +1046,10 @@ export default function EscalaView({
                                   e.stopPropagation();
                                   setSelectedDetails({ type: 'servico', item: as });
                                 }}
-                                className="px-1.5 py-0.5 rounded bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 text-[8px] font-black cursor-pointer truncate shadow-2xs flex items-center gap-1 transition-all"
+                                className={`rounded bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-black cursor-pointer truncate shadow-2xs flex items-center gap-1 transition-all ${fontConfig.adminDayBadge}`}
                                 title={`Atendimento Administrativo: ${as.cliente} - ${as.servico || 'Sem descrição'}`}
                               >
-                                <Briefcase size={8} className="shrink-0 text-purple-700" />
+                                <Briefcase size={fontConfig.adminIconSize} className="shrink-0 text-purple-700" />
                                 <span className="truncate">{as.cliente}</span>
                               </div>
                             ))}
@@ -983,7 +1092,7 @@ export default function EscalaView({
                     return (
                       <td 
                         key={team.id} 
-                        className="p-1 border-r border-slate-200 relative group min-h-[80px] h-24 align-top overflow-hidden"
+                        className={`p-1.5 border-r border-slate-200 relative group ${fontConfig.cellMinHeight} align-top`}
                         style={{ backgroundColor: cellData.color }}
                       >
                         <textarea 
@@ -999,17 +1108,17 @@ export default function EscalaView({
                             updateCell(day, team.id, e.target.value);
                           }}
                           placeholder="..."
-                          className={`w-full h-12 p-1 bg-transparent resize-none outline-none font-medium text-[10px] leading-tight transition-colors ${isDark ? 'text-white placeholder:text-white/40' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
+                          className={`w-full ${fontConfig.textarea} p-1 bg-transparent resize-none outline-none leading-tight transition-colors ${isDark ? 'text-white placeholder:text-white/40' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
                         />
 
                         {/* Automatic Items Display */}
                         { (matchingObras.length > 0 || matchingServicos.length > 0) && (
-                          <div className="mt-1 space-y-1 px-0.5 pb-1 max-h-[calc(100%-3rem)] overflow-y-auto scrollbar-hide">
+                          <div className="mt-1 space-y-1.5 px-0.5 pb-1">
                             {matchingObras.map(o => (
                               <div 
                                 key={o.firebaseId || o.id} 
                                 onClick={() => setSelectedDetails({ type: 'obra', item: o })}
-                                className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] cursor-pointer ${
+                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-sm border transition-all hover:scale-[1.01] cursor-pointer ${
                                   o.situacao === 'Em Espera' 
                                     ? 'bg-slate-100 text-slate-500 border-slate-200' 
                                     : o.situacao === 'Concluído'
@@ -1019,14 +1128,14 @@ export default function EscalaView({
                                     : 'bg-white text-indigo-700 border-indigo-100'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-1 gap-1">
+                                <div className="flex items-center justify-between mb-0.5 gap-1">
                                   <div className="flex items-center gap-1 min-w-0">
-                                    <ClipboardList size={10} className="opacity-70 shrink-0" />
+                                    <ClipboardList size={fontConfig.actionIconSize} className="opacity-70 shrink-0" />
                                     <select
                                       value={o.situacao || 'Em Andamento'}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => handleQuickStatusChangeObra(o, e.target.value, e)}
-                                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded border outline-none cursor-pointer transition-all ${
+                                      className={`${fontConfig.statusSelect} outline-none cursor-pointer transition-all shadow-2xs ${
                                         o.situacao === 'Concluído'
                                           ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                           : o.situacao === 'Em Espera'
@@ -1044,12 +1153,14 @@ export default function EscalaView({
                                     </select>
                                   </div>
                                   {o.quantidadePlacas > 0 && (
-                                    <span className="text-[9px] font-black italic opacity-90 text-indigo-900 bg-indigo-50/50 px-1 rounded shrink-0">{o.quantidadePlacas} PL</span>
+                                    <span className={`${fontConfig.placasBadge} opacity-95 text-indigo-950 bg-indigo-100/80 border border-indigo-200/60 shrink-0`}>
+                                      {o.quantidadePlacas} PL
+                                    </span>
                                   )}
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    className={`font-bold truncate text-[10px] flex-1 cursor-pointer hover:text-indigo-600 transition-colors ${o.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                    className={`font-black truncate flex-1 cursor-pointer hover:text-indigo-600 transition-colors ${fontConfig.clientName} ${o.situacao === 'Concluído' ? 'line-through opacity-70' : ''}`}
                                     title="Clique para ver detalhes organizados"
                                   >
                                     {o.cliente}
@@ -1057,14 +1168,14 @@ export default function EscalaView({
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
                                       onClick={(e) => handleQuickStatusChangeObra(o, o.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
-                                      className={`px-1.5 py-0.5 rounded transition-all flex items-center gap-0.5 font-black text-[8px] uppercase tracking-wider shadow-2xs ${
+                                      className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
                                         o.situacao === 'Concluído'
                                           ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 ring-1 ring-emerald-300/60'
                                           : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-300 bg-white'
                                       }`}
                                       title={o.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
                                     >
-                                      <Check size={10} className={o.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                      <Check size={fontConfig.checkIconSize} className={o.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
                                       <span className="hidden sm:inline">{o.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
                                     </button>
                                     <button 
@@ -1073,28 +1184,28 @@ export default function EscalaView({
                                         const url = generateObraGCalUrl(o, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className="p-0.5 text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded transition-colors"
+                                      className={`${fontConfig.actionBtnPadding} text-blue-600 hover:text-blue-800 hover:bg-blue-50/80 rounded transition-colors`}
                                       title="Anexar ao Google Agenda"
                                     >
-                                      <CalendarClock size={10} />
+                                      <CalendarClock size={fontConfig.actionIconSize} />
                                     </button>
                                     <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
                                         onEditObra?.(o); 
                                       }}
-                                      className="p-0.5 text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors"
+                                      className={`${fontConfig.actionBtnPadding} text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors`}
                                       title="Editar Registro"
                                     >
-                                      <Edit size={10} />
+                                      <Edit size={fontConfig.actionIconSize} />
                                     </button>
                                     {o.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
-                                        className="p-0.5 text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors"
+                                        className={`${fontConfig.actionBtnPadding} text-indigo-500 hover:text-indigo-700 hover:bg-slate-100/50 rounded transition-colors`}
                                         title="Ver TXT"
                                       >
-                                        <FileText size={10} />
+                                        <FileText size={fontConfig.actionIconSize} />
                                       </button>
                                     )}
                                   </div>
@@ -1110,13 +1221,13 @@ export default function EscalaView({
                                         data: o.dataObra ? formatDateBR(o.dataObra) : undefined
                                       });
                                     }}
-                                    className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100/90 text-amber-950 border border-amber-300 text-[8.5px] font-bold leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors" 
+                                    className={`${fontConfig.obsBox} bg-amber-100/90 text-amber-950 border border-amber-300 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors`} 
                                     title={`Clique para abrir observação: ${o.observacoes}`}
                                   >
-                                    <span className="bg-amber-300 text-amber-900 px-1 py-0.2 rounded text-[7.5px] uppercase font-black shrink-0 tracking-wider">
+                                    <span className={`bg-amber-300 text-amber-900 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
                                       OBS
                                     </span>
-                                    <span className="truncate flex-1">{o.observacoes}</span>
+                                    <span className={`truncate flex-1 ${fontConfig.obsText}`}>{o.observacoes}</span>
                                   </div>
                                 )}
                               </div>
@@ -1129,7 +1240,7 @@ export default function EscalaView({
                               <div 
                                 key={s.firebaseId || s.id} 
                                 onClick={() => setSelectedDetails({ type: 'servico', item: s })}
-                                className={`text-[9px] font-bold py-1 px-1.5 rounded-lg flex flex-col shadow-sm border transition-all hover:scale-[1.02] cursor-pointer ${
+                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-sm border transition-all hover:scale-[1.01] cursor-pointer ${
                                   s.situacao === 'Em Espera'
                                     ? 'bg-slate-100 text-slate-500 border-slate-200'
                                     : s.situacao === 'Concluído'
@@ -1141,15 +1252,15 @@ export default function EscalaView({
                                     : 'bg-white text-blue-700 border-blue-100'
                                 }`}
                               >
-                                <div className="flex items-center justify-between mb-1 gap-1">
+                                <div className="flex items-center justify-between mb-0.5 gap-1">
                                   <div className="flex items-center gap-1 min-w-0">
                                     {isAdm ? (
-                                      <Briefcase size={10} className="text-purple-600 shrink-0" />
+                                      <Briefcase size={fontConfig.actionIconSize} className="text-purple-600 shrink-0" />
                                     ) : (
-                                      <Wrench size={10} className="opacity-70 shrink-0" />
+                                      <Wrench size={fontConfig.actionIconSize} className="opacity-70 shrink-0" />
                                     )}
                                     {isAdm && (
-                                      <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-1 py-0.2 rounded shrink-0">
+                                      <span className={`${fontConfig.obsTag} bg-purple-200 text-purple-900 shrink-0`}>
                                         ADMIN
                                       </span>
                                     )}
@@ -1157,7 +1268,7 @@ export default function EscalaView({
                                       value={s.situacao || 'Em Andamento'}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => handleQuickStatusChangeServico(s, e.target.value, e)}
-                                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.5 rounded border outline-none cursor-pointer transition-all ${
+                                      className={`${fontConfig.statusSelect} outline-none cursor-pointer transition-all shadow-2xs ${
                                         s.situacao === 'Concluído'
                                           ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
                                           : s.situacao === 'Em Espera'
@@ -1179,16 +1290,16 @@ export default function EscalaView({
                                 </div>
                                 <div className="flex items-center gap-1 overflow-hidden">
                                   <span 
-                                    className={`font-bold truncate text-[10px] flex-1 cursor-pointer transition-colors ${
+                                    className={`font-black truncate flex-1 cursor-pointer transition-colors ${fontConfig.clientName} ${
                                       isAdm ? 'hover:text-purple-700 text-purple-950' : 'hover:text-blue-600 text-blue-900'
-                                    } ${s.situacao === 'Concluído' ? 'line-through' : ''}`}
+                                    } ${s.situacao === 'Concluído' ? 'line-through opacity-70' : ''}`}
                                     title={`Clique para ver detalhes${isAdm ? ' (Atendimento Administrativo)' : ''}`}
                                   >
                                     {s.cliente}
                                   </span>
                                   {hasMultipleTeams && (
                                     <span 
-                                      className="text-[7.5px] font-black uppercase tracking-wider bg-indigo-100/90 text-indigo-900 px-1 py-0.2 rounded border border-indigo-200 shrink-0" 
+                                      className="text-[9px] font-black uppercase tracking-wider bg-indigo-100/90 text-indigo-900 px-1 py-0.2 rounded border border-indigo-200 shrink-0" 
                                       title={`Equipes neste serviço: ${sTeams.join(' + ')}`}
                                     >
                                       +{sTeams.length}eq
@@ -1197,14 +1308,14 @@ export default function EscalaView({
                                   <div className="flex items-center gap-0.5 flex-none select-none">
                                     <button 
                                       onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
-                                      className={`px-1.5 py-0.5 rounded transition-all flex items-center gap-0.5 font-black text-[8px] uppercase tracking-wider shadow-2xs ${
+                                      className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
                                         s.situacao === 'Concluído'
                                           ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-400 ring-1 ring-emerald-300/60'
                                           : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-300 bg-white'
                                       }`}
                                       title={s.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Atalho: Marcar Agendamento como Concluído'}
                                     >
-                                      <Check size={10} className={s.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                      <Check size={fontConfig.checkIconSize} className={s.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
                                       <span className="hidden sm:inline">{s.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
                                     </button>
                                     <button 
@@ -1213,28 +1324,28 @@ export default function EscalaView({
                                         const url = generateServicoGCalUrl(s, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className={`p-0.5 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80'}`}
+                                      className={`${fontConfig.actionBtnPadding} rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80'}`}
                                       title="Anexar ao Google Agenda"
                                     >
-                                      <CalendarClock size={10} />
+                                      <CalendarClock size={fontConfig.actionIconSize} />
                                     </button>
                                     <button 
                                       onClick={(e) => { 
                                         e.stopPropagation(); 
                                         onEditServico?.(s); 
                                       }}
-                                      className={`p-0.5 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
+                                      className={`${fontConfig.actionBtnPadding} rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
                                       title="Editar Registro"
                                     >
-                                      <Edit size={10} />
+                                      <Edit size={fontConfig.actionIconSize} />
                                     </button>
                                     {s.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
-                                        className={`p-0.5 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
+                                        className={`${fontConfig.actionBtnPadding} rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-blue-500 hover:text-blue-700 hover:bg-slate-100/50'}`}
                                         title="Ver TXT"
                                       >
-                                        <FileText size={10} />
+                                        <FileText size={fontConfig.actionIconSize} />
                                       </button>
                                     )}
                                   </div>
@@ -1250,13 +1361,13 @@ export default function EscalaView({
                                         data: s.dataServico ? formatDateBR(s.dataServico) : undefined
                                       });
                                     }}
-                                    className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-amber-100/90 text-amber-950 border border-amber-300 text-[8.5px] font-bold leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors" 
+                                    className={`${fontConfig.obsBox} bg-amber-100/90 text-amber-950 border border-amber-300 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-200 hover:border-amber-400 transition-colors`} 
                                     title={`Clique para abrir observação: ${s.observacao}`}
                                   >
-                                    <span className="bg-amber-300 text-amber-900 px-1 py-0.2 rounded text-[7.5px] uppercase font-black shrink-0 tracking-wider">
+                                    <span className={`bg-amber-300 text-amber-900 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
                                       OBS
                                     </span>
-                                    <span className="truncate flex-1">{s.observacao}</span>
+                                    <span className={`truncate flex-1 ${fontConfig.obsText}`}>{s.observacao}</span>
                                   </div>
                                 )}
                               </div>
