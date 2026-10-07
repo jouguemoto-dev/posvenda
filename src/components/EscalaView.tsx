@@ -93,6 +93,61 @@ const COLORS = [
   { name: 'Branco', bg: '#ffffff', text: '#1e2f3e', isDark: false },
 ];
 
+/**
+ * Normaliza e verifica se o agendamento está pendente ou em espera
+ */
+export const isStatusPendente = (situacao?: string | null): boolean => {
+  if (!situacao) return true; // sem status definido é considerado pendente
+  const s = situacao.trim().toLowerCase();
+  return s === 'pendente' || s === 'em espera';
+};
+
+/**
+ * Normaliza e verifica se o agendamento está em andamento / execução
+ */
+export const isStatusEmAndamento = (situacao?: string | null): boolean => {
+  if (!situacao) return false;
+  const s = situacao.trim().toLowerCase();
+  return s === 'em andamento' || s === 'execução' || s === 'execucao' || s === 'agendado';
+};
+
+/**
+ * Normaliza e verifica se o agendamento está concluído (com ou sem acento, maiúsculas/minúsculas)
+ */
+export const isStatusConcluido = (situacao?: string | null): boolean => {
+  if (!situacao) return false;
+  const s = situacao.trim().toLowerCase();
+  return s === 'concluído' || s === 'concluido' || s === 'finalizado';
+};
+
+/**
+ * Determina automaticamente a cor de fundo da célula na escala semanal:
+ * - Se houver agendamentos e TODOS estiverem 'Concluído' => Verde (#22c55e)
+ * - Se houver agendamentos com 'Em Andamento' => Azul (#3b82f6)
+ * - Se houver agendamentos com 'Pendente' / 'Em Espera' => Amarelo (#eab308)
+ * - Caso não haja agendamentos => Usa cor manual escolhida ou branco (#ffffff)
+ */
+export const getAutoCellColor = (
+  obrasList: Obra[],
+  servicosList: Servico[],
+  manualColor?: string
+): { color: string; isAuto: boolean } => {
+  const allItems = [...obrasList, ...servicosList];
+  if (allItems.length > 0) {
+    const allConcluido = allItems.every(i => isStatusConcluido(i.situacao));
+    if (allConcluido) {
+      return { color: '#22c55e', isAuto: true }; // Verde automático para agendamentos concluídos
+    }
+    const hasEmAndamento = allItems.some(i => isStatusEmAndamento(i.situacao));
+    if (hasEmAndamento) {
+      return { color: '#3b82f6', isAuto: true }; // Azul automático para agendamentos em andamento
+    }
+    // Pendentes e em espera ficam amarelo automático
+    return { color: '#eab308', isAuto: true }; // Amarelo automático para agendamentos pendentes
+  }
+  return { color: manualColor || '#ffffff', isAuto: false };
+};
+
 const BASE_DATE = new Date(2026, 3, 6); // April 6, 2026 is a Monday
 
 const formatDateBR = (dateStr: string | undefined | null): string => {
@@ -124,6 +179,18 @@ export default function EscalaView({
   onEditObra,
   onEditServico
 }: EscalaViewProps) {
+  // Estado local sincronizado para resposta visual imediata (otimista) na escala
+  const [localObras, setLocalObras] = useState<Obra[]>(obras);
+  const [localServicos, setLocalServicos] = useState<Servico[]>(servicos);
+
+  useEffect(() => {
+    setLocalObras(obras);
+  }, [obras]);
+
+  useEffect(() => {
+    setLocalServicos(servicos);
+  }, [servicos]);
+
   const [teams, setTeams] = useState<Team[]>([]);
   const [schedule, setSchedule] = useState<ScheduleData>({});
   const [isSyncing, setIsSyncing] = useState(false);
@@ -389,13 +456,13 @@ export default function EscalaView({
     teams.forEach(t => {
       const tName = t.name.trim().toLowerCase();
       let count = 0;
-      obras.forEach(o => {
+      localObras.forEach(o => {
         const datePart = (o.dataObra || '').split('T')[0];
         if (datesSet.has(datePart) && (o.equipe || '').trim().toLowerCase() === tName) {
           count++;
         }
       });
-      servicos.forEach(s => {
+      localServicos.forEach(s => {
         const datePart = (s.dataServico || '').split('T')[0];
         if (datesSet.has(datePart)) {
           const sTeams = getServicoTeams(s);
@@ -408,7 +475,7 @@ export default function EscalaView({
     });
 
     return counts;
-  }, [teams, weekDatesFull, obras, servicos]);
+  }, [teams, weekDatesFull, localObras, localServicos]);
 
   // Equipes visíveis na escala conforme o filtro de agendamento automático
   const visibleTeams = useMemo(() => {
@@ -449,6 +516,15 @@ export default function EscalaView({
     e?.stopPropagation();
     const targetId = obra.firebaseId || (obra as any).id;
     if (!targetId) return;
+
+    // Atualização otimista imediata para mudança instantânea da cor (Azul / Verde) na UI
+    setLocalObras(prev => prev.map(o => {
+      if (o.firebaseId === targetId || String(o.id) === String(targetId)) {
+        return { ...o, situacao: newStatus as any };
+      }
+      return o;
+    }));
+
     try {
       const docRef = doc(db, 'obras', targetId);
       await updateDoc(docRef, {
@@ -458,6 +534,7 @@ export default function EscalaView({
       addToast(`Status de "${obra.cliente}" alterado para "${newStatus}"`);
     } catch (err) {
       console.error("Erro ao alterar status da obra:", err);
+      setLocalObras(obras);
       addToast("❌ Erro ao atualizar status da obra.");
     }
   };
@@ -466,6 +543,15 @@ export default function EscalaView({
     e?.stopPropagation();
     const targetId = servico.firebaseId || (servico as any).id;
     if (!targetId) return;
+
+    // Atualização otimista imediata para mudança instantânea da cor (Azul / Verde) na UI
+    setLocalServicos(prev => prev.map(s => {
+      if (s.firebaseId === targetId || String(s.id) === String(targetId)) {
+        return { ...s, situacao: newStatus as any };
+      }
+      return s;
+    }));
+
     try {
       const docRef = doc(db, 'servicos', targetId);
       await updateDoc(docRef, {
@@ -475,6 +561,7 @@ export default function EscalaView({
       addToast(`Status de "${servico.cliente}" alterado para "${newStatus}"`);
     } catch (err) {
       console.error("Erro ao alterar status do serviço:", err);
+      setLocalServicos(servicos);
       addToast("❌ Erro ao atualizar status do serviço.");
     }
   };
@@ -661,7 +748,7 @@ export default function EscalaView({
             }
 
             // 2. Matching Obras
-            const matchingObras = obras.filter(o => {
+            const matchingObras = localObras.filter(o => {
               const obraEquipe = (o.equipe || '').trim().toLowerCase();
               return obraEquipe === teamName && (o.dataObra || '').split('T')[0] === fullDate;
             });
@@ -675,7 +762,7 @@ export default function EscalaView({
             });
 
             // 3. Matching Serviços (including Atendimento Administrativo and multiple teams)
-            const matchingServicos = servicos.filter(s => {
+            const matchingServicos = localServicos.filter(s => {
               const sDate = (s.dataServico || '').split('T')[0];
               if (sDate !== fullDate) return false;
               const sTeams = getServicoTeams(s);
@@ -739,11 +826,28 @@ export default function EscalaView({
             const team = targetTeams[data.column.index - 1];
             if (!team) return;
             const day = DAYS[data.row.index];
+            const fullDate = weekDatesFull[data.row.index];
+            const teamName = team.name.trim().toLowerCase();
+
+            const matchingObras = localObras.filter(o => {
+              const obraEquipe = (o.equipe || '').trim().toLowerCase();
+              return obraEquipe === teamName && (o.dataObra || '').split('T')[0] === fullDate;
+            });
+            const matchingServicos = localServicos.filter(s => {
+              const sDate = (s.dataServico || '').split('T')[0];
+              if (sDate !== fullDate) return false;
+              const sTeams = getServicoTeams(s);
+              return sTeams.some(st => st.trim().toLowerCase() === teamName);
+            });
+
             const cellData = schedule[day]?.[team.id];
-            if (cellData?.color && cellData.color !== '#ffffff') {
-              data.cell.styles.fillColor = cellData.color;
-              const colorObj = COLORS.find(c => c.bg === cellData.color);
-              if (colorObj?.isDark) {
+            const autoColorInfo = getAutoCellColor(matchingObras, matchingServicos, cellData?.color);
+            const cellColor = autoColorInfo.color;
+
+            if (cellColor && cellColor !== '#ffffff') {
+              data.cell.styles.fillColor = cellColor;
+              const colorObj = COLORS.find(c => c.bg.toLowerCase() === cellColor.toLowerCase());
+              if (colorObj?.isDark || cellColor === '#3b82f6' || cellColor === '#22c55e') {
                 data.cell.styles.textColor = '#ffffff';
               } else {
                 data.cell.styles.textColor = '#1e2f3e';
@@ -902,6 +1006,24 @@ export default function EscalaView({
             </button>
           </div>
 
+          {/* Indicador Automático de Cores da Escala */}
+          <div className="flex items-center bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-1.5 gap-2 text-xs font-bold">
+            <span className="flex items-center gap-1.5 text-amber-700 font-extrabold" title="Status Pendente deixa o dia/coluna amarelo automático">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#eab308] shadow-2xs"></span>
+              Pendente (Amarelo)
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="flex items-center gap-1.5 text-blue-700 font-extrabold" title="Status Em Andamento deixa o dia/coluna azul automático">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6] shadow-2xs"></span>
+              Em Andamento (Azul)
+            </span>
+            <span className="text-slate-300">|</span>
+            <span className="flex items-center gap-1.5 text-emerald-700 font-extrabold" title="Status Concluído deixa o dia/coluna verde automático">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] shadow-2xs"></span>
+              Concluído (Verde)
+            </span>
+          </div>
+
           <button 
             onClick={() => setIsGCalModalOpen(true)}
             className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-2xl font-bold shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95 text-xs sm:text-sm"
@@ -1032,7 +1154,7 @@ export default function EscalaView({
                       {/* Atendimentos Administrativos do Dia Visíveis */}
                       {(() => {
                         const fullDate = weekDatesFull[dayIdx];
-                        const dayAdminServicos = servicos.filter(s => {
+                        const dayAdminServicos = localServicos.filter(s => {
                           const sDate = (s.dataServico || '').split('T')[0];
                           return sDate === fullDate && s.tipoAtendimento === 'Administrativo';
                         });
@@ -1064,12 +1186,10 @@ export default function EscalaView({
                   )}
                   {visibleTeams.map(team => {
                     const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
-                    const colorObj = COLORS.find(c => c.bg === cellData.color);
-                    const isDark = colorObj?.isDark;
                     const fullDate = weekDatesFull[dayIdx];
 
                     // Match automatically scheduled items
-                    const matchingObras = obras.filter(o => {
+                    const matchingObras = localObras.filter(o => {
                       const obraEquipe = (o.equipe || '').trim().toLowerCase();
                       const teamName = team.name.trim().toLowerCase();
                       const isTeamMatch = obraEquipe === teamName;
@@ -1081,7 +1201,7 @@ export default function EscalaView({
                       return isExactDate;
                     });
 
-                    const matchingServicos = servicos.filter(s => {
+                    const matchingServicos = localServicos.filter(s => {
                       const sDate = (s.dataServico || '').split('T')[0];
                       if (sDate !== fullDate) return false;
                       const teamName = team.name.trim().toLowerCase();
@@ -1089,11 +1209,19 @@ export default function EscalaView({
                       return sTeams.some(st => st.trim().toLowerCase() === teamName);
                     });
 
+                    // Automatic status-based color calculation:
+                    // - Em Andamento / Pendente => Azul (#3b82f6)
+                    // - Concluído => Verde (#22c55e)
+                    const autoColorInfo = getAutoCellColor(matchingObras, matchingServicos, cellData.color);
+                    const cellColor = autoColorInfo.color;
+                    const colorObj = COLORS.find(c => c.bg.toLowerCase() === cellColor.toLowerCase());
+                    const isDark = colorObj ? colorObj.isDark : (cellColor === '#3b82f6' || cellColor === '#22c55e' || cellColor === '#1e2f3e');
+
                     return (
                       <td 
                         key={team.id} 
-                        className={`p-1.5 border-r border-slate-200 relative group ${fontConfig.cellMinHeight} align-top`}
-                        style={{ backgroundColor: cellData.color }}
+                        className={`p-1.5 border-r border-slate-200 relative group ${fontConfig.cellMinHeight} align-top transition-colors duration-300`}
+                        style={{ backgroundColor: cellColor }}
                       >
                         <textarea 
                           value={cellData.text.split('\n').filter(line => {
@@ -1105,45 +1233,57 @@ export default function EscalaView({
                           onChange={(e) => {
                             // When user changes text manually, we keep their changes
                             // But we filter out the auto-synced part to avoid redundancy in the view state if any remains
-                            updateCell(day, team.id, e.target.value);
+                            updateCell(day, team.id, e.target.value, cellColor);
                           }}
                           placeholder="..."
-                          className={`w-full ${fontConfig.textarea} p-1 bg-transparent resize-none outline-none leading-tight transition-colors ${isDark ? 'text-white placeholder:text-white/40' : 'text-[#1e2f3e] placeholder:text-slate-300'}`}
+                          className={`w-full ${fontConfig.textarea} p-1 bg-transparent resize-none outline-none leading-tight transition-colors ${
+                            isDark 
+                              ? 'text-white placeholder:text-white/40' 
+                              : cellColor === '#eab308' 
+                              ? 'text-amber-950 placeholder:text-amber-900/40 font-semibold' 
+                              : 'text-[#1e2f3e] placeholder:text-slate-300'
+                          }`}
                         />
 
                         {/* Automatic Items Display */}
                         { (matchingObras.length > 0 || matchingServicos.length > 0) && (
                           <div className="mt-1 space-y-1.5 px-0.5 pb-1">
-                            {matchingObras.map(o => (
+                            {matchingObras.map(o => {
+                              const concluido = isStatusConcluido(o.situacao);
+                              return (
                               <div 
                                 key={o.firebaseId || o.id} 
                                 onClick={() => setSelectedDetails({ type: 'obra', item: o })}
                                 className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${
                                   o.situacao === 'Em Espera' 
                                     ? 'bg-slate-50 text-slate-600 border-slate-200' 
-                                    : o.situacao === 'Concluído'
-                                    ? 'bg-emerald-50/70 text-emerald-900 border-emerald-200' 
+                                    : concluido
+                                    ? (cellColor === '#22c55e' ? 'bg-white/25 text-emerald-950 border-white/35 backdrop-blur-xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200') 
                                     : isDark 
-                                    ? 'bg-white/10 text-white border-white/20' 
+                                    ? 'bg-white/15 text-white border-white/25 backdrop-blur-xs' 
+                                    : cellColor === '#eab308'
+                                    ? 'bg-white/95 text-amber-950 border-amber-300 shadow-xs'
                                     : 'bg-white text-slate-800 border-slate-200/90'
                                 }`}
                               >
                                 {/* Linha 1: Status & Placas */}
                                 <div className="flex items-center justify-between gap-1 mb-1">
                                   <div className="flex items-center gap-1 min-w-0">
-                                    <ClipboardList size={11} className="text-indigo-600 opacity-80 shrink-0" />
+                                    <ClipboardList size={11} className={`${isDark && !concluido ? 'text-white/80' : cellColor === '#eab308' ? 'text-amber-800' : 'text-indigo-600'} opacity-80 shrink-0`} />
                                     <select
-                                      value={o.situacao || 'Em Andamento'}
+                                      value={concluido ? 'Concluído' : (o.situacao || 'Em Andamento')}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => handleQuickStatusChangeObra(o, e.target.value, e)}
                                       className={`${fontConfig.statusSelect} outline-none cursor-pointer transition-all shadow-2xs ${
-                                        o.situacao === 'Concluído'
-                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                        concluido
+                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
                                           : o.situacao === 'Em Espera'
-                                          ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                          ? 'bg-slate-200 text-slate-700 border-slate-300 font-extrabold'
                                           : o.situacao === 'Pendente'
-                                          ? 'bg-amber-100 text-amber-800 border-amber-300'
-                                          : 'bg-blue-100 text-blue-800 border-blue-300'
+                                          ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
+                                          : isDark
+                                          ? 'bg-white text-blue-800 border-blue-200 font-extrabold'
+                                          : 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
                                       }`}
                                       title="Alterar status deste agendamento de obra"
                                     >
@@ -1154,17 +1294,29 @@ export default function EscalaView({
                                     </select>
                                   </div>
                                   {o.quantidadePlacas > 0 && (
-                                    <span className={`${fontConfig.placasBadge} text-indigo-950 bg-indigo-50 border border-indigo-200/70 shrink-0`}>
+                                    <span className={`${fontConfig.placasBadge} ${
+                                      cellColor === '#22c55e' || isDark
+                                        ? 'text-white bg-white/20 border-white/30 font-extrabold'
+                                        : cellColor === '#eab308'
+                                        ? 'text-amber-950 bg-amber-100 border-amber-300 font-extrabold'
+                                        : 'text-indigo-950 bg-indigo-50 border-indigo-200/70'
+                                    } border shrink-0`}>
                                       {o.quantidadePlacas} PL
                                     </span>
                                   )}
                                 </div>
 
-                                {/* Linha 2: Nome do Cliente (Linha inteira dedicada, sem ser esmagado!) */}
+                                {/* Linha 2: Nome do Cliente */}
                                 <div className="my-0.5">
                                   <span 
                                     className={`font-black ${fontConfig.clientName} block cursor-pointer transition-colors ${
-                                      o.situacao === 'Concluído' ? 'line-through opacity-60 text-slate-500' : isDark ? 'text-white' : 'text-slate-900 hover:text-indigo-600'
+                                      concluido 
+                                        ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black') 
+                                        : isDark 
+                                        ? 'text-white font-black' 
+                                        : cellColor === '#eab308'
+                                        ? 'text-amber-950 font-black'
+                                        : 'text-slate-900 font-black hover:text-indigo-600'
                                     }`}
                                     title={o.cliente}
                                   >
@@ -1173,18 +1325,22 @@ export default function EscalaView({
                                 </div>
 
                                 {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
-                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100 select-none">
+                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
                                   <button 
-                                    onClick={(e) => handleQuickStatusChangeObra(o, o.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
+                                    onClick={(e) => handleQuickStatusChangeObra(o, concluido ? 'Em Andamento' : 'Concluído', e)}
                                     className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
-                                      o.situacao === 'Concluído'
-                                        ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300'
+                                      concluido
+                                        ? 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 font-extrabold'
+                                        : isDark
+                                        ? 'text-slate-800 bg-white hover:bg-slate-100 border border-white/40 font-extrabold'
+                                        : cellColor === '#eab308'
+                                        ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 font-extrabold'
                                         : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
                                     }`}
-                                    title={o.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
+                                    title={concluido ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
                                   >
-                                    <Check size={fontConfig.checkIconSize} className={o.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
-                                    <span>{o.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
+                                    <Check size={fontConfig.checkIconSize} className={concluido ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                    <span>{concluido ? 'Concluído' : 'Concluir'}</span>
                                   </button>
                                   <div className="flex items-center gap-0.5">
                                     <button 
@@ -1193,7 +1349,9 @@ export default function EscalaView({
                                         const url = generateObraGCalUrl(o, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className="p-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 rounded transition-colors"
+                                      className={`p-1 rounded transition-colors ${
+                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                                      }`}
                                       title="Anexar ao Google Agenda"
                                     >
                                       <CalendarClock size={fontConfig.actionIconSize} />
@@ -1203,7 +1361,9 @@ export default function EscalaView({
                                         e.stopPropagation(); 
                                         onEditObra?.(o); 
                                       }}
-                                      className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
+                                      className={`p-1 rounded transition-colors ${
+                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'
+                                      }`}
                                       title="Editar Registro"
                                     >
                                       <Edit size={fontConfig.actionIconSize} />
@@ -1211,7 +1371,9 @@ export default function EscalaView({
                                     {o.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
-                                        className="p-1 text-slate-400 hover:text-indigo-600 hover:bg-slate-100 rounded transition-colors"
+                                        className={`p-1 rounded transition-colors ${
+                                          isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'
+                                        }`}
                                         title="Ver TXT"
                                       >
                                         <FileText size={fontConfig.actionIconSize} />
@@ -1232,21 +1394,27 @@ export default function EscalaView({
                                         data: o.dataObra ? formatDateBR(o.dataObra) : undefined
                                       });
                                     }}
-                                    className={`${fontConfig.obsBox} bg-amber-50 text-amber-950 border border-amber-200/80 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
+                                    className={`${fontConfig.obsBox} ${
+                                      cellColor === '#22c55e' || isDark
+                                        ? 'bg-amber-100/95 text-amber-950 border-amber-300 font-semibold'
+                                        : 'bg-amber-50 text-amber-950 border-amber-200/80'
+                                    } border leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
                                     title={`Observação: ${o.observacoes}`}
                                   >
-                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
+                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
                                       OBS
                                     </span>
                                     <span className={`truncate flex-1 ${fontConfig.obsText}`}>{o.observacoes}</span>
                                   </div>
                                 )}
                               </div>
-                            ))}
+                            );
+                            })}
                             {matchingServicos.map(s => {
                               const isAdm = s.tipoAtendimento === 'Administrativo';
                               const sTeams = getServicoTeams(s);
                               const hasMultipleTeams = sTeams.length > 1;
+                              const concluido = isStatusConcluido(s.situacao);
                               return (
                               <div 
                                 key={s.firebaseId || s.id} 
@@ -1254,10 +1422,12 @@ export default function EscalaView({
                                 className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${
                                   s.situacao === 'Em Espera'
                                     ? 'bg-slate-50 text-slate-600 border-slate-200'
-                                    : s.situacao === 'Concluído'
-                                    ? 'bg-emerald-50/70 text-emerald-900 border-emerald-200'
+                                    : concluido
+                                    ? (cellColor === '#22c55e' ? 'bg-white/25 text-emerald-950 border-white/35 backdrop-blur-xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200')
                                     : isDark 
-                                    ? (isAdm ? 'bg-purple-950/70 text-purple-200 border-purple-500/50' : 'bg-white/10 text-white border-white/20')
+                                    ? (isAdm ? 'bg-purple-950/70 text-purple-200 border-purple-500/50' : 'bg-white/15 text-white border-white/25 backdrop-blur-xs')
+                                    : cellColor === '#eab308'
+                                    ? 'bg-white/95 text-amber-950 border-amber-300 shadow-xs'
                                     : isAdm
                                     ? 'bg-purple-50/80 text-purple-950 border-purple-300 ring-1 ring-purple-400/30'
                                     : 'bg-white text-slate-800 border-slate-200/90'
@@ -1267,9 +1437,9 @@ export default function EscalaView({
                                 <div className="flex items-center justify-between gap-1 mb-1">
                                   <div className="flex items-center gap-1 min-w-0">
                                     {isAdm ? (
-                                      <Briefcase size={11} className="text-purple-600 shrink-0" />
+                                      <Briefcase size={11} className={`${isDark && !concluido ? 'text-purple-300' : 'text-purple-600'} shrink-0`} />
                                     ) : (
-                                      <Wrench size={11} className="text-blue-600 opacity-80 shrink-0" />
+                                      <Wrench size={11} className={`${isDark && !concluido ? 'text-white/80' : cellColor === '#eab308' ? 'text-amber-800' : 'text-blue-600'} opacity-80 shrink-0`} />
                                     )}
                                     {isAdm && (
                                       <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-1 py-0.2 rounded shrink-0">
@@ -1277,19 +1447,21 @@ export default function EscalaView({
                                       </span>
                                     )}
                                     <select
-                                      value={s.situacao || 'Em Andamento'}
+                                      value={concluido ? 'Concluído' : (s.situacao || 'Em Andamento')}
                                       onClick={(e) => e.stopPropagation()}
                                       onChange={(e) => handleQuickStatusChangeServico(s, e.target.value, e)}
                                       className={`${fontConfig.statusSelect} outline-none cursor-pointer transition-all shadow-2xs ${
-                                        s.situacao === 'Concluído'
-                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                        concluido
+                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
                                           : s.situacao === 'Em Espera'
-                                          ? 'bg-slate-200 text-slate-700 border-slate-300'
+                                          ? 'bg-slate-200 text-slate-700 border-slate-300 font-extrabold'
                                           : s.situacao === 'Pendente'
-                                          ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                          ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
                                           : isAdm
-                                          ? 'bg-purple-100 text-purple-900 border-purple-300'
-                                          : 'bg-blue-100 text-blue-800 border-blue-300'
+                                          ? 'bg-purple-100 text-purple-900 border-purple-300 font-extrabold'
+                                          : isDark
+                                          ? 'bg-white text-blue-800 border-blue-200 font-extrabold'
+                                          : 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
                                       }`}
                                       title="Alterar status deste agendamento"
                                     >
@@ -1301,7 +1473,13 @@ export default function EscalaView({
                                   </div>
                                   {hasMultipleTeams && (
                                     <span 
-                                      className="text-[8px] font-black uppercase tracking-wider bg-indigo-100/90 text-indigo-900 px-1 py-0.2 rounded border border-indigo-200 shrink-0" 
+                                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded border shrink-0 ${
+                                        cellColor === '#22c55e' || isDark
+                                          ? 'bg-white/25 text-emerald-950 border-white/40 font-extrabold'
+                                          : cellColor === '#eab308'
+                                          ? 'bg-amber-100 text-amber-950 border-amber-300 font-extrabold'
+                                          : 'bg-indigo-100/90 text-indigo-900 border-indigo-200'
+                                      }`} 
                                       title={`Equipes neste serviço: ${sTeams.join(' + ')}`}
                                     >
                                       +{sTeams.length}eq
@@ -1309,12 +1487,18 @@ export default function EscalaView({
                                   )}
                                 </div>
 
-                                {/* Linha 2: Nome do Cliente (Linha inteira dedicada!) */}
+                                {/* Linha 2: Nome do Cliente */}
                                 <div className="my-0.5">
                                   <span 
                                     className={`font-black ${fontConfig.clientName} block cursor-pointer transition-colors ${
-                                      isAdm ? 'hover:text-purple-700 text-purple-950' : 'hover:text-blue-600 text-slate-900'
-                                    } ${s.situacao === 'Concluído' ? 'line-through opacity-60 text-slate-500' : ''}`}
+                                      concluido
+                                        ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black')
+                                        : isDark
+                                        ? 'text-white font-black'
+                                        : cellColor === '#eab308'
+                                        ? 'text-amber-950 font-black'
+                                        : (isAdm ? 'hover:text-purple-700 text-purple-950 font-black' : 'hover:text-blue-600 text-slate-900 font-black')
+                                    }`}
                                     title={s.cliente}
                                   >
                                     {s.cliente}
@@ -1322,18 +1506,22 @@ export default function EscalaView({
                                 </div>
 
                                 {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
-                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100 select-none">
+                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
                                   <button 
-                                    onClick={(e) => handleQuickStatusChangeServico(s, s.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído', e)}
+                                    onClick={(e) => handleQuickStatusChangeServico(s, concluido ? 'Em Andamento' : 'Concluído', e)}
                                     className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
-                                      s.situacao === 'Concluído'
-                                        ? 'text-emerald-800 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300'
+                                      concluido
+                                        ? 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 font-extrabold'
+                                        : isDark
+                                        ? 'text-slate-800 bg-white hover:bg-slate-100 border border-white/40 font-extrabold'
+                                        : cellColor === '#eab308'
+                                        ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 font-extrabold'
                                         : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
                                     }`}
-                                    title={s.situacao === 'Concluído' ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
+                                    title={concluido ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
                                   >
-                                    <Check size={fontConfig.checkIconSize} className={s.situacao === 'Concluído' ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
-                                    <span>{s.situacao === 'Concluído' ? 'Concluído' : 'Concluir'}</span>
+                                    <Check size={fontConfig.checkIconSize} className={concluido ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                                    <span>{concluido ? 'Concluído' : 'Concluir'}</span>
                                   </button>
 
                                   <div className="flex items-center gap-0.5">
@@ -1343,7 +1531,9 @@ export default function EscalaView({
                                         const url = generateServicoGCalUrl(s, fullDate, team.name);
                                         if (url) window.open(url, '_blank');
                                       }}
-                                      className={`p-1 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80'}`}
+                                      className={`p-1 rounded transition-colors ${
+                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80')
+                                      }`}
                                       title="Anexar ao Google Agenda"
                                     >
                                       <CalendarClock size={fontConfig.actionIconSize} />
@@ -1353,15 +1543,19 @@ export default function EscalaView({
                                         e.stopPropagation(); 
                                         onEditServico?.(s); 
                                       }}
-                                      className={`p-1 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50'}`}
-                                      title="Editar Registro"
+                                      className={`p-1 rounded transition-colors ${
+                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50')
+                                      }`}
+                                      title="Editar Serviço"
                                     >
                                       <Edit size={fontConfig.actionIconSize} />
                                     </button>
                                     {s.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
-                                        className={`p-1 rounded transition-colors ${isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50'}`}
+                                        className={`p-1 rounded transition-colors ${
+                                          isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50')
+                                        }`}
                                         title="Ver TXT"
                                       >
                                         <FileText size={fontConfig.actionIconSize} />
@@ -1382,10 +1576,14 @@ export default function EscalaView({
                                         data: s.dataServico ? formatDateBR(s.dataServico) : undefined
                                       });
                                     }}
-                                    className={`${fontConfig.obsBox} bg-amber-50 text-amber-950 border border-amber-200/80 leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
+                                    className={`${fontConfig.obsBox} ${
+                                      cellColor === '#22c55e' || isDark
+                                        ? 'bg-amber-100/95 text-amber-950 border-amber-300 font-semibold'
+                                        : 'bg-amber-50 text-amber-950 border-amber-200/80'
+                                    } border leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
                                     title={`Observação: ${s.observacao}`}
                                   >
-                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider`}>
+                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
                                       OBS
                                     </span>
                                     <span className={`truncate flex-1 ${fontConfig.obsText}`}>{s.observacao}</span>
@@ -1423,8 +1621,8 @@ export default function EscalaView({
                               >
                                 <p className="text-[10px] font-bold text-slate-400 uppercase px-2 mb-1">Clientes Ativos</p>
                                 {Array.from(new Set([
-                                  ...obras.map(o => o.cliente),
-                                  ...servicos.map(s => s.cliente)
+                                  ...localObras.map(o => o.cliente),
+                                  ...localServicos.map(s => s.cliente)
                                 ])).filter(Boolean).sort().map(clientName => (
                                   <button 
                                     key={clientName}
@@ -1490,57 +1688,57 @@ export default function EscalaView({
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
-              className="relative w-full max-w-md bg-white rounded-3xl shadow-2xl overflow-hidden"
+              className="relative w-full max-w-md bg-white rounded-2xl shadow-2xl overflow-hidden"
             >
-              <div className="p-6 bg-[#1e2f3e] text-white flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <Users size={24} />
-                  <h2 className="text-xl font-bold">Gerenciar Equipes</h2>
+              <div className="px-4 py-2.5 bg-[#1e2f3e] text-white flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Users size={18} />
+                  <h2 className="text-base font-bold">Gerenciar Equipes</h2>
                 </div>
                 <button onClick={() => setIsTeamModalOpen(false)} className="hover:bg-white/10 p-1 rounded-lg transition-colors">
-                  <X size={24} />
+                  <X size={18} />
                 </button>
               </div>
               
-              <div className="p-6 space-y-6">
+              <div className="p-3.5 space-y-3 text-xs">
                 <div className="flex gap-2">
                   <input 
                     type="text" 
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
                     placeholder="Nome da equipe..."
-                    className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:ring-2 focus:ring-[#2c7da0] transition-all"
+                    className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-[#2c7da0] transition-all"
                   />
                   <button 
                     onClick={handleAddTeam}
-                    className="bg-[#2c7da0] text-white p-2.5 rounded-xl hover:bg-[#256a8a] transition-all shadow-lg shadow-[#2c7da0]/20"
+                    className="bg-[#2c7da0] text-white p-2 rounded-lg hover:bg-[#256a8a] transition-all shadow-xs"
                   >
-                    {editingTeam ? <Check size={24} /> : <Plus size={24} />}
+                    {editingTeam ? <Check size={18} /> : <Plus size={18} />}
                   </button>
                 </div>
 
-                <div className="space-y-2 max-h-64 overflow-y-auto pr-2 scrollbar-hide">
+                <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1 scrollbar-hide">
                   {teams.map(team => (
-                    <div key={team.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100 group">
-                      <span className="font-bold text-[#1e2f3e]">{team.name}</span>
+                    <div key={team.id} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg border border-slate-100 group">
+                      <span className="font-bold text-[#1e2f3e] text-xs">{team.name}</span>
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
                           onClick={() => { setEditingTeam(team); setNewTeamName(team.name); }}
-                          className="p-2 text-slate-400 hover:text-[#2c7da0] hover:bg-white rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-[#2c7da0] hover:bg-white rounded-md transition-all"
                         >
-                          <Edit size={16} />
+                          <Edit size={14} />
                         </button>
                         <button 
                           onClick={() => setIsConfirmDeleteOpen({id: team.id, name: team.name})}
-                          className="p-2 text-slate-400 hover:text-red-500 hover:bg-white rounded-lg transition-all"
+                          className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-white rounded-md transition-all"
                         >
-                          <Trash2 size={16} />
+                          <Trash2 size={14} />
                         </button>
                       </div>
                     </div>
                   ))}
                   {teams.length === 0 && (
-                    <p className="text-center text-slate-400 py-4 italic">Nenhuma equipe cadastrada.</p>
+                    <p className="text-center text-slate-400 py-3 italic text-xs">Nenhuma equipe cadastrada.</p>
                   )}
                 </div>
               </div>
@@ -1727,7 +1925,7 @@ export default function EscalaView({
                     <div className="flex items-center gap-2 shrink-0">
                       <button
                         onClick={async () => {
-                          const nextStatus = item.situacao === 'Concluído' ? 'Em Andamento' : 'Concluído';
+                          const nextStatus = isStatusConcluido(item.situacao) ? 'Em Andamento' : 'Concluído';
                           if (isObra) {
                             await handleQuickStatusChangeObra(obraItem!, nextStatus);
                             setSelectedDetails({ type: 'obra', item: { ...obraItem!, situacao: nextStatus as any } });
@@ -1737,14 +1935,14 @@ export default function EscalaView({
                           }
                         }}
                         className={`flex items-center gap-1.5 font-black text-[11px] uppercase tracking-wider px-3.5 py-2 rounded-xl transition-all active:scale-95 shadow-md ${
-                          item.situacao === 'Concluído'
+                          isStatusConcluido(item.situacao)
                             ? 'bg-emerald-100 text-emerald-900 hover:bg-emerald-200 border border-emerald-300'
                             : 'bg-emerald-500 hover:bg-emerald-400 text-white'
                         }`}
                         title="Atalho: Alternar para Concluído"
                       >
                         <Check size={14} className="stroke-[3]" />
-                        {item.situacao === 'Concluído' ? 'Concluído ✓' : 'Marcar Concluído'}
+                        {isStatusConcluido(item.situacao) ? 'Concluído ✓' : 'Marcar Concluído'}
                       </button>
                       <button 
                         onClick={() => {
@@ -2094,27 +2292,27 @@ export default function EscalaView({
                         <h4 className="text-xs font-black uppercase tracking-wider text-indigo-700">Painel do Agendador</h4>
                       </div>
 
-                      <div className="space-y-3.5">
+                      <div className="space-y-2">
                         <div>
-                          <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5">
                             Ajustar Data da Execução
                           </label>
                           <input 
                             type="date" 
                             value={tempDate}
                             onChange={(e) => setTempDate(e.target.value)}
-                            className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
+                            className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
                           />
                         </div>
 
                         <div>
-                          <label className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider block mb-1">
+                          <label className="text-[9px] font-extrabold text-slate-400 uppercase tracking-wider block mb-0.5">
                             Transferir para Equipe
                           </label>
                           <select 
                             value={tempTeam}
                             onChange={(e) => setTempTeam(e.target.value)}
-                            className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-xl px-3.5 py-2.5 focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs h-[42px]"
+                            className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs h-8"
                           >
                             <option value="">Nenhuma equipe</option>
                             {teams.map(t => (
@@ -2123,19 +2321,19 @@ export default function EscalaView({
                           </select>
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2.5 pt-1">
+                        <div className="grid grid-cols-2 gap-2 pt-0.5">
                           <button
                             onClick={handleUpdateSchedule}
-                            className="flex items-center justify-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] uppercase tracking-wider py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-indigo-200"
+                            className="flex items-center justify-center gap-1 bg-indigo-600 hover:bg-indigo-700 text-white font-extrabold text-[10px] uppercase tracking-wider py-1.5 rounded-lg transition-all active:scale-95 shadow-xs"
                           >
-                            <Save size={12} />
+                            <Save size={11} />
                             Reagendar
                           </button>
                           <button
                             onClick={handleDuplicateItem}
-                            className="flex items-center justify-center gap-1.5 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider py-2.5 rounded-xl transition-all active:scale-95 shadow-md shadow-slate-200"
+                            className="flex items-center justify-center gap-1 bg-slate-900 hover:bg-slate-800 text-white font-extrabold text-[10px] uppercase tracking-wider py-1.5 rounded-lg transition-all active:scale-95 shadow-xs"
                           >
-                            <Zap size={12} />
+                            <Zap size={11} />
                             Duplicar
                           </button>
                         </div>
@@ -2373,8 +2571,8 @@ export default function EscalaView({
 
               <div className="p-6 overflow-y-auto bg-slate-50 flex-1 space-y-4">
                 {(() => {
-                  const weekObras = obras.filter(o => o.dataObra && o.dataObra >= weekRange.startStr && o.dataObra <= weekRange.endStr);
-                  const weekServicos = servicos.filter(s => s.dataServico && s.dataServico >= weekRange.startStr && s.dataServico <= weekRange.endStr);
+                  const weekObras = localObras.filter(o => o.dataObra && o.dataObra >= weekRange.startStr && o.dataObra <= weekRange.endStr);
+                  const weekServicos = localServicos.filter(s => s.dataServico && s.dataServico >= weekRange.startStr && s.dataServico <= weekRange.endStr);
 
                   const allItems = [
                     ...weekObras.map(o => ({ type: 'obra' as const, item: o, date: o.dataObra, team: o.equipe })),

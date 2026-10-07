@@ -319,42 +319,42 @@ const NotebookView: React.FC<{
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-3xl overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-slate-100"
             >
-              <div className="p-6 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-xl font-bold text-slate-800">
+              <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-800">
                   {editingNoteId ? 'Editar Nota' : 'Nova Nota'}
                 </h3>
                 <button onClick={() => {
                   setIsFormOpen(false);
                   setEditingNoteId(null);
                   setIsCustomAttendant(false);
-                }} className="p-2 hover:bg-slate-200 rounded-xl transition-all">
-                  <X size={20} className="text-slate-500" />
+                }} className="p-1 hover:bg-slate-200 rounded-lg transition-all">
+                  <X size={16} className="text-slate-500" />
                 </button>
               </div>
               
-              <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
+              <form onSubmit={handleFormSubmit} className="p-3.5 space-y-2 text-xs">
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Conteúdo</label>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Conteúdo</label>
                   <textarea 
                     autoFocus
                     required
                     value={formData.content}
                     onChange={(e) => setFormData({...formData, content: e.target.value})}
                     placeholder="Escreva algo importante para registrar ou cobrar..."
-                    className="w-full h-32 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all resize-none font-medium text-slate-800"
+                    className="w-full h-20 p-2 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 transition-all resize-none font-medium text-slate-800"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-2">
                   <div className="col-span-2">
-                    <div className="flex items-center justify-between mb-2">
-                      <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider">Atendente</label>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider">Atendente</label>
                       <button 
                         type="button"
                         onClick={() => setIsCustomAttendant(!isCustomAttendant)}
-                        className="text-[10px] font-bold text-indigo-600 hover:underline flex items-center gap-1"
+                        className="text-[9px] font-bold text-indigo-600 hover:underline flex items-center gap-0.5"
                       >
                         {isCustomAttendant ? 'Selecionar da Lista' : 'Novo Atendente'}
                       </button>
@@ -367,13 +367,13 @@ const NotebookView: React.FC<{
                         value={formData.atendente}
                         onChange={(e) => setFormData({...formData, atendente: e.target.value})}
                         placeholder="Nome do novo atendente"
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 text-slate-800"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none focus:border-indigo-500 text-slate-800"
                       />
                     ) : (
                       <select 
                         value={formData.atendente}
                         onChange={(e) => setFormData({...formData, atendente: e.target.value})}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none text-slate-800"
                       >
                         <option value={user.name}>{user.name} (Você)</option>
                         {attendants.filter(a => a !== user.name).map(a => (
@@ -383,20 +383,20 @@ const NotebookView: React.FC<{
                     )}
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Data Ref.</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Data Ref.</label>
                     <input 
                       type="date"
                       value={formData.date}
                       onChange={(e) => setFormData({...formData, date: e.target.value})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800 font-bold"
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none text-slate-800 font-bold"
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Status</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Status</label>
                     <select 
                       value={formData.status}
                       onChange={(e) => setFormData({...formData, status: e.target.value as Note['status']})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800 font-bold"
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none text-slate-800 font-bold"
                     >
                       <option value="Pendente">Pendente</option>
                       <option value="Em Andamento">Em Andamento</option>
@@ -404,11 +404,11 @@ const NotebookView: React.FC<{
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Categoria</label>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Categoria</label>
                     <select 
                       value={formData.categoria}
                       onChange={(e) => setFormData({...formData, categoria: e.target.value as Note['categoria']})}
-                      className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none text-slate-800 font-bold"
+                      className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs focus:outline-none text-slate-800 font-bold"
                     >
                       <option value="Geral">📂 Geral (Fatos / Avisos)</option>
                       <option value="Instalação">🛠️ Instalação (Agendamento / Obras)</option>
@@ -421,21 +421,21 @@ const NotebookView: React.FC<{
                 </div>
 
                 <div>
-                  <label className="block text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Cor do Post-it</label>
-                  <div className="flex flex-wrap gap-2.5">
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Cor do Post-it</label>
+                  <div className="flex flex-wrap gap-1.5">
                     {COLORS.map(color => (
                       <button
                         key={color.name}
                         type="button"
                         onClick={() => setFormData({...formData, color: color.bg})}
-                        className={`w-9 h-9 rounded-xl border-t-4 transition-all ${color.bg} ${color.marker} ${formData.color === color.bg ? 'border-2 border-indigo-600 scale-110 shadow-md' : 'border-transparent hover:scale-105'}`}
+                        className={`w-6 h-6 rounded-lg border-t-2 transition-all ${color.bg} ${color.marker} ${formData.color === color.bg ? 'border-2 border-indigo-600 scale-110 shadow-xs' : 'border-transparent hover:scale-105'}`}
                         title={color.name}
                       />
                     ))}
                   </div>
                 </div>
 
-                <div className="pt-4 flex gap-3">
+                <div className="pt-2 flex gap-2">
                   <button 
                     type="button"
                     onClick={() => {
@@ -443,13 +443,13 @@ const NotebookView: React.FC<{
                       setEditingNoteId(null);
                       setIsCustomAttendant(false);
                     }}
-                    className="flex-1 px-6 py-3 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 transition-all text-sm"
+                    className="flex-1 px-3 py-1.5 border border-slate-200 rounded-lg font-bold text-slate-600 hover:bg-slate-50 transition-all text-xs"
                   >
                     Cancelar
                   </button>
                   <button 
                     type="submit"
-                    className="flex-1 px-6 py-3 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 shadow-lg shadow-indigo-100 transition-all active:scale-95 text-sm"
+                    className="flex-1 px-3 py-1.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-xs transition-all active:scale-95 text-xs"
                   >
                     Salvar Nota
                   </button>

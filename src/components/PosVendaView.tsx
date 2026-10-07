@@ -494,52 +494,52 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
         </button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* Left Column: Forms */}
-        <div className="space-y-6">
+        <div className="space-y-3">
           {/* Company Details Form */}
-          <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-            <div className="flex items-center gap-2 text-slate-600 border-b border-slate-50 pb-2">
-              <Package size={20} />
-              <h2 className="font-bold">Dados da Empresa</h2>
+          <section className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-2 text-xs">
+            <div className="flex items-center gap-1.5 text-slate-600 border-b border-slate-100 pb-1.5">
+              <Package size={16} />
+              <h2 className="font-bold text-xs">Dados da Empresa</h2>
             </div>
-            <div className="grid grid-cols-1 gap-4">
+            <div className="grid grid-cols-1 gap-2">
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Razão Social / Nome Completo</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Razão Social / Nome Completo</label>
                 <input 
                   type="text" 
                   value={companyDetails.fullName}
                   onChange={(e) => setCompanyDetails({...companyDetails, fullName: e.target.value})}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Nome Curto (Assinatura)</label>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Nome Curto (Assinatura)</label>
                   <input 
                     type="text" 
                     value={companyDetails.name}
                     onChange={(e) => setCompanyDetails({...companyDetails, name: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                   />
                 </div>
                 <div>
-                  <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">CNPJ</label>
+                  <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">CNPJ</label>
                   <input 
                     type="text" 
                     value={companyDetails.cnpj}
                     onChange={(e) => setCompanyDetails({...companyDetails, cnpj: e.target.value})}
-                    className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                    className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                   />
                 </div>
               </div>
               <div>
-                <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Endereço da Empresa</label>
+                <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Endereço da Empresa</label>
                 <input 
                   type="text" 
                   value={companyDetails.address}
                   onChange={(e) => setCompanyDetails({...companyDetails, address: e.target.value})}
-                  className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                  className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                 />
               </div>
             </div>
@@ -554,99 +554,99 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
                 exit={{ opacity: 0, x: 20 }}
               >
                 {/* Proposal Form */}
-                <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 text-indigo-600 border-b border-indigo-50 pb-2">
-                    <FileText size={20} />
-                    <h2 className="font-bold">Dados da Proposta</h2>
+                <section className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-indigo-600 border-b border-indigo-50 pb-1.5">
+                    <FileText size={16} />
+                    <h2 className="font-bold text-xs">Dados da Proposta</h2>
                   </div>
                   
-                  <div className="grid grid-cols-1 gap-4">
+                  <div className="grid grid-cols-1 gap-2">
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Cliente</label>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Cliente</label>
                       <div className="relative">
-                        <User size={14} className="absolute left-3 top-3 text-slate-400" />
+                        <User size={13} className="absolute left-2.5 top-2 text-slate-400" />
                         <input 
                           type="text" 
                           value={proposalData.nomeCliente}
                           onChange={(e) => setProposalData({...proposalData, nomeCliente: e.target.value})}
-                          className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Endereço</label>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Endereço</label>
                       <div className="relative">
-                        <MapPin size={14} className="absolute left-3 top-3 text-slate-400" />
+                        <MapPin size={13} className="absolute left-2.5 top-2 text-slate-400" />
                         <input 
                           type="text" 
                           value={proposalData.endereco}
                           onChange={(e) => setProposalData({...proposalData, endereco: e.target.value})}
-                          className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">N° Sistema</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">N° Sistema</label>
                         <div className="relative">
-                          <Package size={14} className="absolute left-3 top-3 text-slate-400" />
+                          <Package size={13} className="absolute left-2.5 top-2 text-slate-400" />
                           <input 
                             type="text" 
                             value={proposalData.numeroSistema}
                             onChange={(e) => setProposalData({...proposalData, numeroSistema: e.target.value})}
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                            className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Validade</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Validade</label>
                         <input 
                           type="text" 
                           value={proposalData.validade}
                           onChange={(e) => setProposalData({...proposalData, validade: e.target.value})}
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Valor Avulso (R$)</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Valor Avulso (R$)</label>
                         <input 
                           type="number" 
                           value={isNaN(proposalData.valorAvulso) ? '' : proposalData.valorAvulso}
                           onChange={(e) => setProposalData({...proposalData, valorAvulso: parseFloat(e.target.value)})}
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Valor Plano Anual (R$)</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Valor Plano Anual (R$)</label>
                         <input 
                           type="number" 
                           value={isNaN(proposalData.valorPlanoAnual) ? '' : proposalData.valorPlanoAnual}
                           onChange={(e) => setProposalData({...proposalData, valorPlanoAnual: parseFloat(e.target.value)})}
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Serviços Inclusos (um por linha)</label>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Serviços Inclusos (um por linha)</label>
                       <textarea 
                         value={servicosInclusos.join('\n')}
                         onChange={(e) => setServicosInclusos(e.target.value.split('\n'))}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium h-32"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium h-20"
                       />
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Termos de Garantia / Responsabilidade</label>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Termos de Garantia / Responsabilidade</label>
                       <textarea 
                         value={termosGarantia}
                         onChange={(e) => setTermosGarantia(e.target.value)}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium h-24"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium h-16"
                       />
                     </div>
                   </div>
@@ -660,67 +660,67 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
                 exit={{ opacity: 0, x: 20 }}
               >
                 {/* Receipt Form */}
-                <section className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
-                  <div className="flex items-center gap-2 text-emerald-600 border-b border-emerald-50 pb-2">
-                    <Receipt size={20} />
-                    <h2 className="font-bold">Dados do Recibo</h2>
+                <section className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-xs space-y-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-emerald-600 border-b border-emerald-50 pb-1.5">
+                    <Receipt size={16} />
+                    <h2 className="font-bold text-xs">Dados do Recibo</h2>
                   </div>
 
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 gap-2">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">N° Recibo</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">N° Recibo</label>
                         <input 
                           type="text" 
                           value={receiptData.numeroRecibo}
                           onChange={(e) => setReceiptData({...receiptData, numeroRecibo: e.target.value})}
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Data Pagamento</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Data Pagamento</label>
                         <div className="relative">
-                          <Calendar size={14} className="absolute left-3 top-3 text-slate-400" />
+                          <Calendar size={13} className="absolute left-2.5 top-2 text-slate-400" />
                           <input 
                             type="date" 
                             value={receiptData.dataPagamento}
                             onChange={(e) => setReceiptData({...receiptData, dataPagamento: e.target.value})}
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                            className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                           />
                         </div>
                       </div>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Valor Pago (R$)</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Valor Pago (R$)</label>
                         <div className="relative">
-                          <DollarSign size={14} className="absolute left-3 top-3 text-slate-400" />
+                          <DollarSign size={13} className="absolute left-2.5 top-2 text-slate-400" />
                           <input 
                             type="number" 
                             value={isNaN(receiptData.valor) ? '' : receiptData.valor}
                             onChange={(e) => setReceiptData({...receiptData, valor: parseFloat(e.target.value)})}
-                            className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                            className="w-full pl-8 pr-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                           />
                         </div>
                       </div>
                       <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Forma de Pagamento</label>
+                        <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Forma de Pagamento</label>
                         <input 
                           type="text" 
                           value={receiptData.formaPagamento}
                           onChange={(e) => setReceiptData({...receiptData, formaPagamento: e.target.value})}
-                          className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium"
+                          className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium"
                         />
                       </div>
                     </div>
 
                     <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Serviço Realizado (Recibo)</label>
+                      <label className="text-[9px] font-bold text-slate-400 uppercase ml-0.5 block">Serviço Realizado (Recibo)</label>
                       <textarea 
                         value={receiptData.servicoRealizado}
                         onChange={(e) => setReceiptData({...receiptData, servicoRealizado: e.target.value})}
-                        className="w-full px-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 transition-all font-medium h-20"
+                        className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-lg text-xs outline-none focus:border-indigo-500 transition-all font-medium h-16"
                       />
                     </div>
                   </div>
