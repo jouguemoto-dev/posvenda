@@ -35,7 +35,8 @@ import {
   Eye,
   EyeOff,
   Filter,
-  Type
+  Type,
+  CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -99,7 +100,7 @@ const COLORS = [
 export const isStatusPendente = (situacao?: string | null): boolean => {
   if (!situacao) return true; // sem status definido é considerado pendente
   const s = situacao.trim().toLowerCase();
-  return s === 'pendente' || s === 'em espera';
+  return s === 'pendente' || s === 'em espera' || s === 'espera' || s === 'aguardando';
 };
 
 /**
@@ -108,7 +109,7 @@ export const isStatusPendente = (situacao?: string | null): boolean => {
 export const isStatusEmAndamento = (situacao?: string | null): boolean => {
   if (!situacao) return false;
   const s = situacao.trim().toLowerCase();
-  return s === 'em andamento' || s === 'execução' || s === 'execucao' || s === 'agendado';
+  return s === 'em andamento' || s === 'andamento' || s === 'execução' || s === 'execucao' || s === 'agendado';
 };
 
 /**
@@ -117,7 +118,7 @@ export const isStatusEmAndamento = (situacao?: string | null): boolean => {
 export const isStatusConcluido = (situacao?: string | null): boolean => {
   if (!situacao) return false;
   const s = situacao.trim().toLowerCase();
-  return s === 'concluído' || s === 'concluido' || s === 'finalizado';
+  return s === 'concluído' || s === 'concluido' || s === 'finalizado' || s === 'concluida' || s === 'concluída';
 };
 
 /**
@@ -215,6 +216,7 @@ export default function EscalaView({
       return {
         cardPadding: 'p-2 rounded-xl',
         clientName: 'text-[12.5px] font-black leading-snug line-clamp-2',
+        serviceBadge: 'text-[10px] font-black px-1.5 py-0.5 rounded',
         statusSelect: 'text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
         placasBadge: 'text-[9.5px] font-black italic px-1.5 py-0.2 rounded',
         concluirBtn: 'px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider',
@@ -236,6 +238,7 @@ export default function EscalaView({
       return {
         cardPadding: 'p-2.5 rounded-xl',
         clientName: 'text-[14px] font-black leading-snug line-clamp-2',
+        serviceBadge: 'text-[11.5px] font-black px-2 py-0.5 rounded',
         statusSelect: 'text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded',
         placasBadge: 'text-[11px] font-black italic px-2 py-0.5 rounded',
         concluirBtn: 'px-2.5 py-1 rounded font-bold text-[10px] uppercase tracking-wider',
@@ -257,6 +260,7 @@ export default function EscalaView({
     return {
       cardPadding: 'p-1.5 rounded-xl',
       clientName: 'text-[11px] font-black leading-snug line-clamp-2',
+      serviceBadge: 'text-[9px] font-black px-1.5 py-0.2 rounded',
       statusSelect: 'text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
       placasBadge: 'text-[8.5px] font-black italic px-1.5 py-0.2 rounded',
       concluirBtn: 'px-1.5 py-0.5 rounded font-bold text-[8.5px] uppercase tracking-wider',
@@ -756,6 +760,7 @@ export default function EscalaView({
             matchingObras.forEach(o => {
               let obraDesc = `• [OBRA] ${o.cliente}`;
               if (o.quantidadePlacas > 0) obraDesc += ` (${o.quantidadePlacas} PL)`;
+              if (o.formaPagamento) obraDesc += ` [Pgto: ${o.formaPagamento}]`;
               if (o.situacao && o.situacao !== 'Em Andamento') obraDesc += ` [${o.situacao}]`;
               if (o.observacoes) obraDesc += `\n  Obs: ${o.observacoes}`;
               cellItems.push(obraDesc);
@@ -778,6 +783,7 @@ export default function EscalaView({
                 servDesc += ` [Equipes: ${sTeams.join(' + ')}]`;
               }
               if (s.servico) servDesc += ` (${s.servico})`;
+              if (s.formaPagamento) servDesc += ` [Pgto: ${s.formaPagamento}]`;
               if (s.situacao && s.situacao !== 'Em Andamento') servDesc += ` [${s.situacao}]`;
               if (s.observacao) servDesc += `\n  Obs: ${s.observacao}`;
               cellItems.push(servDesc);
@@ -1324,6 +1330,63 @@ export default function EscalaView({
                                   </span>
                                 </div>
 
+                                {/* Linha 2.5: Tipo de Serviço / Obra Solar em cor diferenciada */}
+                                <div className="my-0.5 flex items-center gap-1 flex-wrap">
+                                  <span 
+                                    className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
+                                      concluido
+                                        ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/60'
+                                        : cellColor === '#3b82f6'
+                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/50'
+                                        : cellColor === '#eab308'
+                                        ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs'
+                                        : isDark
+                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black'
+                                        : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
+                                    }`}
+                                    title={`Tipo de Serviço: Instalação Solar ${o.inversor ? `• ${o.inversor}` : ''}`}
+                                  >
+                                    <Zap size={9} className="shrink-0 stroke-[2.5]" />
+                                    <span className="truncate max-w-[130px]">Obra Solar</span>
+                                  </span>
+                                  {o.inversor && (
+                                    <span 
+                                      className={`text-[8px] font-black truncate max-w-[90px] px-1 py-0.2 rounded border ${
+                                        cellColor === '#22c55e' || isDark
+                                          ? 'bg-white/20 text-white border-white/30 font-bold'
+                                          : cellColor === '#eab308'
+                                          ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                                          : 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
+                                      }`} 
+                                      title={`Inversor: ${o.inversor}`}
+                                    >
+                                      {o.inversor}
+                                    </span>
+                                  )}
+                                  {o.formaPagamento && (
+                                    <span 
+                                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
+                                        concluido
+                                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                                          : cellColor === '#3b82f6'
+                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs ring-1 ring-emerald-400/50'
+                                          : cellColor === '#eab308'
+                                          ? 'bg-emerald-800 text-white border-emerald-700 font-black shadow-xs ring-1 ring-emerald-600/40'
+                                          : isDark
+                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs'
+                                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 font-extrabold shadow-2xs'
+                                      }`}
+                                      title={`Forma de Pagamento: ${o.formaPagamento}${o.situacaoPagamento ? ` (${o.situacaoPagamento})` : ''}`}
+                                    >
+                                      <CreditCard size={9} className="shrink-0 stroke-[2.5]" />
+                                      <span className="truncate max-w-[120px]">{o.formaPagamento}</span>
+                                      {o.situacaoPagamento && (
+                                        <span className="opacity-80 text-[7px] uppercase font-bold">• {o.situacaoPagamento}</span>
+                                      )}
+                                    </span>
+                                  )}
+                                </div>
+
                                 {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
                                 <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
                                   <button 
@@ -1503,6 +1566,57 @@ export default function EscalaView({
                                   >
                                     {s.cliente}
                                   </span>
+                                </div>
+
+                                {/* Linha 2.5: O SERVIÇO EM DESTAQUE COM COR DIFERENCIADA */}
+                                <div className="my-0.5 flex items-center gap-1 flex-wrap">
+                                  <span 
+                                    className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
+                                      concluido
+                                        ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                                        : cellColor === '#3b82f6' // Célula Azul (Em Andamento) => Badge em Amarelo Ouro / Âmbar vibrante
+                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/60'
+                                        : cellColor === '#eab308' // Célula Amarela (Pendente) => Badge em Índigo / Roxo vibrante
+                                        ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs ring-1 ring-indigo-500/40'
+                                        : isDark
+                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs'
+                                        : isAdm
+                                        ? 'bg-purple-700 text-white border-purple-800 font-black shadow-xs'
+                                        : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
+                                    }`}
+                                    title={`Serviço: ${s.servico || (isAdm ? 'Atendimento Administrativo' : 'Serviço Técnico')}`}
+                                  >
+                                    {isAdm ? (
+                                      <Briefcase size={9} className="shrink-0 stroke-[2.5]" />
+                                    ) : (
+                                      <Wrench size={9} className="shrink-0 stroke-[2.5]" />
+                                    )}
+                                    <span className="truncate max-w-[140px] font-black">
+                                      {s.servico || (isAdm ? 'Atend. Administrativo' : 'Serviço')}
+                                    </span>
+                                  </span>
+                                  {s.formaPagamento && (
+                                    <span 
+                                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
+                                        concluido
+                                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                                          : cellColor === '#3b82f6'
+                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs ring-1 ring-emerald-400/50'
+                                          : cellColor === '#eab308'
+                                          ? 'bg-emerald-800 text-white border-emerald-700 font-black shadow-xs ring-1 ring-emerald-600/40'
+                                          : isDark
+                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs'
+                                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 font-extrabold shadow-2xs'
+                                      }`}
+                                      title={`Forma de Pagamento: ${s.formaPagamento}${s.situacaoPagamento ? ` (${s.situacaoPagamento})` : ''}`}
+                                    >
+                                      <CreditCard size={9} className="shrink-0 stroke-[2.5]" />
+                                      <span className="truncate max-w-[120px]">{s.formaPagamento}</span>
+                                      {s.situacaoPagamento && (
+                                        <span className="opacity-80 text-[7px] uppercase font-bold">• {s.situacaoPagamento}</span>
+                                      )}
+                                    </span>
+                                  )}
                                 </div>
 
                                 {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
@@ -2191,12 +2305,47 @@ export default function EscalaView({
 
                         <div className="h-px bg-slate-200 my-4" />
 
-                        <div className="flex flex-wrap justify-between items-center gap-2">
-                          <div>
-                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Forma de Pagamento</span>
-                            <span className="text-xs font-extrabold text-slate-700 uppercase tracking-wide block mt-0.5">
-                              {item.formaPagamento || 'Não informada'}
-                            </span>
+                        <div className="flex flex-wrap justify-between items-center gap-3">
+                          <div className="flex-1 min-w-[200px]">
+                            <span className="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-1">Forma de Pagamento</span>
+                            <div className="flex items-center gap-2">
+                              <select
+                                value={item.formaPagamento || ''}
+                                onChange={async (e) => {
+                                  const newPayment = e.target.value;
+                                  const targetId = item.firebaseId || (item as any).id;
+                                  if (!targetId) return;
+
+                                  if (isObra) {
+                                    setLocalObras(prev => prev.map(o => (o.firebaseId === targetId || String(o.id) === String(targetId)) ? { ...o, formaPagamento: newPayment } : o));
+                                    setSelectedDetails(prev => prev ? { ...prev, item: { ...prev.item, formaPagamento: newPayment } } : null);
+                                    try {
+                                      await updateDoc(doc(db, 'obras', targetId), { formaPagamento: newPayment, updatedAt: serverTimestamp() });
+                                      addToast(`Forma de pagamento atualizada para "${newPayment}"`);
+                                    } catch (err) {
+                                      console.error(err);
+                                      addToast("Erro ao atualizar forma de pagamento.");
+                                    }
+                                  } else {
+                                    setLocalServicos(prev => prev.map(s => (s.firebaseId === targetId || String(s.id) === String(targetId)) ? { ...s, formaPagamento: newPayment } : s));
+                                    setSelectedDetails(prev => prev ? { ...prev, item: { ...prev.item, formaPagamento: newPayment } } : null);
+                                    try {
+                                      await updateDoc(doc(db, 'servicos', targetId), { formaPagamento: newPayment, updatedAt: serverTimestamp() });
+                                      addToast(`Forma de pagamento atualizada para "${newPayment}"`);
+                                    } catch (err) {
+                                      console.error(err);
+                                      addToast("Erro ao atualizar forma de pagamento.");
+                                    }
+                                  }
+                                }}
+                                className="text-xs font-black text-slate-800 bg-white hover:bg-slate-50 border border-slate-300 rounded-lg px-2.5 py-1.5 outline-none cursor-pointer w-full max-w-[240px] shadow-2xs"
+                              >
+                                <option value="">Selecione a forma de pagamento</option>
+                                {['À Vista', 'PIX', 'Financiamento', 'Cartão de Crédito', 'Cartão de Débito', 'Boleto', 'Cheque', 'Outros'].map(p => (
+                                  <option key={p} value={p}>{p}</option>
+                                ))}
+                              </select>
+                            </div>
                           </div>
                           {isObra && obraItem && (
                             <div className="text-right">
