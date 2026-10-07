@@ -214,8 +214,8 @@ export default function EscalaView({
   const fontConfig = useMemo(() => {
     if (fontSizeLevel === 'large') {
       return {
-        cardPadding: 'p-2 rounded-xl',
-        clientName: 'text-[12.5px] font-black leading-snug line-clamp-2',
+        cardPadding: 'p-1.5 rounded-xl',
+        clientName: 'text-[13px] font-black leading-snug',
         serviceBadge: 'text-[10px] font-black px-1.5 py-0.5 rounded',
         statusSelect: 'text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
         placasBadge: 'text-[9.5px] font-black italic px-1.5 py-0.2 rounded',
@@ -223,11 +223,11 @@ export default function EscalaView({
         checkIconSize: 11,
         actionIconSize: 12,
         actionBtnPadding: 'p-1',
-        obsTag: 'text-[8.5px] uppercase font-black px-1.5 py-0.2 rounded',
-        obsText: 'text-[9.5px] font-semibold',
-        obsBox: 'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded',
-        textarea: 'text-[11px] font-medium h-8',
-        cellMinHeight: 'min-h-[90px]',
+        obsTag: 'text-[11px] uppercase font-black px-2 py-0.5 rounded shadow-2xs',
+        obsText: 'text-[13.5px] font-black leading-snug',
+        obsBox: 'mt-1 flex items-center gap-2 px-2.5 py-1 rounded-lg',
+        textarea: 'text-[11px] font-medium h-6 min-h-[22px]',
+        cellMinHeight: 'min-h-[85px]',
         dayText: 'text-sm font-bold',
         dateText: 'text-[11px] font-medium',
         adminDayBadge: 'text-[9px] font-bold px-1.5 py-0.5',
@@ -236,8 +236,8 @@ export default function EscalaView({
     }
     if (fontSizeLevel === 'xlarge') {
       return {
-        cardPadding: 'p-2.5 rounded-xl',
-        clientName: 'text-[14px] font-black leading-snug line-clamp-2',
+        cardPadding: 'p-2 rounded-xl',
+        clientName: 'text-[14.5px] font-black leading-snug',
         serviceBadge: 'text-[11.5px] font-black px-2 py-0.5 rounded',
         statusSelect: 'text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded',
         placasBadge: 'text-[11px] font-black italic px-2 py-0.5 rounded',
@@ -245,11 +245,11 @@ export default function EscalaView({
         checkIconSize: 13,
         actionIconSize: 14,
         actionBtnPadding: 'p-1.5',
-        obsTag: 'text-[10px] uppercase font-black px-2 py-0.5 rounded',
-        obsText: 'text-[11px] font-semibold',
-        obsBox: 'mt-1.5 flex items-center gap-1.5 px-2 py-0.5 rounded',
-        textarea: 'text-[12px] font-medium h-9',
-        cellMinHeight: 'min-h-[105px]',
+        obsTag: 'text-[12px] uppercase font-black px-2.5 py-0.5 rounded shadow-2xs',
+        obsText: 'text-[15px] font-black leading-snug',
+        obsBox: 'mt-1.5 flex items-center gap-2 px-3 py-1.5 rounded-lg',
+        textarea: 'text-[12px] font-medium h-7 min-h-[26px]',
+        cellMinHeight: 'min-h-[100px]',
         dayText: 'text-base font-black',
         dateText: 'text-xs font-bold',
         adminDayBadge: 'text-[10px] font-black px-2 py-0.5',
@@ -259,7 +259,7 @@ export default function EscalaView({
     // Padrão: 'normal' (1x - limpo, legível e organizado)
     return {
       cardPadding: 'p-1.5 rounded-xl',
-      clientName: 'text-[11px] font-black leading-snug line-clamp-2',
+      clientName: 'text-[11.5px] font-black leading-snug',
       serviceBadge: 'text-[9px] font-black px-1.5 py-0.2 rounded',
       statusSelect: 'text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
       placasBadge: 'text-[8.5px] font-black italic px-1.5 py-0.2 rounded',
@@ -267,11 +267,11 @@ export default function EscalaView({
       checkIconSize: 10,
       actionIconSize: 11,
       actionBtnPadding: 'p-1',
-      obsTag: 'text-[7.5px] uppercase font-black px-1 py-0.2 rounded',
-      obsText: 'text-[8.5px] font-semibold',
-      obsBox: 'mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded',
-      textarea: 'text-[10px] font-medium h-7 min-h-[28px]',
-      cellMinHeight: 'min-h-[85px]',
+      obsTag: 'text-[9.5px] uppercase font-black px-1.5 py-0.5 rounded shadow-2xs',
+      obsText: 'text-[12px] font-black leading-snug',
+      obsBox: 'mt-1 flex items-center gap-1.5 px-2 py-1 rounded-lg',
+      textarea: 'text-[10px] font-medium h-5 min-h-[20px]',
+      cellMinHeight: 'min-h-[80px]',
       dayText: 'text-xs font-bold',
       dateText: 'text-[10px] font-medium',
       adminDayBadge: 'text-[8px] font-black px-1.5 py-0.5',
@@ -1223,6 +1223,14 @@ export default function EscalaView({
                     const colorObj = COLORS.find(c => c.bg.toLowerCase() === cellColor.toLowerCase());
                     const isDark = colorObj ? colorObj.isDark : (cellColor === '#3b82f6' || cellColor === '#22c55e' || cellColor === '#1e2f3e');
 
+                    const cleanManualText = cellData.text.split('\n').filter(line => {
+                      const trimmed = line.trim();
+                      return !trimmed.startsWith('Cliente:') && 
+                             !trimmed.startsWith('• [OBRA]') && 
+                             !trimmed.startsWith('• [SERVIÇO]');
+                    }).join('\n').trim();
+                    const hasItems = matchingObras.length > 0 || matchingServicos.length > 0;
+
                     return (
                       <td 
                         key={team.id} 
@@ -1230,19 +1238,18 @@ export default function EscalaView({
                         style={{ backgroundColor: cellColor }}
                       >
                         <textarea 
-                          value={cellData.text.split('\n').filter(line => {
-                            const trimmed = line.trim();
-                            return !trimmed.startsWith('Cliente:') && 
-                                   !trimmed.startsWith('• [OBRA]') && 
-                                   !trimmed.startsWith('• [SERVIÇO]');
-                          }).join('\n')} 
+                          value={cleanManualText} 
                           onChange={(e) => {
                             // When user changes text manually, we keep their changes
                             // But we filter out the auto-synced part to avoid redundancy in the view state if any remains
                             updateCell(day, team.id, e.target.value, cellColor);
                           }}
-                          placeholder="..."
-                          className={`w-full ${fontConfig.textarea} p-1 bg-transparent resize-none outline-none leading-tight transition-colors ${
+                          placeholder={hasItems ? "" : "..."}
+                          className={`w-full ${
+                            hasItems && !cleanManualText 
+                              ? 'h-3.5 min-h-[14px] opacity-0 group-hover:opacity-60 focus:opacity-100 transition-opacity' 
+                              : fontConfig.textarea
+                          } p-0.5 bg-transparent resize-none outline-none leading-tight transition-colors ${
                             isDark 
                               ? 'text-white placeholder:text-white/40' 
                               : cellColor === '#eab308' 
@@ -1312,10 +1319,10 @@ export default function EscalaView({
                                   )}
                                 </div>
 
-                                {/* Linha 2: Nome do Cliente */}
-                                <div className="my-0.5">
+                                {/* Linha 2: Nome do Cliente + Badges integrados (sem espaço vazio) */}
+                                <div className="my-0.5 flex items-center gap-1.5 flex-wrap">
                                   <span 
-                                    className={`font-black ${fontConfig.clientName} block cursor-pointer transition-colors ${
+                                    className={`font-black ${fontConfig.clientName} cursor-pointer transition-colors ${
                                       concluido 
                                         ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black') 
                                         : isDark 
@@ -1328,10 +1335,7 @@ export default function EscalaView({
                                   >
                                     {o.cliente}
                                   </span>
-                                </div>
 
-                                {/* Linha 2.5: Tipo de Serviço / Obra Solar em cor diferenciada */}
-                                <div className="my-0.5 flex items-center gap-1 flex-wrap">
                                   <span 
                                     className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
                                       concluido
@@ -1349,9 +1353,10 @@ export default function EscalaView({
                                     <Zap size={9} className="shrink-0 stroke-[2.5]" />
                                     <span className="truncate max-w-[130px]">Obra Solar</span>
                                   </span>
+
                                   {o.inversor && (
                                     <span 
-                                      className={`text-[8px] font-black truncate max-w-[90px] px-1 py-0.2 rounded border ${
+                                      className={`text-[8.5px] font-black truncate max-w-[95px] px-1.5 py-0.2 rounded border ${
                                         cellColor === '#22c55e' || isDark
                                           ? 'bg-white/20 text-white border-white/30 font-bold'
                                           : cellColor === '#eab308'
@@ -1363,6 +1368,7 @@ export default function EscalaView({
                                       {o.inversor}
                                     </span>
                                   )}
+
                                   {o.formaPagamento && (
                                     <span 
                                       className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
@@ -1445,7 +1451,7 @@ export default function EscalaView({
                                   </div>
                                 </div>
 
-                                {/* Linha 4: Observações */}
+                                {/* Linha 4: Observações com letra maior e mais legível */}
                                 {o.observacoes && (
                                   <div 
                                     onClick={(e) => {
@@ -1459,15 +1465,15 @@ export default function EscalaView({
                                     }}
                                     className={`${fontConfig.obsBox} ${
                                       cellColor === '#22c55e' || isDark
-                                        ? 'bg-amber-100/95 text-amber-950 border-amber-300 font-semibold'
-                                        : 'bg-amber-50 text-amber-950 border-amber-200/80'
-                                    } border leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
+                                        ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                                        : 'bg-amber-100/90 text-amber-950 border-amber-300 font-bold'
+                                    } border leading-snug shadow-2xs cursor-pointer hover:bg-amber-200 transition-colors`} 
                                     title={`Observação: ${o.observacoes}`}
                                   >
                                     <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
                                       OBS
                                     </span>
-                                    <span className={`truncate flex-1 ${fontConfig.obsText}`}>{o.observacoes}</span>
+                                    <span className={`line-clamp-2 flex-1 ${fontConfig.obsText}`}>{o.observacoes}</span>
                                   </div>
                                 )}
                               </div>
@@ -1550,10 +1556,10 @@ export default function EscalaView({
                                   )}
                                 </div>
 
-                                {/* Linha 2: Nome do Cliente */}
-                                <div className="my-0.5">
+                                {/* Linha 2: Nome do Cliente + Serviço e Pagamento integrados (sem espaço vazio) */}
+                                <div className="my-0.5 flex items-center gap-1.5 flex-wrap">
                                   <span 
-                                    className={`font-black ${fontConfig.clientName} block cursor-pointer transition-colors ${
+                                    className={`font-black ${fontConfig.clientName} cursor-pointer transition-colors ${
                                       concluido
                                         ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black')
                                         : isDark
@@ -1566,35 +1572,35 @@ export default function EscalaView({
                                   >
                                     {s.cliente}
                                   </span>
-                                </div>
 
-                                {/* Linha 2.5: O SERVIÇO EM DESTAQUE COM COR DIFERENCIADA */}
-                                <div className="my-0.5 flex items-center gap-1 flex-wrap">
-                                  <span 
-                                    className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
-                                      concluido
-                                        ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
-                                        : cellColor === '#3b82f6' // Célula Azul (Em Andamento) => Badge em Amarelo Ouro / Âmbar vibrante
-                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/60'
-                                        : cellColor === '#eab308' // Célula Amarela (Pendente) => Badge em Índigo / Roxo vibrante
-                                        ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs ring-1 ring-indigo-500/40'
-                                        : isDark
-                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs'
-                                        : isAdm
-                                        ? 'bg-purple-700 text-white border-purple-800 font-black shadow-xs'
-                                        : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
-                                    }`}
-                                    title={`Serviço: ${s.servico || (isAdm ? 'Atendimento Administrativo' : 'Serviço Técnico')}`}
-                                  >
-                                    {isAdm ? (
-                                      <Briefcase size={9} className="shrink-0 stroke-[2.5]" />
-                                    ) : (
-                                      <Wrench size={9} className="shrink-0 stroke-[2.5]" />
-                                    )}
-                                    <span className="truncate max-w-[140px] font-black">
-                                      {s.servico || (isAdm ? 'Atend. Administrativo' : 'Serviço')}
+                                  {s.servico && (
+                                    <span 
+                                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
+                                        concluido
+                                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                                          : cellColor === '#3b82f6' // Célula Azul (Em Andamento) => Badge em Amarelo Ouro / Âmbar vibrante
+                                          ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/60'
+                                          : cellColor === '#eab308' // Célula Amarela (Pendente) => Badge em Índigo / Roxo vibrante
+                                          ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs ring-1 ring-indigo-500/40'
+                                          : isDark
+                                          ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs'
+                                          : isAdm
+                                          ? 'bg-purple-700 text-white border-purple-800 font-black shadow-xs'
+                                          : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
+                                      }`}
+                                      title={`Serviço: ${s.servico || (isAdm ? 'Atendimento Administrativo' : 'Serviço Técnico')}`}
+                                    >
+                                      {isAdm ? (
+                                        <Briefcase size={9} className="shrink-0 stroke-[2.5]" />
+                                      ) : (
+                                        <Wrench size={9} className="shrink-0 stroke-[2.5]" />
+                                      )}
+                                      <span className="truncate max-w-[140px] font-black">
+                                        {s.servico || (isAdm ? 'Atend. Administrativo' : 'Serviço')}
+                                      </span>
                                     </span>
-                                  </span>
+                                  )}
+
                                   {s.formaPagamento && (
                                     <span 
                                       className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
@@ -1678,7 +1684,7 @@ export default function EscalaView({
                                   </div>
                                 </div>
 
-                                {/* Linha 4: Observações */}
+                                {/* Linha 4: Observações com letra maior e mais legível */}
                                 {s.observacao && (
                                   <div 
                                     onClick={(e) => {
@@ -1692,15 +1698,15 @@ export default function EscalaView({
                                     }}
                                     className={`${fontConfig.obsBox} ${
                                       cellColor === '#22c55e' || isDark
-                                        ? 'bg-amber-100/95 text-amber-950 border-amber-300 font-semibold'
-                                        : 'bg-amber-50 text-amber-950 border-amber-200/80'
-                                    } border leading-tight truncate shadow-2xs cursor-pointer hover:bg-amber-100 transition-colors`} 
+                                        ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                                        : 'bg-amber-100/90 text-amber-950 border-amber-300 font-bold'
+                                    } border leading-snug shadow-2xs cursor-pointer hover:bg-amber-200 transition-colors`} 
                                     title={`Observação: ${s.observacao}`}
                                   >
                                     <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
                                       OBS
                                     </span>
-                                    <span className={`truncate flex-1 ${fontConfig.obsText}`}>{s.observacao}</span>
+                                    <span className={`line-clamp-2 flex-1 ${fontConfig.obsText}`}>{s.observacao}</span>
                                   </div>
                                 )}
                               </div>
