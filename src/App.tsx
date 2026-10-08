@@ -1773,8 +1773,10 @@ export default function App() {
     if (!window.confirm('Tem certeza que deseja excluir este item?')) return;
     try {
       await deleteDoc(doc(db, collectionName, id));
+      addToast('Item excluído com sucesso!');
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, collectionName);
+      console.error('Erro ao excluir item de configuração:', error);
+      addToast('Erro ao excluir item: ' + (error instanceof Error ? error.message : 'Erro de conexão'));
     }
   };
 
@@ -1906,10 +1908,17 @@ export default function App() {
             await deleteDoc(doc(db, collectionName, item.firebaseId));
           }
         }
+        if (activeTab === 'obras') {
+          setObras(prev => prev.filter(o => !idsToDelete.includes(o.id)));
+        } else {
+          setServicos(prev => prev.filter(s => !idsToDelete.includes(s.id)));
+        }
         setSelectedIds(new Set());
         closeDeleteModal();
+        addToast(`${idsToDelete.length} lançamentos excluídos com sucesso!`);
       } catch (error) {
-        handleFirestoreError(error, OperationType.DELETE, activeTab);
+        console.error("Erro ao excluir em massa:", error);
+        addToast("Erro ao excluir: " + (error instanceof Error ? error.message : "Erro de conexão"));
       }
       return;
     }
@@ -1919,26 +1928,34 @@ export default function App() {
       if (obraDoc?.firebaseId) {
         try {
           await deleteDoc(doc(db, 'obras', obraDoc.firebaseId));
+          setObras(prev => prev.filter(o => o.id !== obraToDelete));
           closeDeleteModal();
+          addToast("Obra excluída com sucesso!");
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `obras/${obraDoc.firebaseId}`);
+          console.error("Erro ao excluir obra:", error);
+          addToast("Erro ao excluir obra: " + (error instanceof Error ? error.message : "Erro de conexão"));
         }
       } else {
         setObras(prev => prev.filter(o => o.id !== obraToDelete));
         closeDeleteModal();
+        addToast("Obra excluída com sucesso!");
       }
     } else if (servicoToDelete) {
       const servicoDoc = servicos.find(s => s.id === servicoToDelete);
       if (servicoDoc?.firebaseId) {
         try {
           await deleteDoc(doc(db, 'servicos', servicoDoc.firebaseId));
+          setServicos(prev => prev.filter(s => s.id !== servicoToDelete));
           closeDeleteModal();
+          addToast("Serviço excluído com sucesso!");
         } catch (error) {
-          handleFirestoreError(error, OperationType.DELETE, `servicos/${servicoDoc.firebaseId}`);
+          console.error("Erro ao excluir serviço:", error);
+          addToast("Erro ao excluir serviço: " + (error instanceof Error ? error.message : "Erro de conexão"));
         }
       } else {
         setServicos(prev => prev.filter(s => s.id !== servicoToDelete));
         closeDeleteModal();
+        addToast("Serviço excluído com sucesso!");
       }
     }
   };
@@ -3259,6 +3276,15 @@ export default function App() {
               onEditServico={(servico) => {
                 handleServicoEdit(servico);
               }}
+              onDeleteObra={(obra) => {
+                handleDelete(obra.id);
+              }}
+              onDeleteServico={(servico) => {
+                setServicoToDelete(servico.id);
+                setIsBulkDeleteMode(false);
+                setIsDeleteModalOpen(true);
+              }}
+              isAdmin={isAdminActive}
             />
           ) : activeTab === 'dashboard' ? (
             <DashboardView 
@@ -6787,21 +6813,39 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
-                    <button 
-                      type="button" 
-                      onClick={resetForm}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit"
-                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
-                    >
-                      <Save size={14} />
-                      Salvar Registro
-                    </button>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 shrink-0">
+                    <div>
+                      {canDelete && editandoId && (
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const idToDel = editandoId;
+                            resetForm();
+                            handleDelete(idToDel);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                          Excluir Obra
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button" 
+                        onClick={resetForm}
+                        className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        type="submit"
+                        className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
+                      >
+                        <Save size={14} />
+                        Salvar Registro
+                      </button>
+                    </div>
                   </div>
                 </form>
               ) : (
@@ -7244,21 +7288,41 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 shrink-0">
-                    <button 
-                      type="button" 
-                      onClick={resetServicoForm}
-                      className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
-                    >
-                      Cancelar
-                    </button>
-                    <button 
-                      type="submit"
-                      className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
-                    >
-                      <Save size={14} />
-                      Salvar Serviço
-                    </button>
+                  <div className="pt-2 border-t border-slate-100 flex items-center justify-between gap-2 shrink-0">
+                    <div>
+                      {canDelete && editandoServicoId && (
+                        <button 
+                          type="button" 
+                          onClick={() => {
+                            const idToDel = editandoServicoId;
+                            resetServicoForm();
+                            setServicoToDelete(idToDel);
+                            setIsBulkDeleteMode(false);
+                            setIsDeleteModalOpen(true);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 transition-colors"
+                        >
+                          <Trash2 size={13} />
+                          Excluir Serviço
+                        </button>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button 
+                        type="button" 
+                        onClick={resetServicoForm}
+                        className="px-4 py-1.5 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+                      >
+                        Cancelar
+                      </button>
+                      <button 
+                        type="submit"
+                        className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-1.5 rounded-lg text-xs font-bold transition-all active:scale-95 shadow-sm"
+                      >
+                        <Save size={14} />
+                        Salvar Serviço
+                      </button>
+                    </div>
                   </div>
                 </form>
               )}
@@ -7774,6 +7838,29 @@ export default function App() {
                     >
                       <CalendarClock size={13} />
                       Google Agenda
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button 
+                      onClick={() => {
+                        const obra = selectedObra;
+                        const serv = selectedServico;
+                        setIsDetailsModalOpen(false);
+                        setSelectedObra(null);
+                        setSelectedServico(null);
+                        if (obra) {
+                          handleDelete(obra.id);
+                        } else if (serv) {
+                          setServicoToDelete(serv.id);
+                          setIsBulkDeleteMode(false);
+                          setIsDeleteModalOpen(true);
+                        }
+                      }}
+                      className="px-3.5 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50 border border-red-200 rounded-lg transition-all flex items-center gap-1.5"
+                      title="Excluir este lançamento"
+                    >
+                      <Trash2 size={13} />
+                      Excluir Lançamento
                     </button>
                   )}
                   <button 

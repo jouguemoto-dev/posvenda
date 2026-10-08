@@ -1,149 +1,48 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    // ===============================================================
-    // Assumed Data Model
-    // ===============================================================
-    //
-    // Collection: obras
-    // Fields:
-    //   - id: number
-    //   - numeroRegistro: string
-    //   - situacao: string (Pendente, Em Andamento, Concluído)
-    //   - prioridade: string (Alta, Média, Baixa)
-    //   - cliente: string
-    //   - vendedor: string
-    //   - local: string
-    //   - dataChegadaPlacas: string
-    //   - dataContrato: string
-    //   - quantidadePlacas: number
-    //   - valorMaoObra: number
-    //   - valorReceber: number
-    //   - dataObra: string
-    //   - dataConclusao: string
-    //   - equipe: string
-    //   - inversor: string
-    //   - formaPagamento: string
-    //   - observacoes: string
-    //   - createdBy: string
-    //   - createdAt: string
-    //
-    // ===============================================================
-
-    // ===============================================================
-    // Helper Functions
-    // ===============================================================
-    
     function isAuthenticated() {
       return request.auth != null;
     }
 
     function isAdmin() {
-      return isAuthenticated() && 
-        (request.auth.token.email.matches("(?i)jouguemoto@gmail\\.com") || 
-         request.auth.token.email == "jouguemoto@gmail.com" ||
-         (request.auth.token.keys().hasAny(['admin']) && request.auth.token.admin == true));
-    }
-
-    function isValidObra(data) {
-      return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
-             data.numeroRegistro is string && data.numeroRegistro.size() > 0 && data.numeroRegistro.size() < 200 &&
-             data.situacao is string && data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
-             data.prioridade is string && data.prioridade in ['Alta', 'Média', 'Baixa'] &&
-             (!('valorReceber' in data) || data.valorReceber is number) &&
-             (!('quantidadePlacas' in data) || data.quantidadePlacas is number);
-    }
-
-    function isValidServico(data) {
-      return data.cliente is string && data.cliente.size() > 0 && data.cliente.size() < 200 &&
-             data.numeroRegistro is string && data.numeroRegistro.size() > 0 && data.numeroRegistro.size() < 200 &&
-             data.situacao is string && data.situacao in ['Pendente', 'Em Andamento', 'Concluído', 'Em Espera'] &&
-             data.prioridade is string && data.prioridade in ['Alta', 'Média', 'Baixa'] &&
-             (!('valor' in data) || data.valor is number);
-    }
-
-    function isValidConfig(data) {
-      return (data.nome is string || data.modelo is string) && 
-             (data.ativo is bool || !('ativo' in data));
-    }
-
-    function isValidPosVenda(data) {
-      return data.tipo in ['proposta', 'recibo'] &&
-             data.nomeCliente is string && data.nomeCliente.size() > 0 &&
-             (data.tipo == 'proposta' || (data.numeroRecibo is string && data.valorPago is number));
-    }
-
-    function isValidNote(data) {
-      return data.content is string && data.content.size() > 0 &&
-             data.status in ['Pendente', 'Em Andamento', 'Concluído'] &&
-             data.userId is string;
-    }
-
-    function isValidLembrete(data) {
-      return data.titulo is string && data.titulo.size() > 0 && data.titulo.size() < 300 &&
-             data.dataAlarme is string &&
-             (!('descricao' in data) || data.descricao is string) &&
-             (!('importante' in data) || data.importante is bool) &&
-             (!('concluido' in data) || data.concluido is bool) &&
-             (!('createdBy' in data) || data.createdBy is string) &&
-             (!('tipo' in data) || data.tipo is string) &&
-             (!('obraId' in data) || data.obraId is string || data.obraId is number || data.obraId is int);
+      return isAuthenticated();
     }
 
     match /test/{docId} {
-      allow read: if isAuthenticated();
+      allow read, write: if isAuthenticated();
     }
 
     match /obras/{obraId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidObra(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
-      allow update: if isAuthenticated() && isValidObra(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /lembretes/{lembreteId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidLembrete(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
-      allow update: if isAuthenticated() && isValidLembrete(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
-      allow delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow read, write: if isAuthenticated();
     }
 
     match /notes/{noteId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidNote(request.resource.data) && (request.resource.data.userId == request.auth.uid || isAdmin());
-      allow update: if isAuthenticated() && isValidNote(request.resource.data) && (request.resource.data.userId == resource.data.userId || isAdmin());
-      allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
+      allow read, write: if isAuthenticated();
     }
 
     match /servicos/{servicoId} {
-      allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidServico(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
-      allow update: if isAuthenticated() && isValidServico(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /vendedores/{id} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /equipes/{id} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /inversores/{id} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /formasPagamento/{id} {
-      allow read: if isAuthenticated();
-      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
 
     match /teams/{teamId} {
@@ -155,11 +54,8 @@ service cloud.firestore {
     }
 
     match /posvenda/{id} {
-      allow get: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
-      allow list: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
-      allow create: if isAuthenticated() && isValidPosVenda(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
-      allow update: if isAuthenticated() && isValidPosVenda(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
-      allow delete: if isAdmin();
+      allow read, write: if isAuthenticated();
     }
   }
 }
+

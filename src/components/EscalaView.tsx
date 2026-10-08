@@ -171,6 +171,9 @@ interface EscalaViewProps {
   servicos?: Servico[];
   onEditObra?: (obra: Obra) => void;
   onEditServico?: (servico: Servico) => void;
+  onDeleteObra?: (obra: Obra) => void;
+  onDeleteServico?: (servico: Servico) => void;
+  isAdmin?: boolean;
 }
 
 export default function EscalaView({ 
@@ -178,7 +181,10 @@ export default function EscalaView({
   obras = [], 
   servicos = [],
   onEditObra,
-  onEditServico
+  onEditServico,
+  onDeleteObra,
+  onDeleteServico,
+  isAdmin = true
 }: EscalaViewProps) {
   // Estado local sincronizado para resposta visual imediata (otimista) na escala
   const [localObras, setLocalObras] = useState<Obra[]>(obras);
@@ -2594,6 +2600,40 @@ export default function EscalaView({
                       <span>{item.situacao === 'Concluído' ? 'Concluído ✓' : 'Atalho: Concluir'}</span>
                     </button>
                     
+                    {isAdmin && (
+                      <button
+                        onClick={async () => {
+                          if (window.confirm(`Tem certeza que deseja excluir o lançamento de "${item.cliente}"? Esta ação não pode ser desfeita.`)) {
+                            try {
+                              if (isObra && obraItem) {
+                                if (obraItem.firebaseId) {
+                                  await deleteDoc(doc(db, 'obras', obraItem.firebaseId));
+                                }
+                                setLocalObras(prev => prev.filter(o => o.id !== obraItem.id));
+                                onDeleteObra?.(obraItem);
+                              } else if (!isObra && servicoItem) {
+                                if (servicoItem.firebaseId) {
+                                  await deleteDoc(doc(db, 'servicos', servicoItem.firebaseId));
+                                }
+                                setLocalServicos(prev => prev.filter(s => s.id !== servicoItem.id));
+                                onDeleteServico?.(servicoItem);
+                              }
+                              addToast("Lançamento excluído com sucesso!");
+                              setSelectedDetails(null);
+                            } catch (err) {
+                              console.error("Erro ao excluir lançamento:", err);
+                              addToast("Erro ao excluir lançamento.");
+                            }
+                          }
+                        }}
+                        className="flex items-center gap-1.5 px-4 h-11 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold text-xs transition-all shadow-xs uppercase tracking-wider active:scale-95"
+                        title="Excluir este lançamento"
+                      >
+                        <Trash2 size={14} />
+                        Excluir
+                      </button>
+                    )}
+
                     <button
                       onClick={() => {
                         if (isObra) {
