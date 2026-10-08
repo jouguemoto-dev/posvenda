@@ -767,17 +767,17 @@ export default function App() {
 
   // Auth Listener
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
-      setUser(user);
+    const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
+      setUser(firebaseUser);
       setIsAuthReady(true);
-      if (user) {
-        // Default role for authenticated users if not already set
-        // In a real app, you'd fetch this from a 'users' collection
-        if (user.email === 'jouguemoto@gmail.com') {
-          setCurrentUser({ id: user.uid, name: user.displayName || 'Admin', role: 'Admin' });
-        } else {
-          setCurrentUser({ id: user.uid, name: user.displayName || 'User', role: 'Worker' });
-        }
+      if (firebaseUser) {
+        // Conta Google logada (especialmente jouguemoto@gmail.com): 
+        // Mantém a função de administrador sempre ativa com todas as funções liberadas
+        setCurrentUser({ 
+          id: firebaseUser.uid, 
+          name: firebaseUser.displayName || firebaseUser.email || 'Administrador', 
+          role: 'Admin' 
+        });
       }
     });
     return () => unsubscribe();
@@ -1309,12 +1309,41 @@ export default function App() {
     return getDaysDiff(servicoFormData.dataAtendimento);
   }, [servicoFormData.dataAtendimento]);
 
-  // Permissions Helpers
-  const canCreate = currentUser.role === 'Admin' || currentUser.role === 'Manager';
-  const canDelete = currentUser.role === 'Admin';
-  const canImport = currentUser.role === 'Admin';
-  const canExport = currentUser.role === 'Admin' || currentUser.role === 'Manager';
-  const canEditAllFields = currentUser.role === 'Admin' || currentUser.role === 'Manager';
+  // Permissions & Role Helpers
+  // Usuário Google logado (especialmente jouguemoto@gmail.com): Administrador sempre ativo com todas as funções liberadas
+  const isGoogleAccount = !!user;
+  const isOwnerEmail = useMemo(() => {
+    if (!user || !user.email) return false;
+    const em = user.email.toLowerCase().trim();
+    return em === 'jouguemoto@gmail.com' || em.includes('jouguemoto');
+  }, [user]);
+
+  // Se logado com Google ou perfil for Admin, garante todas as funções administrativas ativas
+  const isAdminActive = useMemo(() => {
+    if (isGoogleAccount) return true;
+    return currentUser.role === 'Admin';
+  }, [isGoogleAccount, currentUser.role]);
+
+  const availableUsers: User[] = useMemo(() => {
+    if (user) {
+      return [
+        {
+          id: user.uid,
+          name: `${user.displayName || user.email || 'Conta Google'} (👑 Admin - Acesso Total)`,
+          role: 'Admin'
+        },
+        { id: '2', name: 'Simular Modo: Gerente', role: 'Manager' },
+        { id: '3', name: 'Simular Modo: Operador', role: 'Worker' },
+      ];
+    }
+    return USERS;
+  }, [user]);
+
+  const canCreate = isAdminActive || currentUser.role === 'Admin' || currentUser.role === 'Manager';
+  const canDelete = isAdminActive || currentUser.role === 'Admin';
+  const canImport = isAdminActive || currentUser.role === 'Admin';
+  const canExport = isAdminActive || currentUser.role === 'Admin' || currentUser.role === 'Manager';
+  const canEditAllFields = isAdminActive || currentUser.role === 'Admin' || currentUser.role === 'Manager';
   const canEditStatusAndObs = true; // Everyone can edit these if they can edit at all
 
   // Selection Handlers
@@ -3212,6 +3241,7 @@ export default function App() {
               user={{ id: currentUser.id, name: currentUser.name }} 
               attendants={Array.from(new Set([
                 ...USERS.map(u => u.name),
+                ...availableUsers.map(u => u.name),
                 ...vendedores.map(v => v.nome)
               ])).sort()}
               onBack={() => setActiveTab('obras')}
@@ -3346,26 +3376,38 @@ export default function App() {
               </button>
             </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
             <div className="flex flex-col items-end">
-              <p className="text-sm font-bold text-slate-900">{user.displayName}</p>
-              <button onClick={handleLogout} className="text-[10px] font-bold text-red-500 hover:text-red-600 flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
+                <span className="text-sm font-bold text-slate-900">{user.displayName || user.email}</span>
+                {isAdminActive && (
+                  <span 
+                    title="Administrador Sempre Ativo: Todas as funções liberadas (Criar, Editar, Excluir, Importar, Configurações)"
+                    className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs cursor-default"
+                  >
+                    <ShieldCheck size={11} className="text-white" />
+                    Admin Ativo
+                  </span>
+                )}
+              </div>
+              <button onClick={handleLogout} className="text-[10px] font-bold text-red-500 hover:text-red-600 flex items-center gap-1 mt-0.5">
                 <LogOut size={10} />
                 Sair
               </button>
             </div>
             <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              <UserIcon size={16} className="text-slate-500" />
+              <UserIcon size={16} className={isAdminActive ? "text-amber-600" : "text-slate-500"} />
               <select 
                 value={currentUser.id}
                 onChange={(e) => {
-                  const user = USERS.find(u => u.id === e.target.value);
-                  if (user) setCurrentUser(user);
+                  const selectedUser = availableUsers.find(u => u.id === e.target.value);
+                  if (selectedUser) setCurrentUser(selectedUser);
                 }}
-                className="bg-transparent text-sm font-semibold outline-none text-slate-700"
+                className="bg-transparent text-sm font-semibold outline-none text-slate-700 cursor-pointer"
+                title="Função do Usuário"
               >
-                {USERS.map(u => (
-                  <option key={u.id} value={u.id}>{u.name} ({u.role})</option>
+                {availableUsers.map(u => (
+                  <option key={u.id} value={u.id}>{u.name}</option>
                 ))}
               </select>
             </div>
@@ -7773,7 +7815,7 @@ export default function App() {
         onExportXLS={exportarCSV}
         onFileImport={handleFileImport}
         onDownloadTemplate={downloadImportTemplate}
-        isAdmin={currentUser.role === 'Admin'}
+        isAdmin={isAdminActive}
       />
 
       {/* Payroll Modal */}

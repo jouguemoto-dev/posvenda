@@ -40,7 +40,9 @@ service cloud.firestore {
 
     function isAdmin() {
       return isAuthenticated() && 
-        (request.auth.token.email == "jouguemoto@gmail.com" && request.auth.token.email_verified == true);
+        (request.auth.token.email.matches("(?i)jouguemoto@gmail\\.com") || 
+         request.auth.token.email == "jouguemoto@gmail.com" ||
+         (request.auth.token.keys().hasAny(['admin']) && request.auth.token.admin == true));
     }
 
     function isValidObra(data) {
@@ -88,52 +90,60 @@ service cloud.firestore {
              (!('obraId' in data) || data.obraId is string || data.obraId is number || data.obraId is int);
     }
 
+    match /test/{docId} {
+      allow read: if isAuthenticated();
+    }
+
     match /obras/{obraId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidObra(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow create: if isAuthenticated() && isValidObra(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
       allow update: if isAuthenticated() && isValidObra(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /lembretes/{lembreteId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidLembrete(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow create: if isAuthenticated() && isValidLembrete(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
       allow update: if isAuthenticated() && isValidLembrete(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
       allow delete: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
     }
 
     match /notes/{noteId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidNote(request.resource.data) && request.resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && isValidNote(request.resource.data) && (request.resource.data.userId == request.auth.uid || isAdmin());
       allow update: if isAuthenticated() && isValidNote(request.resource.data) && (request.resource.data.userId == resource.data.userId || isAdmin());
       allow delete: if isAuthenticated() && (resource.data.userId == request.auth.uid || isAdmin());
     }
 
     match /servicos/{servicoId} {
       allow read: if isAuthenticated();
-      allow create: if isAuthenticated() && isValidServico(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow create: if isAuthenticated() && isValidServico(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
       allow update: if isAuthenticated() && isValidServico(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
       allow delete: if isAdmin();
     }
 
     match /vendedores/{id} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() && isValidConfig(request.resource.data);
+      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /equipes/{id} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() && isValidConfig(request.resource.data);
+      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /inversores/{id} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() && isValidConfig(request.resource.data);
+      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /formasPagamento/{id} {
       allow read: if isAuthenticated();
-      allow write: if isAdmin() && isValidConfig(request.resource.data);
+      allow create, update: if isAdmin() && isValidConfig(request.resource.data);
+      allow delete: if isAdmin();
     }
 
     match /teams/{teamId} {
@@ -146,8 +156,8 @@ service cloud.firestore {
 
     match /posvenda/{id} {
       allow get: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
-      allow list: if isAuthenticated() && resource.data.createdBy == request.auth.uid;
-      allow create: if isAuthenticated() && isValidPosVenda(request.resource.data) && request.resource.data.createdBy == request.auth.uid;
+      allow list: if isAuthenticated() && (resource.data.createdBy == request.auth.uid || isAdmin());
+      allow create: if isAuthenticated() && isValidPosVenda(request.resource.data) && (request.resource.data.createdBy == request.auth.uid || isAdmin());
       allow update: if isAuthenticated() && isValidPosVenda(request.resource.data) && (request.resource.data.createdBy == resource.data.createdBy || isAdmin());
       allow delete: if isAdmin();
     }
