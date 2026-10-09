@@ -36,7 +36,8 @@ import {
   EyeOff,
   Filter,
   Type,
-  CreditCard
+  CreditCard,
+  Sun
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -211,6 +212,7 @@ export default function EscalaView({
   const [viewingTxt, setViewingTxt] = useState<{name: string, content: string} | null>(null);
   const [viewingObs, setViewingObs] = useState<ObservacaoModalData | null>(null);
   const [selectedDetails, setSelectedDetails] = useState<{type: 'obra' | 'servico', item: Obra | Servico} | null>(null);
+  const [itemToDelete, setItemToDelete] = useState<{type: 'obra' | 'servico', item: Obra | Servico} | null>(null);
   const [tempDate, setTempDate] = useState('');
   const [tempTeam, setTempTeam] = useState('');
   const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
@@ -224,7 +226,7 @@ export default function EscalaView({
         clientName: 'text-[13px] font-black leading-snug',
         serviceBadge: 'text-[10px] font-black px-1.5 py-0.5 rounded',
         statusSelect: 'text-[9.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
-        placasBadge: 'text-[9.5px] font-black italic px-1.5 py-0.2 rounded',
+        placasBadge: 'text-[19px] font-black tracking-tight px-2 py-0.5 rounded-lg',
         concluirBtn: 'px-2 py-0.5 rounded font-bold text-[9px] uppercase tracking-wider',
         checkIconSize: 11,
         actionIconSize: 12,
@@ -246,7 +248,7 @@ export default function EscalaView({
         clientName: 'text-[14.5px] font-black leading-snug',
         serviceBadge: 'text-[11.5px] font-black px-2 py-0.5 rounded',
         statusSelect: 'text-[11px] font-black uppercase tracking-wider px-2 py-0.5 rounded',
-        placasBadge: 'text-[11px] font-black italic px-2 py-0.5 rounded',
+        placasBadge: 'text-[22px] font-black tracking-tight px-2.5 py-0.5 rounded-lg',
         concluirBtn: 'px-2.5 py-1 rounded font-bold text-[10px] uppercase tracking-wider',
         checkIconSize: 13,
         actionIconSize: 14,
@@ -262,13 +264,13 @@ export default function EscalaView({
         adminIconSize: 10,
       };
     }
-    // Padrão: 'normal' (1x - limpo, legível e organizado)
+    // Padrão: 'normal' (1x - limpo, legível e organizado, placa 2x maior)
     return {
       cardPadding: 'p-1.5 rounded-xl',
       clientName: 'text-[11.5px] font-black leading-snug',
       serviceBadge: 'text-[9px] font-black px-1.5 py-0.2 rounded',
       statusSelect: 'text-[8.5px] font-black uppercase tracking-wider px-1.5 py-0.5 rounded',
-      placasBadge: 'text-[8.5px] font-black italic px-1.5 py-0.2 rounded',
+      placasBadge: 'text-[17px] font-black tracking-tight px-2 py-0.5 rounded-lg',
       concluirBtn: 'px-1.5 py-0.5 rounded font-bold text-[8.5px] uppercase tracking-wider',
       checkIconSize: 10,
       actionIconSize: 11,
@@ -621,6 +623,34 @@ export default function EscalaView({
     }
   };
 
+  const handleConfirmDelete = async () => {
+    if (!itemToDelete) return;
+    const { type, item } = itemToDelete;
+    try {
+      const collectionName = type === 'obra' ? 'obras' : 'servicos';
+      if (item.firebaseId) {
+        await deleteDoc(doc(db, collectionName, item.firebaseId));
+      }
+      if (type === 'obra') {
+        const obraItem = item as Obra;
+        setLocalObras(prev => prev.filter(o => o.id !== obraItem.id && (o as any).firebaseId !== obraItem.firebaseId));
+        onDeleteObra?.(obraItem);
+      } else {
+        const servicoItem = item as Servico;
+        setLocalServicos(prev => prev.filter(s => s.id !== servicoItem.id && (s as any).firebaseId !== servicoItem.firebaseId));
+        onDeleteServico?.(servicoItem);
+      }
+      addToast(`Lançamento de "${item.cliente}" excluído com sucesso!`);
+      setItemToDelete(null);
+      if (selectedDetails?.item.id === item.id) {
+        setSelectedDetails(null);
+      }
+    } catch (e) {
+      console.error("Erro ao excluir lançamento:", e);
+      addToast("Erro ao excluir lançamento: " + (e instanceof Error ? e.message : "Erro no banco"));
+    }
+  };
+
   const handleAddTeam = async () => {
     if (!newTeamName.trim()) return;
     try {
@@ -886,178 +916,193 @@ export default function EscalaView({
 
   return (
     <div className="h-screen flex flex-col bg-[#eef2f7] p-2 md:p-4 font-sans text-base text-[#1e2f3e] overflow-hidden">
-      {/* Header */}
-      <div className="flex-none flex flex-col md:flex-row justify-between items-center mb-4 gap-2">
-        <div className="flex items-center gap-4">
-          {onBack && (
-            <button 
-              onClick={onBack}
-              className="p-2.5 bg-white text-slate-600 hover:text-indigo-600 rounded-xl border border-slate-200 shadow-sm transition-all hover:bg-indigo-50 active:scale-95"
-              title="Voltar para o Menu"
-            >
-              <ChevronLeft size={24} />
-            </button>
-          )}
-          <div className="bg-[#1e2f3e] p-3 rounded-2xl text-white shadow-lg">
-            <Calendar size={28} />
-          </div>
-          <div>
-            <h1 className="text-xl font-bold text-[#1e2f3e]">Escala Semanal Cloud</h1>
-            <div className="flex items-center gap-2 text-slate-500">
-              <motion.div
-                animate={isSyncing ? { rotate: 360 } : {}}
-                transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-              >
-                <Cloud size={16} className={isSyncing ? "text-[#2c7da0]" : "text-slate-400"} />
-              </motion.div>
-              <span className="text-sm font-medium">{isSyncing ? 'Sincronizando...' : 'Sincronizado'}</span>
+      {/* Header Container Organizado */}
+      <div className="flex-none bg-white rounded-2xl border border-slate-200/90 shadow-sm p-3 mb-3 space-y-2.5">
+        {/* Linha 1: Título, Navegador de Semana e Ações Principais */}
+        <div className="flex flex-col lg:flex-row justify-between items-center gap-3">
+          {/* Lado Esquerdo: Voltar + Ícone + Título */}
+          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-start">
+            <div className="flex items-center gap-2.5">
+              {onBack && (
+                <button 
+                  onClick={onBack}
+                  className="p-2 bg-slate-50 text-slate-600 hover:text-indigo-600 rounded-xl border border-slate-200 shadow-2xs transition-all hover:bg-indigo-50 active:scale-95"
+                  title="Voltar para o Menu"
+                >
+                  <ChevronLeft size={20} />
+                </button>
+              )}
+              <div className="bg-[#1e2f3e] p-2.5 rounded-xl text-white shadow-sm flex items-center justify-center">
+                <Calendar size={22} />
+              </div>
+              <div>
+                <h1 className="text-base sm:text-lg font-black text-[#1e2f3e] leading-tight">Escala Semanal Cloud</h1>
+                <div className="flex items-center gap-1.5 text-slate-400 text-xs font-semibold">
+                  <motion.div
+                    animate={isSyncing ? { rotate: 360 } : {}}
+                    transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
+                  >
+                    <Cloud size={13} className={isSyncing ? "text-indigo-600" : "text-emerald-500"} />
+                  </motion.div>
+                  <span>{isSyncing ? 'Sincronizando...' : 'Sincronizado'}</span>
+                </div>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-3 bg-white p-2 rounded-2xl shadow-sm border border-slate-200">
-          <button 
-            onClick={() => setWeekOffset(prev => prev - 1)}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-all text-[#1e2f3e]"
-            title="Semana Anterior"
-          >
-            <ChevronLeft size={24} />
-          </button>
-          <div className="px-4 text-center min-w-[200px] border-x border-slate-100">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Semana</p>
-            <p className="font-bold text-[#1e2f3e]">{weekRange}</p>
+          {/* Centro: Navegador de Semana */}
+          <div className="flex items-center gap-1 bg-slate-50 p-1 rounded-xl border border-slate-200/80 shadow-2xs">
+            <button 
+              onClick={() => setWeekOffset(prev => prev - 1)}
+              className="p-1.5 hover:bg-white rounded-lg transition-all text-[#1e2f3e] hover:shadow-2xs"
+              title="Semana Anterior"
+            >
+              <ChevronLeft size={18} />
+            </button>
+            <div className="px-3 py-0.5 text-center min-w-[170px] border-x border-slate-200/60">
+              <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest leading-none">Semana</p>
+              <p className="font-black text-xs text-[#1e2f3e] leading-tight mt-0.5">{weekRange}</p>
+            </div>
+            <button 
+              onClick={() => setWeekOffset(prev => prev + 1)}
+              className="p-1.5 hover:bg-white rounded-lg transition-all text-[#1e2f3e] hover:shadow-2xs"
+              title="Próxima Semana"
+            >
+              <ChevronRight size={18} />
+            </button>
+            
+            <button 
+              onClick={() => setWeekOffset(calculateInitialOffset())}
+              className="ml-1 px-3 py-1 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg text-xs font-black transition-all border border-indigo-100"
+            >
+              Hoje
+            </button>
           </div>
-          <button 
-            onClick={() => setWeekOffset(prev => prev + 1)}
-            className="p-2 hover:bg-slate-100 rounded-xl transition-all text-[#1e2f3e]"
-            title="Próxima Semana"
-          >
-            <ChevronRight size={24} />
-          </button>
-          
-          <button 
-            onClick={() => setWeekOffset(calculateInitialOffset())}
-            className="ml-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all border border-indigo-100"
-          >
-            Hoje
-          </button>
+
+          {/* Lado Direito: Ações Principais (Google Agenda, Equipes, PDF) */}
+          <div className="flex items-center gap-2 w-full lg:w-auto justify-end">
+            <button 
+              onClick={() => setIsGCalModalOpen(true)}
+              className="h-9 px-3.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl font-extrabold text-xs flex items-center gap-1.5 shadow-sm shadow-blue-500/20 transition-all active:scale-95"
+              title="Anexar escala semanal no Google Agenda"
+            >
+              <CalendarClock size={16} />
+              <span>Google Agenda</span>
+            </button>
+            <button 
+              onClick={() => setIsTeamModalOpen(true)}
+              className="h-9 px-3.5 bg-white hover:bg-slate-50 text-slate-800 rounded-xl font-extrabold text-xs border border-slate-200 shadow-2xs transition-all active:scale-95 flex items-center gap-1.5"
+            >
+              <Users size={16} className="text-slate-500" />
+              <span>Gerenciar Equipes</span>
+            </button>
+            <button 
+              onClick={exportPDF}
+              className="h-9 px-3.5 bg-[#2c7da0] hover:bg-[#256a8a] text-white rounded-xl font-extrabold text-xs shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+            >
+              <Download size={16} />
+              <span>Exportar PDF</span>
+            </button>
+          </div>
         </div>
 
-        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
-          {/* Botão de Ocultar Equipes Sem Agendamento Automático */}
-          <button
-            onClick={toggleHideEmptyTeams}
-            className={`flex items-center gap-2 px-3.5 py-2.5 rounded-2xl font-bold shadow-sm transition-all text-xs sm:text-sm border active:scale-95 cursor-pointer ${
-              hideEmptyTeams
-                ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20 ring-2 ring-amber-400/40'
-                : 'bg-white hover:bg-slate-50 text-[#1e2f3e] border-slate-200'
-            }`}
-            title={hideEmptyTeams 
-              ? `Filtro ativo: ${teams.length - visibleTeams.length} equipes sem agendamento automático estão ocultas nesta semana. Clique para exibir todas.` 
-              : "Clique para ocultar equipes que não têm agendamento automático nesta semana"}
-          >
-            {hideEmptyTeams ? (
-              <>
-                <EyeOff size={18} className="stroke-[2.5]" />
-                <span>Ocultar s/ Agendamento</span>
-                <span className="bg-amber-700/70 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
-                  {teams.length - visibleTeams.length} ocultas
-                </span>
-              </>
-            ) : (
-              <>
-                <Eye size={18} className="text-slate-500" />
-                <span>Ocultar s/ Agendamento</span>
-                {teams.length - visibleTeams.length > 0 && (
-                  <span className="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full font-semibold">
-                    {teams.length - visibleTeams.length} vazias
+        {/* Linha 2: Barra de Ferramentas, Filtros e Legenda Visual */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-2 border-t border-slate-100">
+          {/* Lado Esquerdo da Linha 2: Filtro de Equipes e Escala de Fonte */}
+          <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
+            {/* Botão de Ocultar Equipes Sem Agendamento */}
+            <button
+              onClick={toggleHideEmptyTeams}
+              className={`h-8 px-3 rounded-xl font-extrabold text-xs flex items-center gap-1.5 transition-all border shadow-2xs active:scale-95 cursor-pointer ${
+                hideEmptyTeams
+                  ? 'bg-amber-500 hover:bg-amber-600 text-white border-amber-600 shadow-amber-500/20'
+                  : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
+              }`}
+              title={hideEmptyTeams 
+                ? `Filtro ativo: ${teams.length - visibleTeams.length} equipes sem agendamento ocultas. Clique para exibir todas.` 
+                : "Clique para ocultar equipes que não têm agendamento nesta semana"}
+            >
+              {hideEmptyTeams ? (
+                <>
+                  <EyeOff size={14} className="stroke-[2.5]" />
+                  <span>Ocultar s/ Agendamento</span>
+                  <span className="bg-amber-700/80 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                    {teams.length - visibleTeams.length} ocultas
                   </span>
-                )}
-              </>
-            )}
-          </button>
+                </>
+              ) : (
+                <>
+                  <Eye size={14} className="text-slate-500" />
+                  <span>Ocultar s/ Agendamento</span>
+                  {teams.length - visibleTeams.length > 0 && (
+                    <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.2 rounded-full font-black">
+                      {teams.length - visibleTeams.length} vazias
+                    </span>
+                  )}
+                </>
+              )}
+            </button>
 
-          {/* Controle de Tamanho da Letra (1x, 2x, 2.5x) */}
-          <div className="flex items-center bg-white rounded-2xl border border-slate-200 shadow-sm p-1 gap-1">
-            <span className="text-[11px] font-black uppercase tracking-wider text-slate-400 px-2 flex items-center gap-1">
-              <Type size={14} className="text-indigo-600" />
-              Fonte:
-            </span>
-            <button
-              onClick={() => setFontSizeLevel('normal')}
-              className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all ${
-                fontSizeLevel === 'normal'
-                  ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-              title="Tamanho Normal (1x)"
-            >
-              1x
-            </button>
-            <button
-              onClick={() => setFontSizeLevel('large')}
-              className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all flex items-center gap-1 ${
-                fontSizeLevel === 'large'
-                  ? 'bg-indigo-600 text-white shadow-xs ring-2 ring-indigo-300'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-              title="Tamanho 2x Maior"
-            >
-              2x
-            </button>
-            <button
-              onClick={() => setFontSizeLevel('xlarge')}
-              className={`px-2.5 py-1.5 rounded-xl font-black text-xs transition-all ${
-                fontSizeLevel === 'xlarge'
-                  ? 'bg-purple-600 text-white shadow-xs ring-2 ring-purple-300'
-                  : 'text-slate-600 hover:bg-slate-100'
-              }`}
-              title="Tamanho Extra Grande (2.5x)"
-            >
-              2.5x
-            </button>
+            {/* Controle de Tamanho da Letra (1x, 2x, 2.5x) */}
+            <div className="flex items-center h-8 bg-slate-50 rounded-xl border border-slate-200 shadow-2xs p-0.5 gap-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 flex items-center gap-1">
+                <Type size={12} className="text-indigo-600" />
+                Fonte:
+              </span>
+              <button
+                onClick={() => setFontSizeLevel('normal')}
+                className={`px-2 py-0.5 rounded-lg font-black text-xs transition-all ${
+                  fontSizeLevel === 'normal'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title="Tamanho Normal (1x)"
+              >
+                1x
+              </button>
+              <button
+                onClick={() => setFontSizeLevel('large')}
+                className={`px-2 py-0.5 rounded-lg font-black text-xs transition-all ${
+                  fontSizeLevel === 'large'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title="Tamanho Médio (2x)"
+              >
+                2x
+              </button>
+              <button
+                onClick={() => setFontSizeLevel('xlarge')}
+                className={`px-2 py-0.5 rounded-lg font-black text-xs transition-all ${
+                  fontSizeLevel === 'xlarge'
+                    ? 'bg-purple-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title="Tamanho Extra Grande (2.5x)"
+              >
+                2.5x
+              </button>
+            </div>
           </div>
 
-          {/* Indicador Automático de Cores da Escala */}
-          <div className="flex items-center bg-white rounded-2xl border border-slate-200 shadow-sm px-3 py-1.5 gap-2 text-xs font-bold">
-            <span className="flex items-center gap-1.5 text-amber-700 font-extrabold" title="Status Pendente deixa o dia/coluna amarelo automático">
+          {/* Lado Direito da Linha 2: Indicador / Legenda de Cores */}
+          <div className="flex items-center gap-2.5 h-8 px-3 bg-slate-50 rounded-xl border border-slate-200 shadow-2xs text-xs font-black text-slate-700 w-full sm:w-auto justify-center sm:justify-end">
+            <span className="text-[10px] font-black uppercase tracking-wider text-slate-400">Status:</span>
+            <span className="flex items-center gap-1.5 text-amber-700" title="Status Pendente deixa a coluna em amarelo automático">
               <span className="w-2.5 h-2.5 rounded-full bg-[#eab308] shadow-2xs"></span>
-              Pendente (Amarelo)
+              Pendente
             </span>
-            <span className="text-slate-300">|</span>
-            <span className="flex items-center gap-1.5 text-blue-700 font-extrabold" title="Status Em Andamento deixa o dia/coluna azul automático">
+            <span className="text-slate-200">|</span>
+            <span className="flex items-center gap-1.5 text-blue-700" title="Status Em Andamento deixa a coluna em azul automático">
               <span className="w-2.5 h-2.5 rounded-full bg-[#3b82f6] shadow-2xs"></span>
-              Em Andamento (Azul)
+              Em Andamento
             </span>
-            <span className="text-slate-300">|</span>
-            <span className="flex items-center gap-1.5 text-emerald-700 font-extrabold" title="Status Concluído deixa o dia/coluna verde automático">
+            <span className="text-slate-200">|</span>
+            <span className="flex items-center gap-1.5 text-emerald-700" title="Status Concluído deixa a coluna em verde automático">
               <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] shadow-2xs"></span>
-              Concluído (Verde)
+              Concluído
             </span>
           </div>
-
-          <button 
-            onClick={() => setIsGCalModalOpen(true)}
-            className="flex items-center gap-2 bg-gradient-to-r from-blue-600 to-indigo-600 text-white px-4 py-2.5 rounded-2xl font-bold shadow-md shadow-blue-500/20 hover:from-blue-700 hover:to-indigo-700 transition-all active:scale-95 text-xs sm:text-sm"
-            title="Anexar escala semanal no Google Agenda"
-          >
-            <CalendarClock size={18} />
-            Google Agenda
-          </button>
-          <button 
-            onClick={() => setIsTeamModalOpen(true)}
-            className="flex items-center gap-2 bg-white text-[#1e2f3e] px-4 py-2.5 rounded-2xl font-bold shadow-sm border border-slate-200 hover:bg-slate-50 transition-all text-xs sm:text-sm"
-          >
-            <Users size={18} />
-            Gerenciar Equipes
-          </button>
-          <button 
-            onClick={exportPDF}
-            className="flex items-center gap-2 bg-[#2c7da0] text-white px-4 py-2.5 rounded-2xl font-bold shadow-lg shadow-[#2c7da0]/20 hover:bg-[#256a8a] transition-all text-xs sm:text-sm"
-          >
-            <Download size={18} />
-            Exportar PDF
-          </button>
         </div>
       </div>
 
@@ -1315,12 +1360,15 @@ export default function EscalaView({
                                   {o.quantidadePlacas > 0 && (
                                     <span className={`${fontConfig.placasBadge} ${
                                       cellColor === '#22c55e' || isDark
-                                        ? 'text-white bg-white/20 border-white/30 font-extrabold'
+                                        ? 'text-white bg-white/25 border-white/40 font-black'
                                         : cellColor === '#eab308'
-                                        ? 'text-amber-950 bg-amber-100 border-amber-300 font-extrabold'
-                                        : 'text-indigo-950 bg-indigo-50 border-indigo-200/70'
-                                    } border shrink-0`}>
-                                      {o.quantidadePlacas} PL
+                                        ? 'text-amber-950 bg-amber-200 border-amber-400 font-black'
+                                        : 'text-indigo-950 bg-indigo-100 border-indigo-300 font-black'
+                                    } border shrink-0 inline-flex items-center gap-1 leading-none shadow-2xs`}
+                                    title={`Quantidade de Placas: ${o.quantidadePlacas} unidades`}
+                                    >
+                                      <Sun size={15} className="shrink-0 stroke-[2.5] text-amber-500" />
+                                      <span>{o.quantidadePlacas} PL</span>
                                     </span>
                                   )}
                                 </div>
@@ -1443,6 +1491,20 @@ export default function EscalaView({
                                     >
                                       <Edit size={fontConfig.actionIconSize} />
                                     </button>
+                                    {isAdmin && (
+                                      <button 
+                                        onClick={(e) => { 
+                                          e.stopPropagation(); 
+                                          setItemToDelete({ type: 'obra', item: o }); 
+                                        }}
+                                        className={`p-1 rounded transition-colors ${
+                                          isDark ? 'text-red-300 hover:text-red-100 hover:bg-red-900/40' : cellColor === '#22c55e' ? 'text-red-800 hover:text-red-950 hover:bg-red-100/50' : cellColor === '#eab308' ? 'text-red-900 hover:text-red-950 hover:bg-red-200/50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                        }`}
+                                        title="Excluir Lançamento (Admin)"
+                                      >
+                                        <Trash2 size={fontConfig.actionIconSize} />
+                                      </button>
+                                    )}
                                     {o.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
@@ -1676,6 +1738,20 @@ export default function EscalaView({
                                     >
                                       <Edit size={fontConfig.actionIconSize} />
                                     </button>
+                                    {isAdmin && (
+                                      <button 
+                                        onClick={(e) => { 
+                                          e.stopPropagation(); 
+                                          setItemToDelete({ type: 'servico', item: s }); 
+                                        }}
+                                        className={`p-1 rounded transition-colors ${
+                                          isDark ? 'text-red-300 hover:text-red-100 hover:bg-red-900/40' : cellColor === '#22c55e' ? 'text-red-800 hover:text-red-950 hover:bg-red-100/50' : cellColor === '#eab308' ? 'text-red-900 hover:text-red-950 hover:bg-red-200/50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                                        }`}
+                                        title="Excluir Lançamento (Admin)"
+                                      >
+                                        <Trash2 size={fontConfig.actionIconSize} />
+                                      </button>
+                                    )}
                                     {s.txtFile && (
                                       <button 
                                         onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
@@ -2602,29 +2678,8 @@ export default function EscalaView({
                     
                     {isAdmin && (
                       <button
-                        onClick={async () => {
-                          if (window.confirm(`Tem certeza que deseja excluir o lançamento de "${item.cliente}"? Esta ação não pode ser desfeita.`)) {
-                            try {
-                              if (isObra && obraItem) {
-                                if (obraItem.firebaseId) {
-                                  await deleteDoc(doc(db, 'obras', obraItem.firebaseId));
-                                }
-                                setLocalObras(prev => prev.filter(o => o.id !== obraItem.id));
-                                onDeleteObra?.(obraItem);
-                              } else if (!isObra && servicoItem) {
-                                if (servicoItem.firebaseId) {
-                                  await deleteDoc(doc(db, 'servicos', servicoItem.firebaseId));
-                                }
-                                setLocalServicos(prev => prev.filter(s => s.id !== servicoItem.id));
-                                onDeleteServico?.(servicoItem);
-                              }
-                              addToast("Lançamento excluído com sucesso!");
-                              setSelectedDetails(null);
-                            } catch (err) {
-                              console.error("Erro ao excluir lançamento:", err);
-                              addToast("Erro ao excluir lançamento.");
-                            }
-                          }
+                        onClick={() => {
+                          setItemToDelete({ type: isObra ? 'obra' : 'servico', item });
                         }}
                         className="flex items-center gap-1.5 px-4 h-11 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-xl font-bold text-xs transition-all shadow-xs uppercase tracking-wider active:scale-95"
                         title="Excluir este lançamento"
@@ -2879,6 +2934,52 @@ export default function EscalaView({
                   className="px-6 py-2.5 bg-slate-100 text-slate-700 hover:bg-slate-200 rounded-xl font-bold text-xs uppercase tracking-wider transition-colors"
                 >
                   Fechar
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Modal de Confirmação de Exclusão de Lançamento */}
+      <AnimatePresence>
+        {itemToDelete && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setItemToDelete(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-xs"
+            />
+            <motion.div 
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden p-6 text-center border border-slate-200"
+            >
+              <div className="w-14 h-14 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-3 shadow-inner">
+                <Trash2 size={26} />
+              </div>
+              <h3 className="text-base font-black text-slate-900 mb-1">Confirmar Exclusão</h3>
+              <p className="text-xs font-semibold text-slate-600 mb-4">
+                Deseja excluir o lançamento de <span className="font-black text-slate-900">"{itemToDelete.item.cliente}"</span>? Esta ação não pode ser desfeita.
+              </p>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setItemToDelete(null)}
+                  className="flex-1 px-4 py-2 text-xs font-bold text-slate-600 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmDelete}
+                  className="flex-1 px-4 py-2 text-xs font-black text-white bg-red-600 hover:bg-red-700 rounded-xl transition-all shadow-md active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  Excluir Agora
                 </button>
               </div>
             </motion.div>

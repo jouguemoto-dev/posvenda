@@ -1277,12 +1277,12 @@ export default function App() {
   };
 
   const handleDeleteLembrete = async (id: string) => {
-    if (confirm("Tem certeza que quer excluir este lembrete/alarme?")) {
-      try {
-        await deleteDoc(doc(db, 'lembretes', id));
-      } catch (error) {
-        console.error("Erro ao excluir lembrete: ", error);
-      }
+    try {
+      await deleteDoc(doc(db, 'lembretes', id));
+      addToast("Lembrete excluído com sucesso!");
+    } catch (error) {
+      console.error("Erro ao excluir lembrete: ", error);
+      addToast("Erro ao excluir lembrete.");
     }
   };
 
@@ -1770,7 +1770,6 @@ export default function App() {
   };
 
   const handleDeleteConfig = async (collectionName: string, id: string) => {
-    if (!window.confirm('Tem certeza que deseja excluir este item?')) return;
     try {
       await deleteDoc(doc(db, collectionName, id));
       addToast('Item excluído com sucesso!');
@@ -1924,11 +1923,12 @@ export default function App() {
     }
 
     if (obraToDelete) {
-      const obraDoc = obras.find(o => o.id === obraToDelete);
-      if (obraDoc?.firebaseId) {
+      const obraDoc = obras.find(o => o.id === obraToDelete || (o as any).firebaseId === obraToDelete);
+      const docFirebaseId = obraDoc?.firebaseId || (typeof obraToDelete === 'string' ? obraToDelete : null);
+      if (docFirebaseId) {
         try {
-          await deleteDoc(doc(db, 'obras', obraDoc.firebaseId));
-          setObras(prev => prev.filter(o => o.id !== obraToDelete));
+          await deleteDoc(doc(db, 'obras', docFirebaseId));
+          setObras(prev => prev.filter(o => o.id !== obraToDelete && (o as any).firebaseId !== obraToDelete));
           closeDeleteModal();
           addToast("Obra excluída com sucesso!");
         } catch (error) {
@@ -1936,16 +1936,17 @@ export default function App() {
           addToast("Erro ao excluir obra: " + (error instanceof Error ? error.message : "Erro de conexão"));
         }
       } else {
-        setObras(prev => prev.filter(o => o.id !== obraToDelete));
+        setObras(prev => prev.filter(o => o.id !== obraToDelete && (o as any).firebaseId !== obraToDelete));
         closeDeleteModal();
         addToast("Obra excluída com sucesso!");
       }
     } else if (servicoToDelete) {
-      const servicoDoc = servicos.find(s => s.id === servicoToDelete);
-      if (servicoDoc?.firebaseId) {
+      const servicoDoc = servicos.find(s => s.id === servicoToDelete || (s as any).firebaseId === servicoToDelete);
+      const docFirebaseId = servicoDoc?.firebaseId || (typeof servicoToDelete === 'string' ? servicoToDelete : null);
+      if (docFirebaseId) {
         try {
-          await deleteDoc(doc(db, 'servicos', servicoDoc.firebaseId));
-          setServicos(prev => prev.filter(s => s.id !== servicoToDelete));
+          await deleteDoc(doc(db, 'servicos', docFirebaseId));
+          setServicos(prev => prev.filter(s => s.id !== servicoToDelete && (s as any).firebaseId !== servicoToDelete));
           closeDeleteModal();
           addToast("Serviço excluído com sucesso!");
         } catch (error) {
@@ -1953,7 +1954,7 @@ export default function App() {
           addToast("Erro ao excluir serviço: " + (error instanceof Error ? error.message : "Erro de conexão"));
         }
       } else {
-        setServicos(prev => prev.filter(s => s.id !== servicoToDelete));
+        setServicos(prev => prev.filter(s => s.id !== servicoToDelete && (s as any).firebaseId !== servicoToDelete));
         closeDeleteModal();
         addToast("Serviço excluído com sucesso!");
       }
@@ -2249,37 +2250,35 @@ export default function App() {
           
           if (data.version === '2.0' && data.obras && data.servicos) {
             // Full backup format
-            if (confirm('Deseja restaurar este backup completo? Isso irá ADICIONAR os dados aos existentes.')) {
-              let countObras = 0;
-              let countServicos = 0;
+            let countObras = 0;
+            let countServicos = 0;
 
-              for (const o of data.obras) {
-                const { firebaseId, ...rest } = o;
-                await addDoc(collection(db, 'obras'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
-                countObras++;
-              }
-
-              for (const s of data.servicos) {
-                const { firebaseId, ...rest } = s;
-                await addDoc(collection(db, 'servicos'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
-                countServicos++;
-              }
-
-              alert(`Backup restaurado! ${countObras} obras e ${countServicos} serviços importados.`);
+            for (const o of data.obras) {
+              const { firebaseId, ...rest } = o;
+              await addDoc(collection(db, 'obras'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
+              countObras++;
             }
+
+            for (const s of data.servicos) {
+              const { firebaseId, ...rest } = s;
+              await addDoc(collection(db, 'servicos'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
+              countServicos++;
+            }
+
+            addToast(`Backup restaurado! ${countObras} obras e ${countServicos} serviços importados com sucesso.`);
           } else if (Array.isArray(data)) {
             // Old format (only obras)
-            if (confirm('Arquivo de backup antigo (apenas obras) detectado. Importar?')) {
-              for (const o of data) {
-                const { firebaseId, ...rest } = o;
-                await addDoc(collection(db, 'obras'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
-              }
-              alert('Obras importadas do backup antigo.');
+            let countObras = 0;
+            for (const o of data) {
+              const { firebaseId, ...rest } = o;
+              await addDoc(collection(db, 'obras'), { ...rest, createdAt: serverTimestamp(), updatedAt: serverTimestamp(), createdBy: user.uid });
+              countObras++;
             }
+            addToast(`Obras restauradas! ${countObras} obras importadas.`);
           }
         } catch (err) {
           console.error(err);
-          alert('Erro ao processar arquivo de backup.');
+          addToast('Erro ao processar arquivo de backup.');
         }
       };
       reader.readAsText(file);
@@ -3277,12 +3276,10 @@ export default function App() {
                 handleServicoEdit(servico);
               }}
               onDeleteObra={(obra) => {
-                handleDelete(obra.id);
+                setObras(prev => prev.filter(o => o.id !== obra.id && (o as any).firebaseId !== obra.firebaseId));
               }}
               onDeleteServico={(servico) => {
-                setServicoToDelete(servico.id);
-                setIsBulkDeleteMode(false);
-                setIsDeleteModalOpen(true);
+                setServicos(prev => prev.filter(s => s.id !== servico.id && (s as any).firebaseId !== servico.firebaseId));
               }}
               isAdmin={isAdminActive}
             />
@@ -4054,7 +4051,7 @@ export default function App() {
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                                 <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
-                                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
+                                  <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-extrabold text-[11px]">{obra.quantidadePlacas} Placas</span>
                                   <div 
                                     className="cursor-pointer hover:scale-105 transition-transform"
                                     onClick={(e) => {
@@ -4419,7 +4416,7 @@ export default function App() {
                               <td className="px-3 py-3 whitespace-nowrap">
                                 <div className="text-sm font-bold text-slate-900 leading-tight">R$ {obra.valorReceber.toLocaleString('pt-BR')}</div>
                                 <div className="text-[10px] text-slate-500 uppercase tracking-tight flex flex-wrap items-center gap-1.5 mt-1">
-                                  <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded border border-slate-200 font-bold">{obra.quantidadePlacas} Placas</span>
+                                  <span className="bg-amber-100 text-amber-950 px-2 py-0.5 rounded border border-amber-300 font-extrabold text-[11px]">{obra.quantidadePlacas} Placas</span>
                                   <div 
                                     className="cursor-pointer hover:scale-105 transition-transform"
                                     onClick={(e) => {
@@ -7597,7 +7594,7 @@ export default function App() {
                         </h3>
                         <div className="grid grid-cols-2 md:grid-cols-5 gap-2 sm:gap-2.5">
                           <DetailItem label="Valor Total" value={`R$ ${selectedObra.valorReceber.toLocaleString('pt-BR')}`} />
-                          <DetailItem label="Qtd. Placas" value={`${selectedObra.quantidadePlacas} un`} />
+                          <DetailItem label="Qtd. Placas" value={<span className="text-sm font-black text-amber-950 bg-amber-100 px-2 py-0.5 rounded border border-amber-300 inline-block">{selectedObra.quantidadePlacas} un</span>} />
                           <DetailItem label="Mão de Obra (un)" value={`R$ ${selectedObra.valorMaoObra.toLocaleString('pt-BR')}`} />
                           <DetailItem label="Forma Pgto" value={selectedObra.formaPagamento || '---'} />
                           <DetailItem label="Status Pgto" value={selectedObra.situacaoPagamento || '---'} />
