@@ -90,7 +90,7 @@ import DashboardView from './components/DashboardView';
 import Proactive3DaysAlert from './components/Proactive3DaysAlert';
 import MobilePWAInstall from './components/MobilePWAInstall';
 import PeriodoRelatorioModal from './components/PeriodoRelatorioModal';
-import ObservacaoModal, { ObservacaoModalData } from './components/ObservacaoModal';
+import ObservacaoModal, { ObservacaoModalData, parseObservations, combineObservations } from './components/ObservacaoModal';
 import { 
   collection, 
   addDoc, 
@@ -453,6 +453,8 @@ export default function App() {
   const [equipeInstalouOutros, setEquipeInstalouOutros] = useState('');
   const [valorMaoObraOutros, setValorMaoObraOutros] = useState<string>('');
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [obraObsList, setObraObsList] = useState<string[]>([]);
+  const [servicoObsList, setServicoObsList] = useState<string[]>([]);
 
   // States for inline spreadsheet editing
   const [editingCell, setEditingCell] = useState<{ id: number; field: string; type: 'obra' | 'servico' } | null>(null);
@@ -1554,6 +1556,7 @@ export default function App() {
       ? generateObraGCalUrl(item as Obra) 
       : generateServicoGCalUrl(item as Servico);
 
+    // Se houver token OAuth silencioso em background, tenta sincronizar sem abrir janela pop-up
     if (token) {
       const res = await autoCreateGoogleCalendarEvent({
         title,
@@ -1563,14 +1566,8 @@ export default function App() {
       }, token);
 
       if (res.success) {
-        addToast(`📅 Agendamento "${title}" incluído no Google Agenda!`);
-        return;
+        addToast(`📅 Agendamento "${title}" sincronizado ao Google Agenda em segundo plano.`);
       }
-    }
-
-    if (gcalUrl) {
-      window.open(gcalUrl, '_blank');
-      addToast(`📅 Agendamento "${title}" gerado! Abrindo Google Agenda...`);
     }
   };
 
@@ -1683,7 +1680,6 @@ export default function App() {
         if (obraData.equipe) {
           await syncToWeeklySchedule(obraData.dataObra, obraData.equipe, obraData.cliente, 'Obra');
         }
-        triggerAutoGoogleCalendar('obra', obraData);
         await schedule3DaysReminderForObra(obraData);
       }
       resetForm();
@@ -1748,7 +1744,6 @@ export default function App() {
         for (const teamToSync of teamsToSync) {
           await syncToWeeklySchedule(servicoData.dataServico, teamToSync, servicoData.cliente, servicoData.servico);
         }
-        triggerAutoGoogleCalendar('servico', servicoData);
       }
       resetServicoForm();
     } catch (error) {
@@ -1799,6 +1794,7 @@ export default function App() {
       observacoes: '',
       txtFile: undefined
     });
+    setObraObsList([]);
     setValorMaoObraOutros('');
     setEquipeOutros('');
     setEditandoId(null);
@@ -1824,6 +1820,7 @@ export default function App() {
       situacaoPagamento: '',
       observacao: ''
     });
+    setServicoObsList([]);
     setEquipeServicoOutros('');
     setEquipeInstalouOutros('');
     setEditandoServicoId(null);
@@ -1834,6 +1831,7 @@ export default function App() {
     setFormData({
       ...obra
     });
+    setObraObsList(parseObservations(obra.observacoes));
     
     // Check if equipe exists in the list
     const equipeExists = equipes.some(e => e.nome === obra.equipe);
@@ -1860,6 +1858,7 @@ export default function App() {
       equipes: teamsList,
       equipeServico: servico.equipeServico || teamsList.join(', ')
     });
+    setServicoObsList(parseObservations(servico.observacao));
 
     const equipeServicoExists = equipes.some(e => e.nome === servico.equipeServico);
     if (servico.equipeServico && !equipeServicoExists && teamsList.length <= 1) {
@@ -1981,7 +1980,6 @@ export default function App() {
         await syncToWeeklySchedule(finalDatePrev, finalTeam, obraToUpdate.cliente);
       }
       if (field === 'dataObra' && value) {
-        triggerAutoGoogleCalendar('obra', { ...obraToUpdate, ...updatedData });
         await schedule3DaysReminderForObra({ ...obraToUpdate, ...updatedData });
       }
     } catch (error) {
@@ -2033,7 +2031,7 @@ export default function App() {
         }
       }
       if (field === 'dataServico' && value) {
-        triggerAutoGoogleCalendar('servico', { ...servicoToUpdate, ...updatedData });
+        // Sem abertura automática de janela do Google Agenda
       }
     } catch (error) {
       handleFirestoreError(error, OperationType.UPDATE, `servicos/${servicoToUpdate.firebaseId}`);
@@ -6720,16 +6718,108 @@ export default function App() {
                         )}
                       </div>
                     </FormField>
-                    <FormField label="Observações Adicionais">
-                      <textarea 
-                        name="observacoes"
-                        value={formData.observacoes}
-                        onChange={handleInputChange}
-                        rows={1}
-                        placeholder="Detalhes importantes..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium"
-                      />
-                    </FormField>
+                    <div className="col-span-1 md:col-span-2 space-y-1.5">
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 ml-0.5 leading-none flex items-center gap-1.5">
+                          <FileText size={12} className="text-amber-600" />
+                          <span>Observações da Obra</span>
+                          {obraObsList.length > 0 && (
+                            <span className="text-[9px] font-black bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded-full">
+                              {obraObsList.length}
+                            </span>
+                          )}
+                        </label>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const current = obraObsList.length > 0 ? [...obraObsList, ''] : (formData.observacoes ? [formData.observacoes, ''] : ['', '']);
+                            setObraObsList(current);
+                            setFormData(prev => ({ ...prev, observacoes: combineObservations(current) }));
+                          }}
+                          className="text-[10px] font-black text-amber-900 bg-amber-100 hover:bg-amber-200 px-2.5 py-1 rounded-md border border-amber-300 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                        >
+                          <Plus size={11} className="stroke-[3]" />
+                          <span>+ Adicionar Mais Uma Observação</span>
+                        </button>
+                      </div>
+
+                      {obraObsList.length <= 1 ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="text"
+                            name="observacoes"
+                            placeholder="Observação da obra (ex: portão trancado, avisar antes de ir)..."
+                            value={obraObsList[0] !== undefined ? obraObsList[0] : (formData.observacoes || '')}
+                            onChange={(e) => {
+                              const v = e.target.value;
+                              setFormData(prev => ({ ...prev, observacoes: v }));
+                              setObraObsList(v ? [v] : []);
+                            }}
+                            className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-amber-500 font-medium text-slate-800"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const firstVal = obraObsList[0] !== undefined ? obraObsList[0] : (formData.observacoes || '');
+                              const nextList = firstVal ? [firstVal, ''] : ['', ''];
+                              setObraObsList(nextList);
+                              setFormData(prev => ({ ...prev, observacoes: combineObservations(nextList) }));
+                            }}
+                            className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer"
+                            title="Colocar mais uma observação"
+                          >
+                            <Plus size={13} className="stroke-[3]" />
+                            <span>+ Mais Uma</span>
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="space-y-1.5 bg-amber-50/50 p-2.5 rounded-xl border border-amber-200">
+                          {obraObsList.map((obs, idx) => (
+                            <div key={idx} className="flex items-center gap-1.5">
+                              <span className="text-[9.5px] font-mono font-black text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded shrink-0 shadow-2xs">
+                                #{idx + 1}
+                              </span>
+                              <input
+                                type="text"
+                                value={obs}
+                                placeholder={`Observação #${idx + 1}...`}
+                                onChange={(e) => {
+                                  const updated = [...obraObsList];
+                                  updated[idx] = e.target.value;
+                                  setObraObsList(updated);
+                                  setFormData(prev => ({ ...prev, observacoes: combineObservations(updated) }));
+                                }}
+                                className="flex-1 bg-white border border-amber-200 rounded-lg px-2.5 py-1 text-xs outline-none focus:ring-1 focus:ring-amber-500 font-medium text-slate-800 shadow-2xs"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const updated = obraObsList.filter((_, i) => i !== idx);
+                                  setObraObsList(updated);
+                                  setFormData(prev => ({ ...prev, observacoes: combineObservations(updated) }));
+                                }}
+                                className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                title="Excluir esta observação"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = [...obraObsList, ''];
+                              setObraObsList(updated);
+                              setFormData(prev => ({ ...prev, observacoes: combineObservations(updated) }));
+                            }}
+                            className="w-full py-1.5 text-xs font-black text-amber-900 bg-white hover:bg-amber-100 border border-dashed border-amber-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                          >
+                            <Plus size={13} className="stroke-[3]" />
+                            <span>+ Adicionar Mais Uma Observação</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
                   </div>
 
                   {/* Section: Arquivo TXT (Compacto) */}
@@ -7272,16 +7362,109 @@ export default function App() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
                       </FormField>
-                      <FormField label="Observação">
-                        <textarea 
-                          name="observacao"
-                          value={servicoFormData.observacao}
-                          onChange={handleServicoInputChange}
-                          rows={1}
-                          placeholder="Observações do serviço..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 resize-none font-medium"
-                        />
-                      </FormField>
+
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between gap-1 flex-wrap">
+                          <label className="text-[10px] font-bold uppercase tracking-wider text-slate-500 ml-0.5 leading-none flex items-center gap-1.5">
+                            <FileText size={12} className="text-amber-600" />
+                            <span>Observações do Serviço</span>
+                            {servicoObsList.length > 0 && (
+                              <span className="text-[9px] font-black bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded-full">
+                                {servicoObsList.length}
+                              </span>
+                            )}
+                          </label>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const current = servicoObsList.length > 0 ? [...servicoObsList, ''] : (servicoFormData.observacao ? [servicoFormData.observacao, ''] : ['', '']);
+                              setServicoObsList(current);
+                              setServicoFormData(prev => ({ ...prev, observacao: combineObservations(current) }));
+                            }}
+                            className="text-[10px] font-black text-amber-900 bg-amber-100 hover:bg-amber-200 px-2 py-0.5 rounded-md border border-amber-300 transition-colors flex items-center gap-1 cursor-pointer shadow-2xs"
+                          >
+                            <Plus size={11} className="stroke-[3]" />
+                            <span>+ Mais Uma</span>
+                          </button>
+                        </div>
+
+                        {servicoObsList.length <= 1 ? (
+                          <div className="flex items-center gap-1.5">
+                            <input
+                              type="text"
+                              name="observacao"
+                              placeholder="Observação do serviço (ex: trazer escada, cliente no local)..."
+                              value={servicoObsList[0] !== undefined ? servicoObsList[0] : (servicoFormData.observacao || '')}
+                              onChange={(e) => {
+                                const v = e.target.value;
+                                setServicoFormData(prev => ({ ...prev, observacao: v }));
+                                setServicoObsList(v ? [v] : []);
+                              }}
+                              className="flex-1 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-amber-500 font-medium text-slate-800"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const firstVal = servicoObsList[0] !== undefined ? servicoObsList[0] : (servicoFormData.observacao || '');
+                                const nextList = firstVal ? [firstVal, ''] : ['', ''];
+                                setServicoObsList(nextList);
+                                setServicoFormData(prev => ({ ...prev, observacao: combineObservations(nextList) }));
+                              }}
+                              className="px-2.5 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg text-xs font-bold transition-all shadow-2xs flex items-center gap-1 shrink-0 cursor-pointer"
+                              title="Colocar mais uma observação"
+                            >
+                              <Plus size={13} className="stroke-[3]" />
+                              <span>+ Mais</span>
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="space-y-1.5 bg-amber-50/50 p-2 rounded-xl border border-amber-200">
+                            {servicoObsList.map((obs, idx) => (
+                              <div key={idx} className="flex items-center gap-1.5">
+                                <span className="text-[9.5px] font-mono font-black text-amber-900 bg-amber-200/90 px-1.5 py-0.5 rounded shrink-0 shadow-2xs">
+                                  #{idx + 1}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={obs}
+                                  placeholder={`Observação #${idx + 1}...`}
+                                  onChange={(e) => {
+                                    const updated = [...servicoObsList];
+                                    updated[idx] = e.target.value;
+                                    setServicoObsList(updated);
+                                    setServicoFormData(prev => ({ ...prev, observacao: combineObservations(updated) }));
+                                  }}
+                                  className="flex-1 bg-white border border-amber-200 rounded-lg px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-amber-500 font-medium text-slate-800 shadow-2xs"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const updated = servicoObsList.filter((_, i) => i !== idx);
+                                    setServicoObsList(updated);
+                                    setServicoFormData(prev => ({ ...prev, observacao: combineObservations(updated) }));
+                                  }}
+                                  className="p-1 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors cursor-pointer"
+                                  title="Excluir esta observação"
+                                >
+                                  <Trash2 size={13} />
+                                </button>
+                              </div>
+                            ))}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const updated = [...servicoObsList, ''];
+                                setServicoObsList(updated);
+                                setServicoFormData(prev => ({ ...prev, observacao: combineObservations(updated) }));
+                              }}
+                              className="w-full py-1 text-xs font-black text-amber-900 bg-white hover:bg-amber-100 border border-dashed border-amber-300 rounded-lg transition-colors flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+                            >
+                              <Plus size={12} className="stroke-[3]" />
+                              <span>+ Adicionar Mais Uma Observação</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -7606,21 +7789,28 @@ export default function App() {
                       {/* Section: Observations Destacadas */}
                       <div 
                         onClick={() => {
-                          if (selectedObra.observacoes) {
-                            setViewingObs({
-                              cliente: selectedObra.cliente,
-                              tipo: 'Obra',
-                              observacao: selectedObra.observacoes,
-                              data: selectedObra.dataObra ? formatDateBR(selectedObra.dataObra) : undefined
-                            });
-                          }
+                          setViewingObs({
+                            cliente: selectedObra.cliente,
+                            tipo: 'Obra',
+                            observacao: selectedObra.observacoes || '',
+                            data: selectedObra.dataObra ? formatDateBR(selectedObra.dataObra) : undefined,
+                            firebaseId: selectedObra.firebaseId,
+                            collectionName: 'obras',
+                            onSave: async (newCombined: string) => {
+                              if (selectedObra.firebaseId) {
+                                await updateDoc(doc(db, 'obras', selectedObra.firebaseId), {
+                                  observacoes: newCombined,
+                                  updatedAt: serverTimestamp()
+                                });
+                              }
+                              setSelectedObra(prev => prev ? { ...prev, observacoes: newCombined } : null);
+                              setObras(prev => prev.map(o => o.id === selectedObra.id ? { ...o, observacoes: newCombined } : o));
+                              addToast("Observação atualizada com sucesso!");
+                            }
+                          });
                         }}
-                        className={`p-2.5 rounded-xl border shadow-2xs space-y-1 transition-all ${
-                          selectedObra.observacoes 
-                            ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group' 
-                            : 'bg-slate-50 border-slate-200 opacity-80'
-                        }`}
-                        title={selectedObra.observacoes ? "Clique para abrir apenas a observação com letra maior" : undefined}
+                        className="p-2.5 rounded-xl border border-amber-300 shadow-2xs space-y-1 transition-all bg-amber-50/90 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group"
+                        title="Clique para ver, adicionar ou editar observações"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
@@ -7631,14 +7821,12 @@ export default function App() {
                               Observações da Obra
                             </span>
                           </div>
-                          {selectedObra.observacoes && (
-                            <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded group-hover:bg-amber-300 transition-colors">
-                              🔍 Ampliar
-                            </span>
-                          )}
+                          <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded group-hover:bg-amber-300 transition-colors">
+                            {selectedObra.observacoes ? '🔍 Ver / + Adicionar Mais' : '+ Adicionar Observação'}
+                          </span>
                         </div>
                         <div className="bg-white/95 p-2 rounded-lg border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed">
-                          {selectedObra.observacoes || 'Nenhuma observação registrada.'}
+                          {selectedObra.observacoes || 'Nenhuma observação cadastrada. Clique para adicionar.'}
                         </div>
                       </div>
 
@@ -7725,21 +7913,28 @@ export default function App() {
                       {/* Section: Observations Destacadas */}
                       <div 
                         onClick={() => {
-                          if (selectedServico.observacao) {
-                            setViewingObs({
-                              cliente: selectedServico.cliente,
-                              tipo: 'Agendamento de Serviço',
-                              observacao: selectedServico.observacao,
-                              data: selectedServico.dataServico ? formatDateBR(selectedServico.dataServico) : (selectedServico.dataAtendimento ? formatDateBR(selectedServico.dataAtendimento) : undefined)
-                            });
-                          }
+                          setViewingObs({
+                            cliente: selectedServico.cliente,
+                            tipo: selectedServico.tipoAtendimento === 'Administrativo' ? 'Atendimento Administrativo' : 'Agendamento de Serviço',
+                            observacao: selectedServico.observacao || '',
+                            data: selectedServico.dataServico ? formatDateBR(selectedServico.dataServico) : (selectedServico.dataAtendimento ? formatDateBR(selectedServico.dataAtendimento) : undefined),
+                            firebaseId: selectedServico.firebaseId,
+                            collectionName: 'servicos',
+                            onSave: async (newCombined: string) => {
+                              if (selectedServico.firebaseId) {
+                                await updateDoc(doc(db, 'servicos', selectedServico.firebaseId), {
+                                  observacao: newCombined,
+                                  updatedAt: serverTimestamp()
+                                });
+                              }
+                              setSelectedServico(prev => prev ? { ...prev, observacao: newCombined } : null);
+                              setServicos(prev => prev.map(s => s.id === selectedServico.id ? { ...s, observacao: newCombined } : s));
+                              addToast("Observação atualizada com sucesso!");
+                            }
+                          });
                         }}
-                        className={`p-2.5 rounded-xl border shadow-2xs space-y-1 transition-all ${
-                          selectedServico.observacao 
-                            ? 'bg-amber-50/90 border-amber-300 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group' 
-                            : 'bg-slate-50 border-slate-200 opacity-80'
-                        }`}
-                        title={selectedServico.observacao ? "Clique para abrir apenas a observação com letra maior" : undefined}
+                        className="p-2.5 rounded-xl border border-amber-300 shadow-2xs space-y-1 transition-all bg-amber-50/90 hover:bg-amber-100 hover:border-amber-400 cursor-pointer group"
+                        title="Clique para ver, adicionar ou editar observações"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-1.5">
@@ -7750,14 +7945,12 @@ export default function App() {
                               Observações do Agendamento
                             </span>
                           </div>
-                          {selectedServico.observacao && (
-                            <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded group-hover:bg-amber-300 transition-colors">
-                              🔍 Ampliar
-                            </span>
-                          )}
+                          <span className="text-[9px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded group-hover:bg-amber-300 transition-colors">
+                            {selectedServico.observacao ? '🔍 Ver / + Adicionar Mais' : '+ Adicionar Observação'}
+                          </span>
                         </div>
                         <div className="bg-white/95 p-2 rounded-lg border border-amber-200 text-amber-950 font-medium text-xs whitespace-pre-wrap leading-relaxed">
-                          {selectedServico.observacao || 'Nenhuma observação registrada.'}
+                          {selectedServico.observacao || 'Nenhuma observação cadastrada. Clique para adicionar.'}
                         </div>
                       </div>
 

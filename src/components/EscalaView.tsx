@@ -1528,7 +1528,19 @@ export default function EscalaView({
                                         cliente: o.cliente,
                                         tipo: 'Obra',
                                         observacao: o.observacoes,
-                                        data: o.dataObra ? formatDateBR(o.dataObra) : undefined
+                                        data: o.dataObra ? formatDateBR(o.dataObra) : undefined,
+                                        firebaseId: o.firebaseId,
+                                        collectionName: 'obras',
+                                        onSave: async (newCombined: string) => {
+                                          if (o.firebaseId) {
+                                            await updateDoc(doc(db, 'obras', o.firebaseId), {
+                                              observacoes: newCombined,
+                                              updatedAt: serverTimestamp()
+                                            });
+                                          }
+                                          setLocalObras(prev => prev.map(item => (item.firebaseId === o.firebaseId || item.id === o.id) ? { ...item, observacoes: newCombined } : item));
+                                          addToast("Observação atualizada com sucesso!");
+                                        }
                                       });
                                     }}
                                     className={`${fontConfig.obsBox} ${
@@ -1775,7 +1787,19 @@ export default function EscalaView({
                                         cliente: s.cliente,
                                         tipo: isAdm ? 'Atendimento Administrativo' : 'Agendamento de Serviço',
                                         observacao: s.observacao,
-                                        data: s.dataServico ? formatDateBR(s.dataServico) : undefined
+                                        data: s.dataServico ? formatDateBR(s.dataServico) : undefined,
+                                        firebaseId: s.firebaseId,
+                                        collectionName: 'servicos',
+                                        onSave: async (newCombined: string) => {
+                                          if (s.firebaseId) {
+                                            await updateDoc(doc(db, 'servicos', s.firebaseId), {
+                                              observacao: newCombined,
+                                              updatedAt: serverTimestamp()
+                                            });
+                                          }
+                                          setLocalServicos(prev => prev.map(item => (item.firebaseId === s.firebaseId || item.id === s.id) ? { ...item, observacao: newCombined } : item));
+                                          addToast("Observação atualizada com sucesso!");
+                                        }
                                       });
                                     }}
                                     className={`${fontConfig.obsBox} ${
@@ -2577,38 +2601,56 @@ export default function EscalaView({
                       </div>
                     </div>
 
-                    {/* Panel: Observações Destacadas */}
-                    {(isObra ? obraItem?.observacoes : servicoItem?.observacao) && (
-                      <div 
-                        onClick={() => {
-                          setViewingObs({
-                            cliente: item.cliente,
-                            tipo: isObra ? 'Obra' : 'Agendamento de Serviço',
-                            observacao: (isObra ? obraItem?.observacoes : servicoItem?.observacao) || '',
-                            data: (isObra ? obraItem?.dataObra : servicoItem?.dataServico) ? formatDateBR(isObra ? obraItem!.dataObra : servicoItem!.dataServico) : undefined
-                          });
-                        }}
-                        className="bg-amber-50/90 p-4 rounded-2xl border-2 border-amber-300 shadow-sm space-y-2 cursor-pointer hover:bg-amber-100/90 hover:border-amber-400 transition-all group"
-                        title="Clique para abrir apenas a observação com letra maior"
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-2">
-                            <span className="bg-amber-500 text-white p-1 rounded-lg shadow-xs">
-                              <FileText size={14} className="stroke-[2.5]" />
-                            </span>
-                            <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider">
-                              {isObra ? 'Observações da Obra' : 'Observações do Agendamento de Serviço'}
-                            </span>
-                          </div>
-                          <span className="text-[10px] font-bold text-amber-800 bg-amber-200/80 px-2 py-0.5 rounded-md group-hover:bg-amber-300 transition-colors">
-                            Clique para ampliar
+                    {/* Panel: Observações Destacadas com Ação de Colocar Mais */}
+                    <div 
+                      onClick={() => {
+                        const currentObs = isObra ? (obraItem?.observacoes || '') : (servicoItem?.observacao || '');
+                        const targetId = item.firebaseId;
+                        setViewingObs({
+                          cliente: item.cliente,
+                          tipo: isObra ? 'Obra' : 'Agendamento de Serviço',
+                          observacao: currentObs,
+                          data: (isObra ? obraItem?.dataObra : servicoItem?.dataServico) ? formatDateBR(isObra ? obraItem!.dataObra : servicoItem!.dataServico) : undefined,
+                          firebaseId: targetId,
+                          collectionName: isObra ? 'obras' : 'servicos',
+                          onSave: async (newCombined: string) => {
+                            if (targetId) {
+                              await updateDoc(doc(db, isObra ? 'obras' : 'servicos', targetId), {
+                                [isObra ? 'observacoes' : 'observacao']: newCombined,
+                                updatedAt: serverTimestamp()
+                              });
+                            }
+                            if (isObra) {
+                              setLocalObras(prev => prev.map(o => (o.firebaseId === targetId || o.id === item.id) ? { ...o, observacoes: newCombined } : o));
+                              setSelectedDetails(prev => prev ? { ...prev, item: { ...prev.item, observacoes: newCombined } as Obra } : null);
+                            } else {
+                              setLocalServicos(prev => prev.map(s => (s.firebaseId === targetId || s.id === item.id) ? { ...s, observacao: newCombined } : s));
+                              setSelectedDetails(prev => prev ? { ...prev, item: { ...prev.item, observacao: newCombined } as Servico } : null);
+                            }
+                            addToast("Observação atualizada com sucesso!");
+                          }
+                        });
+                      }}
+                      className="bg-amber-50/90 p-4 rounded-2xl border-2 border-amber-300 shadow-sm space-y-2 cursor-pointer hover:bg-amber-100/90 hover:border-amber-400 transition-all group"
+                      title="Clique para ver, adicionar ou colocar mais observações"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="bg-amber-500 text-white p-1 rounded-lg shadow-xs">
+                            <FileText size={14} className="stroke-[2.5]" />
+                          </span>
+                          <span className="text-[11px] font-black text-amber-900 uppercase tracking-wider">
+                            {isObra ? 'Observações da Obra' : 'Observações do Serviço'}
                           </span>
                         </div>
-                        <p className="text-xs text-amber-950 font-semibold leading-relaxed bg-white/95 p-3 rounded-xl border border-amber-200/90 whitespace-pre-wrap break-words max-h-[140px] overflow-y-auto shadow-2xs">
-                          {isObra ? obraItem?.observacoes : servicoItem?.observacao}
-                        </p>
+                        <span className="text-[10px] font-bold text-amber-900 bg-amber-200/90 px-2.5 py-1 rounded-lg group-hover:bg-amber-300 transition-colors flex items-center gap-1 shadow-2xs">
+                          {(isObra ? obraItem?.observacoes : servicoItem?.observacao) ? '🔍 Ver / + Adicionar Mais' : '+ Adicionar Observação'}
+                        </span>
                       </div>
-                    )}
+                      <p className="text-xs text-amber-950 font-semibold leading-relaxed bg-white/95 p-3 rounded-xl border border-amber-200/90 whitespace-pre-wrap break-words max-h-[140px] overflow-y-auto shadow-2xs">
+                        {(isObra ? obraItem?.observacoes : servicoItem?.observacao) || 'Nenhuma observação cadastrada. Clique aqui para adicionar.'}
+                      </p>
+                    </div>
 
                     {/* Calendar & WhatsApp Quick Link Generators */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
