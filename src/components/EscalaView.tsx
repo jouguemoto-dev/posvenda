@@ -43,6 +43,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
 import { generateObraGCalUrl, generateServicoGCalUrl } from '../lib/googleCalendar';
 import ObservacaoModal, { ObservacaoModalData } from './ObservacaoModal';
+import { getFeriado, isDataBloqueadaParaAgendamento, FeriadoInfo } from '../lib/feriados';
 import { 
   collection, 
   onSnapshot, 
@@ -492,7 +493,9 @@ export default function EscalaView({
   // Equipes visíveis na escala conforme o filtro de agendamento automático
   const visibleTeams = useMemo(() => {
     if (!hideEmptyTeams) return teams;
-    return teams.filter(t => (teamScheduleCounts[t.id] || 0) > 0);
+    const filtered = teams.filter(t => (teamScheduleCounts[t.id] || 0) > 0);
+    // Se nenhuma equipe tiver agendamento na semana atual, exibe todas para nunca deixar a tela vazia
+    return filtered.length > 0 ? filtered : teams;
   }, [teams, hideEmptyTeams, teamScheduleCounts]);
 
   const handleUpdateSchedule = async () => {
@@ -501,6 +504,14 @@ export default function EscalaView({
     if (!item.firebaseId) {
       addToast("Erro: ID no Firebase não encontrado.");
       return;
+    }
+
+    if (tempDate) {
+      const lock = isDataBloqueadaParaAgendamento(tempDate);
+      if (lock.bloqueada) {
+        addToast(`🚫 ${lock.motivo}`);
+        return;
+      }
     }
     
     try {
@@ -1206,6 +1217,37 @@ export default function EscalaView({
                           )}
                         </div>
                         <p className={`font-semibold text-slate-500 ${fontConfig.dateText}`}>{weekDates[dayIdx]}</p>
+                        {(() => {
+                          const feriado = getFeriado(weekDatesFull[dayIdx]);
+                          if (!feriado) return null;
+                          if (feriado.tipo === 'municipal_recife') {
+                            return (
+                              <div className="mt-1 px-1.5 py-0.5 rounded bg-emerald-100 border border-emerald-300 text-emerald-900 text-[10px] font-bold leading-tight" title={feriado.descricao || feriado.nome}>
+                                🏛️ RECIFE: {feriado.nome}
+                              </div>
+                            );
+                          }
+                          if (feriado.tipo === 'estadual_pe') {
+                            return (
+                              <div className="mt-1 px-1.5 py-0.5 rounded bg-blue-100 border border-blue-300 text-blue-900 text-[10px] font-bold leading-tight" title={feriado.descricao || feriado.nome}>
+                                ⭐ PE: {feriado.nome}
+                              </div>
+                            );
+                          }
+                          if (feriado.tipo === 'nacional') {
+                            return (
+                              <div className="mt-1 px-1.5 py-0.5 rounded bg-rose-100 border border-rose-300 text-rose-900 text-[10px] font-bold leading-tight" title={`Feriado Nacional: ${feriado.nome}. Agendamentos BLOQUEADOS!`}>
+                                🇧🇷 FERIADO: {feriado.nome}
+                                <div className="text-[9px] text-rose-700 font-extrabold uppercase mt-0.5">🚫 Não agendável</div>
+                              </div>
+                            );
+                          }
+                          return (
+                            <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold leading-tight">
+                              📅 {feriado.nome}
+                            </div>
+                          );
+                        })()}
                       </div>
 
                       {/* Atendimentos Administrativos do Dia Visíveis */}
@@ -1288,6 +1330,27 @@ export default function EscalaView({
                         className={`p-1.5 border-r border-slate-200 relative group ${fontConfig.cellMinHeight} align-top transition-colors duration-300`}
                         style={{ backgroundColor: cellColor }}
                       >
+                        {/* Holiday Banner inside cell */}
+                        {(() => {
+                          const feriado = getFeriado(fullDate);
+                          if (!feriado) return null;
+                          if (feriado.tipo === 'nacional') {
+                            return (
+                              <div className="mb-1 px-1.5 py-0.5 rounded bg-rose-500/15 border border-rose-400/40 text-rose-900 text-[10px] font-extrabold flex items-center justify-between shadow-2xs backdrop-blur-xs" title={`Feriado Nacional: ${feriado.nome}. Proibido agendar!`}>
+                                <span className="truncate">🇧🇷 {feriado.nome}</span>
+                                <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-rose-600 text-white font-black shrink-0 ml-1">Bloqueado</span>
+                              </div>
+                            );
+                          }
+                          if (feriado.tipo === 'municipal_recife' || feriado.tipo === 'estadual_pe') {
+                            return (
+                              <div className={`mb-1 px-1.5 py-0.5 rounded ${feriado.tipo === 'municipal_recife' ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-950' : 'bg-blue-500/15 border-blue-400/40 text-blue-950'} border text-[10px] font-extrabold flex items-center gap-1 shadow-2xs backdrop-blur-xs`} title={feriado.descricao || feriado.nome}>
+                                <span className="truncate">{feriado.tipo === 'municipal_recife' ? '🏛️ Recife' : '⭐ PE'}: {feriado.nome}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                         <textarea 
                           value={cleanManualText} 
                           onChange={(e) => {
@@ -1823,7 +1886,14 @@ export default function EscalaView({
                         {/* Cell Actions Menu */}
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
                           <button 
-                            onClick={() => setAddingClientTo(addingClientTo?.day === day && addingClientTo?.teamId === team.id ? null : {day, teamId: team.id})}
+                            onClick={() => {
+                              const lock = isDataBloqueadaParaAgendamento(fullDate);
+                              if (lock.bloqueada) {
+                                addToast(`🚫 ${lock.motivo}`);
+                                return;
+                              }
+                              setAddingClientTo(addingClientTo?.day === day && addingClientTo?.teamId === team.id ? null : {day, teamId: team.id});
+                            }}
                             className={`p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
                             title="Adicionar Cliente"
                           >

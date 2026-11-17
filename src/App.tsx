@@ -1,3 +1,4 @@
+import { getFeriado, isDataBloqueadaParaAgendamento } from './lib/feriados';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -1631,6 +1632,14 @@ export default function App() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (formData.dataObra) {
+      const lock = isDataBloqueadaParaAgendamento(formData.dataObra);
+      if (lock.bloqueada) {
+        alert(`🚫 Bloqueado: Não é permitido agendar em feriados nacionais.\n\n${lock.motivo}`);
+        return;
+      }
+    }
     
     const valorMaoObraFinal = formData.valorMaoObra === 0 ? parseFloat(valorMaoObraOutros) || 0 : formData.valorMaoObra || 0;
     
@@ -1691,6 +1700,14 @@ export default function App() {
   const handleServicoSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!user) return;
+
+    if (servicoFormData.dataServico) {
+      const lock = isDataBloqueadaParaAgendamento(servicoFormData.dataServico);
+      if (lock.bloqueada) {
+        alert(`🚫 Bloqueado: Não é permitido agendar em feriados nacionais.\n\n${lock.motivo}`);
+        return;
+      }
+    }
     
     const teamsFromChips: string[] = Array.isArray(servicoFormData.equipes) && servicoFormData.equipes.length > 0
       ? [...servicoFormData.equipes]
@@ -1961,6 +1978,13 @@ export default function App() {
   };
 
   const updateObraQuick = async (id: number, field: keyof Obra, value: any) => {
+    if (field === 'dataObra' && value) {
+      const lock = isDataBloqueadaParaAgendamento(String(value));
+      if (lock.bloqueada) {
+        alert(`🚫 Bloqueado: Não é permitido agendar em feriados nacionais.\n\n${lock.motivo}`);
+        return;
+      }
+    }
     const obraToUpdate = obras.find(o => o.id === id);
     if (!obraToUpdate?.firebaseId) return;
 
@@ -6588,6 +6612,27 @@ export default function App() {
                           onChange={handleInputChange}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 font-medium"
                         />
+                        {formData.dataObra && (() => {
+                          const feriado = getFeriado(formData.dataObra);
+                          if (!feriado) return null;
+                          if (feriado.tipo === 'nacional') {
+                            return (
+                              <div className="mt-1 px-2 py-1 rounded bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center gap-1.5">
+                                <span>🚫</span>
+                                <span>Feriado Nacional ({feriado.nome}): Agendamento Proibido!</span>
+                              </div>
+                            );
+                          }
+                          if (feriado.tipo === 'municipal_recife' || feriado.tipo === 'estadual_pe') {
+                            return (
+                              <div className="mt-1 px-2 py-1 rounded bg-blue-50 border border-blue-300 text-blue-900 text-[11px] font-bold flex items-center gap-1.5">
+                                <span>⭐</span>
+                                <span>{feriado.tipo === 'municipal_recife' ? 'Feriado Recife' : 'Feriado PE'}: {feriado.nome}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </FormField>
                       <FormField label="Data Conclusão">
                         <input 
@@ -7361,6 +7406,27 @@ export default function App() {
                           onChange={handleServicoInputChange}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-indigo-500 font-medium"
                         />
+                        {servicoFormData.dataServico && (() => {
+                          const feriado = getFeriado(servicoFormData.dataServico);
+                          if (!feriado) return null;
+                          if (feriado.tipo === 'nacional') {
+                            return (
+                              <div className="mt-1 px-2 py-1 rounded bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center gap-1.5">
+                                <span>🚫</span>
+                                <span>Feriado Nacional ({feriado.nome}): Agendamento Proibido!</span>
+                              </div>
+                            );
+                          }
+                          if (feriado.tipo === 'municipal_recife' || feriado.tipo === 'estadual_pe') {
+                            return (
+                              <div className="mt-1 px-2 py-1 rounded bg-blue-50 border border-blue-300 text-blue-900 text-[11px] font-bold flex items-center gap-1.5">
+                                <span>⭐</span>
+                                <span>{feriado.tipo === 'municipal_recife' ? 'Feriado Recife' : 'Feriado PE'}: {feriado.nome}</span>
+                              </div>
+                            );
+                          }
+                          return null;
+                        })()}
                       </FormField>
 
                       <div className="space-y-1.5">
