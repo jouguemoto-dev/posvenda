@@ -3,7 +3,7 @@
  * e Feriados Municipais do Recife (PE).
  *
  * Regra do Sistema:
- * - Todos os feriados nacionais BLOQUEIAM agendamentos de obras e serviços.
+ * - Todos os feriados exibem alerta visual, mantendo permissão para agendar.
  * - Feriados estaduais (PE) e municipais (Recife) recebem prioridade de destaque visual.
  */
 
@@ -100,7 +100,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Confraternização Universal (Ano Novo)',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -115,7 +115,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Tiradentes',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -130,7 +130,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Dia Mundial do Trabalho',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -145,7 +145,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Independência do Brasil',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -160,7 +160,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Nossa Senhora Aparecida (Padroeira do Brasil)',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -175,7 +175,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Dia de Finados',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -190,7 +190,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Proclamação da República',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -205,7 +205,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Dia Nacional de Zumbi e da Consciência Negra',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -220,7 +220,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Natal',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -258,7 +258,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Terça-feira de Carnaval (Galo da Madrugada / Frevo)',
     tipo: 'estadual_pe',
     tipoDescricao: 'Feriado de Carnaval em Pernambuco',
-    bloqueiaAgendamento: true, // Em Pernambuco e Recife o Carnaval é sagrado e bloqueia operações
+    bloqueiaAgendamento: false, // Em Pernambuco e Recife o Carnaval é sagrado e bloqueia operações
     prioridade: 1,
     badgeColor: 'bg-purple-700',
     badgeTextColor: 'text-white',
@@ -288,7 +288,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Sexta-feira Santa (Paixão de Cristo)',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -303,7 +303,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Domingo de Páscoa',
     tipo: 'nacional',
     tipoDescricao: 'Feriado Religioso Nacional',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-red-600',
     badgeTextColor: 'text-white',
@@ -319,7 +319,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Corpus Christi',
     tipo: 'ponto_facultativo',
     tipoDescricao: 'Feriado / Ponto Facultativo',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 3,
     badgeColor: 'bg-amber-600',
     badgeTextColor: 'text-white',
@@ -337,7 +337,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Data Magna do Estado de Pernambuco',
     tipo: 'estadual_pe',
     tipoDescricao: 'Feriado Estadual (Pernambuco)',
-    bloqueiaAgendamento: true, // Feriado oficial em todo o estado de PE
+    bloqueiaAgendamento: false, // Feriado oficial em todo o estado de PE
     prioridade: 2,
     badgeColor: 'bg-blue-700',
     badgeTextColor: 'text-white',
@@ -352,7 +352,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Dia de São João',
     tipo: 'estadual_pe',
     tipoDescricao: 'Feriado de São João (Pernambuco)',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 2,
     badgeColor: 'bg-emerald-700',
     badgeTextColor: 'text-white',
@@ -370,7 +370,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Nossa Senhora do Carmo (Padroeira do Recife)',
     tipo: 'municipal_recife',
     tipoDescricao: 'Feriado Municipal de Recife',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 1,
     badgeColor: 'bg-amber-700',
     badgeTextColor: 'text-white',
@@ -385,7 +385,7 @@ export function getFeriadosDoAno(year: number): Record<string, FeriadoInfo> {
     nome: 'Nossa Senhora da Conceição (Morro da Conceição)',
     tipo: 'municipal_recife',
     tipoDescricao: 'Feriado Municipal de Recife',
-    bloqueiaAgendamento: true,
+    bloqueiaAgendamento: false,
     prioridade: 1,
     badgeColor: 'bg-blue-800',
     badgeTextColor: 'text-white',
@@ -439,20 +439,17 @@ export function isDataBloqueadaParaAgendamento(dateInput: string | Date | undefi
   const f = getFeriado(dateInput);
   if (!f) return { bloqueada: false };
 
-  // Bloqueio mandatário para feriados nacionais e feriados oficiais locais
-  if (f.bloqueiaAgendamento) {
-    const localInfo = f.tipo === 'municipal_recife' 
-      ? 'Feriado Municipal do Recife'
-      : f.tipo === 'estadual_pe'
-      ? 'Feriado Estadual de Pernambuco'
-      : 'Feriado Nacional do Brasil';
+  const localInfo = f.tipo === 'municipal_recife'
+    ? 'Feriado Municipal do Recife'
+    : f.tipo === 'estadual_pe'
+    ? 'Feriado Estadual de Pernambuco'
+    : f.tipo === 'nacional'
+    ? 'Feriado Nacional do Brasil'
+    : 'Ponto Facultativo';
 
-    return {
-      bloqueada: true,
-      motivo: `Não é permitido realizar agendamento nesta data: ${f.nome} (${localInfo}).`,
-      feriado: f
-    };
-  }
-
-  return { bloqueada: false, feriado: f };
+  return {
+    bloqueada: false,
+    motivo: `Alerta: ${f.nome} (${localInfo}) — Agendamento permitido.`,
+    feriado: f
+  };
 }

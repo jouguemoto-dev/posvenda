@@ -43,7 +43,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
 import { generateObraGCalUrl, generateServicoGCalUrl } from '../lib/googleCalendar';
 import ObservacaoModal, { ObservacaoModalData } from './ObservacaoModal';
-import { getFeriado, isDataBloqueadaParaAgendamento, FeriadoInfo } from '../lib/feriados';
+import { getFeriado } from '../lib/feriados';
 import { 
   collection, 
   onSnapshot, 
@@ -506,13 +506,7 @@ export default function EscalaView({
       return;
     }
 
-    if (tempDate) {
-      const lock = isDataBloqueadaParaAgendamento(tempDate);
-      if (lock.bloqueada) {
-        addToast(`🚫 ${lock.motivo}`);
-        return;
-      }
-    }
+
     
     try {
       const docRef = doc(db, type === 'obra' ? 'obras' : 'servicos', item.firebaseId);
@@ -527,7 +521,12 @@ export default function EscalaView({
           equipeServico: tempTeam
         });
       }
-      addToast("Agendamento alterado com sucesso!");
+      const feriadoSave = tempDate ? getFeriado(tempDate) : null;
+      if (feriadoSave) {
+        addToast(`⚠️ Agendado no feriado (${feriadoSave.nome}) com sucesso!`);
+      } else {
+        addToast("Agendamento alterado com sucesso!");
+      }
       setSelectedDetails(null);
     } catch (e) {
       console.error("Erro ao alterar agendamento", e);
@@ -1113,6 +1112,13 @@ export default function EscalaView({
               <span className="w-2.5 h-2.5 rounded-full bg-[#22c55e] shadow-2xs"></span>
               Concluído
             </span>
+            <span className="text-slate-200 hidden md:inline">|</span>
+            <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-100 text-amber-900 text-[10px] font-bold border border-amber-300" title="Feriados exibem alerta visual, com agendamento permitido">
+              ⚠️ Feriados BR (Alerta)
+            </span>
+            <span className="hidden md:inline-flex items-center gap-1 px-1.5 py-0.5 rounded bg-blue-100 text-blue-900 text-[10px] font-bold border border-blue-300" title="Feriados em Pernambuco e Recife">
+              ⭐ PE / Recife
+            </span>
           </div>
         </div>
       </div>
@@ -1236,9 +1242,9 @@ export default function EscalaView({
                           }
                           if (feriado.tipo === 'nacional') {
                             return (
-                              <div className="mt-1 px-1.5 py-0.5 rounded bg-rose-100 border border-rose-300 text-rose-900 text-[10px] font-bold leading-tight" title={`Feriado Nacional: ${feriado.nome}. Agendamentos BLOQUEADOS!`}>
-                                🇧🇷 FERIADO: {feriado.nome}
-                                <div className="text-[9px] text-rose-700 font-extrabold uppercase mt-0.5">🚫 Não agendável</div>
+                              <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-950 text-[10px] font-bold leading-tight" title={`Alerta de Feriado Nacional: ${feriado.nome}. Agendamento permitido.`}>
+                                ⚠️ FERIADO: {feriado.nome}
+                                <div className="text-[9px] text-amber-800 font-bold mt-0.5">Agendamento permitido</div>
                               </div>
                             );
                           }
@@ -1336,9 +1342,9 @@ export default function EscalaView({
                           if (!feriado) return null;
                           if (feriado.tipo === 'nacional') {
                             return (
-                              <div className="mb-1 px-1.5 py-0.5 rounded bg-rose-500/15 border border-rose-400/40 text-rose-900 text-[10px] font-extrabold flex items-center justify-between shadow-2xs backdrop-blur-xs" title={`Feriado Nacional: ${feriado.nome}. Proibido agendar!`}>
-                                <span className="truncate">🇧🇷 {feriado.nome}</span>
-                                <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-rose-600 text-white font-black shrink-0 ml-1">Bloqueado</span>
+                              <div className="mb-1 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-950 text-[10px] font-extrabold flex items-center justify-between shadow-2xs backdrop-blur-xs" title={`Alerta de Feriado Nacional: ${feriado.nome}. Agendamento permitido.`}>
+                                <span className="truncate">⚠️ {feriado.nome}</span>
+                                <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-amber-600 text-white font-black shrink-0 ml-1">Feriado</span>
                               </div>
                             );
                           }
@@ -1887,12 +1893,14 @@ export default function EscalaView({
                         <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
                           <button 
                             onClick={() => {
-                              const lock = isDataBloqueadaParaAgendamento(fullDate);
-                              if (lock.bloqueada) {
-                                addToast(`🚫 ${lock.motivo}`);
-                                return;
+                              const isOpening = !(addingClientTo?.day === day && addingClientTo?.teamId === team.id);
+                              if (isOpening) {
+                                const feriado = getFeriado(fullDate);
+                                if (feriado) {
+                                  addToast(`⚠️ Alerta: ${feriado.nome} (agendamento permitido)`);
+                                }
                               }
-                              setAddingClientTo(addingClientTo?.day === day && addingClientTo?.teamId === team.id ? null : {day, teamId: team.id});
+                              setAddingClientTo(isOpening ? {day, teamId: team.id} : null);
                             }}
                             className={`p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
                             title="Adicionar Cliente"
@@ -2634,6 +2642,16 @@ export default function EscalaView({
                             onChange={(e) => setTempDate(e.target.value)}
                             className="w-full text-xs font-bold text-slate-700 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all shadow-xs"
                           />
+                          {tempDate && (() => {
+                            const feriado = getFeriado(tempDate);
+                            if (!feriado) return null;
+                            return (
+                              <div className="mt-1 px-2 py-1 rounded bg-amber-50 border border-amber-300 text-amber-900 text-[10px] font-bold flex items-center gap-1">
+                                <span>⚠️</span>
+                                <span>Alerta: {feriado.nome} ({feriado.tipoDescricao}) — Agendamento permitido</span>
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         <div>

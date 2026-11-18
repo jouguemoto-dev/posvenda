@@ -1,4 +1,4 @@
-import { getFeriado, isDataBloqueadaParaAgendamento } from './lib/feriados';
+import { getFeriado } from './lib/feriados';
 /**
  * @license
  * SPDX-License-Identifier: Apache-2.0
@@ -1633,13 +1633,6 @@ export default function App() {
     e.preventDefault();
     if (!user) return;
 
-    if (formData.dataObra) {
-      const lock = isDataBloqueadaParaAgendamento(formData.dataObra);
-      if (lock.bloqueada) {
-        alert(`🚫 Bloqueado: Não é permitido agendar em feriados nacionais.\n\n${lock.motivo}`);
-        return;
-      }
-    }
     
     const valorMaoObraFinal = formData.valorMaoObra === 0 ? parseFloat(valorMaoObraOutros) || 0 : formData.valorMaoObra || 0;
     
@@ -1701,13 +1694,6 @@ export default function App() {
     e.preventDefault();
     if (!user) return;
 
-    if (servicoFormData.dataServico) {
-      const lock = isDataBloqueadaParaAgendamento(servicoFormData.dataServico);
-      if (lock.bloqueada) {
-        alert(`🚫 Bloqueado: Não é permitido agendar em feriados nacionais.\n\n${lock.motivo}`);
-        return;
-      }
-    }
     
     const teamsFromChips: string[] = Array.isArray(servicoFormData.equipes) && servicoFormData.equipes.length > 0
       ? [...servicoFormData.equipes]
@@ -1978,13 +1964,6 @@ export default function App() {
   };
 
   const updateObraQuick = async (id: number, field: keyof Obra, value: any) => {
-    if (field === 'dataObra' && value) {
-      const lock = isDataBloqueadaParaAgendamento(String(value));
-      if (lock.bloqueada) {
-        alert(`🚫 Bloqueado: Não é permitido agendar em feriados nacionais.\n\n${lock.motivo}`);
-        return;
-      }
-    }
     const obraToUpdate = obras.find(o => o.id === id);
     if (!obraToUpdate?.firebaseId) return;
 
@@ -6617,9 +6596,9 @@ export default function App() {
                           if (!feriado) return null;
                           if (feriado.tipo === 'nacional') {
                             return (
-                              <div className="mt-1 px-2 py-1 rounded bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center gap-1.5">
-                                <span>🚫</span>
-                                <span>Feriado Nacional ({feriado.nome}): Agendamento Proibido!</span>
+                              <div className="mt-1 px-2 py-1 rounded bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-bold flex items-center gap-1.5">
+                                <span>⚠️</span>
+                                <span>Alerta: Feriado Nacional ({feriado.nome}) — Agendamento permitido</span>
                               </div>
                             );
                           }
@@ -6627,11 +6606,16 @@ export default function App() {
                             return (
                               <div className="mt-1 px-2 py-1 rounded bg-blue-50 border border-blue-300 text-blue-900 text-[11px] font-bold flex items-center gap-1.5">
                                 <span>⭐</span>
-                                <span>{feriado.tipo === 'municipal_recife' ? 'Feriado Recife' : 'Feriado PE'}: {feriado.nome}</span>
+                                <span>Alerta: {feriado.tipo === 'municipal_recife' ? 'Feriado Recife' : 'Feriado PE'} ({feriado.nome}) — Agendamento permitido</span>
                               </div>
                             );
                           }
-                          return null;
+                          return (
+                            <div className="mt-1 px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold flex items-center gap-1.5">
+                              <span>📅</span>
+                              <span>Alerta: {feriado.nome} — Agendamento permitido</span>
+                            </div>
+                          );
                         })()}
                       </FormField>
                       <FormField label="Data Conclusão">
@@ -7411,9 +7395,9 @@ export default function App() {
                           if (!feriado) return null;
                           if (feriado.tipo === 'nacional') {
                             return (
-                              <div className="mt-1 px-2 py-1 rounded bg-rose-50 border border-rose-300 text-rose-800 text-[11px] font-bold flex items-center gap-1.5">
-                                <span>🚫</span>
-                                <span>Feriado Nacional ({feriado.nome}): Agendamento Proibido!</span>
+                              <div className="mt-1 px-2 py-1 rounded bg-amber-50 border border-amber-300 text-amber-900 text-[11px] font-bold flex items-center gap-1.5">
+                                <span>⚠️</span>
+                                <span>Alerta: Feriado Nacional ({feriado.nome}) — Agendamento permitido</span>
                               </div>
                             );
                           }
@@ -7421,11 +7405,16 @@ export default function App() {
                             return (
                               <div className="mt-1 px-2 py-1 rounded bg-blue-50 border border-blue-300 text-blue-900 text-[11px] font-bold flex items-center gap-1.5">
                                 <span>⭐</span>
-                                <span>{feriado.tipo === 'municipal_recife' ? 'Feriado Recife' : 'Feriado PE'}: {feriado.nome}</span>
+                                <span>Alerta: {feriado.tipo === 'municipal_recife' ? 'Feriado Recife' : 'Feriado PE'} ({feriado.nome}) — Agendamento permitido</span>
                               </div>
                             );
                           }
-                          return null;
+                          return (
+                            <div className="mt-1 px-2 py-1 rounded bg-amber-50 border border-amber-200 text-amber-900 text-[11px] font-bold flex items-center gap-1.5">
+                              <span>📅</span>
+                              <span>Alerta: {feriado.nome} — Agendamento permitido</span>
+                            </div>
+                          );
                         })()}
                       </FormField>
 
