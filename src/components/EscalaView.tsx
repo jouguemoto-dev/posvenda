@@ -380,7 +380,7 @@ export default function EscalaView({
   }, [weekOffset]);
 
   const addToast = (message: string) => {
-    const id = Date.now();
+    const id = Date.now() + Math.random();
     setToasts(prev => [...prev, { id, message }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
@@ -1951,6 +1951,7 @@ export default function EscalaView({
                           <AnimatePresence>
                             {addingClientTo?.day === day && addingClientTo?.teamId === team.id && (
                               <motion.div 
+                                key={`add-client-${day}-${team.id}`}
                                 initial={{ opacity: 0, scale: 0.9, y: -10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9, y: -10 }}
@@ -1978,6 +1979,7 @@ export default function EscalaView({
 
                             {activeCell?.day === day && activeCell?.teamId === team.id && (
                               <motion.div 
+                                key={`palette-${day}-${team.id}`}
                                 initial={{ opacity: 0, scale: 0.9, y: -10 }}
                                 animate={{ opacity: 1, scale: 1, y: 0 }}
                                 exit={{ opacity: 0, scale: 0.9, y: -10 }}

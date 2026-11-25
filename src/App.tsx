@@ -3920,15 +3920,10 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-indigo-50">
-                      <AnimatePresence mode="popLayout">
                         {scheduledObras.length > 0 ? (
                           scheduledObras.map((obra) => (
-                            <motion.tr 
-                              layout
-                              key={obra.id}
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
+                            <tr 
+                              key={obra.firebaseId || obra.id}
                               onClick={() => handleEdit(obra)}
                               className={`cursor-pointer hover:bg-indigo-50/50 transition-colors ${
                                 obra.situacao === 'Pendente' 
@@ -4161,7 +4156,7 @@ export default function App() {
                                   )}
                                 </div>
                               </td>
-                            </motion.tr>
+                            </tr>
                           ))
                         ) : (
                           <tr>
@@ -4170,7 +4165,6 @@ export default function App() {
                             </td>
                           </tr>
                         )}
-                      </AnimatePresence>
                     </tbody>
                   </table>
                 </div>
@@ -4285,15 +4279,10 @@ export default function App() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      <AnimatePresence mode="popLayout">
                         {unscheduledObras.length > 0 ? (
                           unscheduledObras.map((obra) => (
-                            <motion.tr 
-                              key={obra.id}
-                              layout
-                              initial={{ opacity: 0 }}
-                              animate={{ opacity: 1 }}
-                              exit={{ opacity: 0 }}
+                            <tr 
+                              key={obra.firebaseId || obra.id}
                               onClick={() => handleEdit(obra)}
                               className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                                 obra.situacao === 'Pendente' 
@@ -4526,7 +4515,7 @@ export default function App() {
                                   )}
                                 </div>
                               </td>
-                            </motion.tr>
+                            </tr>
                           ))
                         ) : (
                           <tr>
@@ -4535,7 +4524,6 @@ export default function App() {
                             </td>
                           </tr>
                         )}
-                      </AnimatePresence>
                     </tbody>
                   </table>
                 </div>
@@ -4650,15 +4638,10 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <AnimatePresence mode="popLayout">
                       {archivedObras.length > 0 ? (
                         archivedObras.map((obra) => (
-                          <motion.tr 
-                            key={obra.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                          <tr 
+                            key={obra.firebaseId || obra.id}
                             onClick={() => handleEdit(obra)}
                             className={`cursor-pointer hover:bg-slate-50 transition-colors bg-emerald-50/40 border-l-4 border-emerald-400 ${selectedIds.has(obra.id) ? 'bg-emerald-100/80' : ''}`}
                           >
@@ -4831,7 +4814,7 @@ export default function App() {
                                 </button>
                               </div>
                             </td>
-                          </motion.tr>
+                          </tr>
                         ))
                       ) : (
                         <tr>
@@ -4840,7 +4823,6 @@ export default function App() {
                           </td>
                         </tr>
                       )}
-                    </AnimatePresence>
                   </tbody>
                 </table>
               </div>
@@ -4921,7 +4903,7 @@ export default function App() {
                     {administrativeServicosList.length > 0 ? (
                       administrativeServicosList.map(servico => (
                         <tr 
-                          key={servico.id}
+                          key={servico.firebaseId || servico.id}
                           onClick={() => handleServicoEdit(servico)}
                           className={`cursor-pointer hover:bg-purple-50/40 transition-colors bg-purple-50/15 border-l-4 border-purple-500 ${
                             selectedIds.has(servico.id) ? 'bg-purple-100/50' : ''
@@ -5263,15 +5245,10 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <AnimatePresence mode="popLayout">
                       {scheduledServicosList.length > 0 ? (
                         scheduledServicosList.map((servico) => (
-                          <motion.tr 
-                            key={servico.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                          <tr 
+                            key={servico.firebaseId || servico.id}
                             onClick={() => handleServicoEdit(servico)}
                             className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                               servico.tipoAtendimento === 'Administrativo'
@@ -5514,7 +5491,7 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                          </motion.tr>
+                          </tr>
                         ))
                       ) : (
                         <tr>
@@ -5523,7 +5500,6 @@ export default function App() {
                           </td>
                         </tr>
                       )}
-                    </AnimatePresence>
                   </tbody>
                 </table>
               </div>
@@ -5670,15 +5646,10 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <AnimatePresence mode="popLayout">
                       {unscheduledServicosList.length > 0 ? (
                         unscheduledServicosList.map((servico) => (
-                          <motion.tr 
-                            key={servico.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                          <tr 
+                            key={servico.firebaseId || servico.id}
                             onClick={() => handleServicoEdit(servico)}
                             className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                               servico.tipoAtendimento === 'Administrativo'
@@ -5921,7 +5892,7 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                          </motion.tr>
+                          </tr>
                         ))
                       ) : (
                         <tr>
@@ -5930,7 +5901,6 @@ export default function App() {
                           </td>
                         </tr>
                       )}
-                    </AnimatePresence>
                   </tbody>
                 </table>
               </div>
@@ -6124,15 +6094,10 @@ export default function App() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    <AnimatePresence mode="popLayout">
                       {archivedServicos.length > 0 ? (
                         archivedServicos.map((servico) => (
-                          <motion.tr 
-                            key={servico.id}
-                            layout
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
+                          <tr 
+                            key={servico.firebaseId || servico.id}
                             onClick={() => handleServicoEdit(servico)}
                             className={`cursor-pointer hover:bg-slate-50 transition-colors ${
                               servico.tipoAtendimento === 'Administrativo' ? 'bg-purple-50/20 border-l-4 border-purple-500' : ''
@@ -6288,12 +6253,11 @@ export default function App() {
                                 )}
                               </div>
                             </td>
-                          </motion.tr>
+                          </tr>
                         ))
                       ) : (
                         <tr><td colSpan={16} className="px-6 py-8 text-center text-slate-400 italic">Nenhum serviço concluído.</td></tr>
                       )}
-                    </AnimatePresence>
                   </tbody>
                 </table>
               </div>
@@ -7106,7 +7070,7 @@ export default function App() {
                               ) : (
                                 matchingObras.map((obra) => (
                                   <button
-                                    key={obra.id}
+                                    key={obra.firebaseId || obra.id}
                                     type="button"
                                     onClick={() => selectObraForServico(obra)}
                                     className="w-full text-left px-3 py-2 hover:bg-indigo-50/50 transition-colors flex items-start gap-2.5"
@@ -8739,7 +8703,7 @@ function SettingsModal({
               ) : (
                 <div className="space-y-2">
                   {(activeTab === 'vendedores' ? vendedores : activeTab === 'equipes' ? equipes : activeTab === 'inversores' ? inversores : formasPagamento).map((item: any) => (
-                    <div key={item.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div key={(item as any).firebaseId || item.id} className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
                       <div>
                         <p className="font-bold text-slate-900 text-xs">{item.nome || item.modelo}</p>
                         <p className="text-[11px] text-slate-500">{item.lider || item.marca || (item.ativo ? 'Ativo' : 'Inativo')}</p>
@@ -8912,7 +8876,7 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
                   </thead>
                   <tbody className="divide-y divide-slate-200">
                     {payrollData.map((obra: any) => (
-                      <tr key={obra.id} className="hover:bg-white transition-colors">
+                      <tr key={obra.firebaseId || obra.id} className="hover:bg-white transition-colors">
                         <td className="px-3 py-2 text-xs text-slate-600">{formatDateBR(obra.dataConclusao || obra.dataObra)}</td>
                         <td className="px-3 py-2">
                           <div className="text-xs font-bold text-slate-900 cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">

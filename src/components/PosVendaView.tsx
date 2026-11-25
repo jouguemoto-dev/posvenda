@@ -848,7 +848,6 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <AnimatePresence mode="popLayout">
             {isLoadingHistory ? (
               <div className="col-span-full py-10 flex justify-center">
                 <div className="w-6 h-6 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />
@@ -859,12 +858,8 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
               </div>
             ) : (
               history.map((record) => (
-                <motion.div 
+                <div 
                   key={record.id}
-                  layout
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
                   className="bg-white p-4 rounded-xl border border-slate-200 shadow-sm hover:border-indigo-200 transition-all flex items-center justify-between gap-4"
                 >
                   <div className="space-y-1">
@@ -918,10 +913,9 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
                   >
                     <ExternalLink size={16} />
                   </button>
-                </motion.div>
+                </div>
               ))
             )}
-          </AnimatePresence>
         </div>
       </section>
     </div>
