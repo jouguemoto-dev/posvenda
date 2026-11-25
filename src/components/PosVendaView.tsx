@@ -404,7 +404,7 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
 
       y += (splitCorpo.length * 7) + 5;
       doc.setFontSize(10);
-      doc.text(`Data da Transação: ${new Date(receiptData.dataPagamento).toLocaleDateString('pt-BR')}`, margin, y);
+      doc.text(`Data da Transação: ${receiptData.dataPagamento ? receiptData.dataPagamento.split('-').reverse().join('/') : ''}`, margin, y);
 
       // Signature area
       y = 180;
@@ -820,7 +820,7 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
 
                     <div className="flex justify-between items-end pt-8">
                       <div className="text-xs text-slate-500">
-                        Data: {new Date(receiptData.dataPagamento).toLocaleDateString('pt-BR')}
+                        Data: {receiptData.dataPagamento ? receiptData.dataPagamento.split('-').reverse().join('/') : ''}
                       </div>
                       <div className="text-center w-64 border-t border-slate-400 pt-1">
                         <p className="text-[10px] font-bold text-slate-800">{companyDetails.name}</p>

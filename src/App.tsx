@@ -869,19 +869,19 @@ export default function App() {
 
     const unsubVendedores = onSnapshot(collection(db, 'vendedores'), (snapshot) => {
       setVendedores(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Vendedor)));
-    });
+    }, (err) => console.error('Erro ao carregar vendedores:', err));
 
     const unsubEquipes = onSnapshot(collection(db, 'equipes'), (snapshot) => {
       setEquipes(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Equipe)));
-    });
+    }, (err) => console.error('Erro ao carregar equipes:', err));
 
     const unsubInversores = onSnapshot(collection(db, 'inversores'), (snapshot) => {
       setInversores(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inversor)));
-    });
+    }, (err) => console.error('Erro ao carregar inversores:', err));
 
     const unsubFormasPagamento = onSnapshot(collection(db, 'formasPagamento'), (snapshot) => {
       setFormasPagamento(snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as FormaPagamento)));
-    });
+    }, (err) => console.error('Erro ao carregar formas de pagamento:', err));
 
     return () => {
       unsubVendedores();
@@ -1237,7 +1237,7 @@ export default function App() {
 
   const handleSaveLembrete = async () => {
     if (!lembreteFormData.titulo) {
-      alert("Por favor, preencha o campo de lembrete!");
+      addToast("Por favor, preencha o campo de lembrete!");
       return;
     }
 
@@ -1512,7 +1512,7 @@ export default function App() {
     if (!file) return;
 
     if (file.type !== 'text/plain' && !file.name.endsWith('.txt')) {
-      alert('Por favor, selecione um arquivo .txt');
+      addToast('Por favor, selecione um arquivo .txt');
       return;
     }
 
@@ -2099,7 +2099,7 @@ export default function App() {
     
     const printWindow = window.open('', '_blank');
     if (!printWindow) {
-      alert('Por favor, ative os pop-ups para abrir o relatório de obras concluídas.');
+      addToast('Por favor, ative os pop-ups para abrir o relatório de obras concluídas.');
       return;
     }
     
@@ -2223,7 +2223,7 @@ export default function App() {
   const exportarCSV = (tipo: 'obras' | 'servicos') => {
     const data = tipo === 'obras' ? obras : servicos;
     if (data.length === 0) {
-      alert('Não há dados para exportar.');
+      addToast('Não há dados para exportar.');
       return;
     }
 
@@ -2355,10 +2355,10 @@ export default function App() {
               count++;
             }
           }
-          alert(`${count} registros importados do Excel com sucesso!`);
+          addToast(`${count} registros importados do Excel com sucesso!`);
         } catch (err) {
           console.error(err);
-          alert('Erro ao importar arquivo Excel. Verifique o modelo.');
+          addToast('Erro ao importar arquivo Excel. Verifique o modelo.');
         }
       };
       reader.readAsArrayBuffer(file);
@@ -2458,7 +2458,7 @@ export default function App() {
 
     setImportText('');
     setIsImportModalOpen(false);
-    alert(`${count} registros importados e salvos no banco de dados!`);
+    addToast(`${count} registros importados e salvos no banco de dados!`);
   };
 
   const downloadImportTemplate = () => {
@@ -8783,8 +8783,9 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
       end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
     }
 
-    setStartDate(start.toISOString().split('T')[0]);
-    setEndDate(end.toISOString().split('T')[0]);
+    const fmtLocal = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    setStartDate(fmtLocal(start));
+    setEndDate(fmtLocal(end));
   }, [period]);
 
   const payrollData = useMemo(() => {
@@ -8794,12 +8795,9 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
       if (obra.equipe !== selectedEquipe) return false;
       if (obra.situacao !== 'Concluído') return false;
       
-      const date = new Date(obra.dataConclusao || obra.dataObra);
-      const start = new Date(startDate);
-      const end = new Date(endDate);
-      end.setHours(23, 59, 59);
-      
-      return date >= start && date <= end;
+      const rawDate = (obra.dataConclusao || obra.dataObra || '').split('T')[0];
+      if (!rawDate) return false;
+      return rawDate >= startDate && rawDate <= endDate;
     });
   }, [obras, selectedEquipe, startDate, endDate]);
 

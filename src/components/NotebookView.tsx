@@ -86,6 +86,8 @@ const NotebookView: React.FC<{
         firebaseId: doc.id
       })) as Note[];
       setNotes(notesList);
+    }, (err) => {
+      console.error("Erro ao carregar anotações:", err);
     });
     return () => unsubscribe();
   }, []);

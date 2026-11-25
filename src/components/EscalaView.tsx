@@ -348,6 +348,9 @@ export default function EscalaView({
         return a.name.localeCompare(b.name);
       });
       setTeams(teamsData);
+    }, (err) => {
+      console.error("Erro ao carregar equipes da escala:", err);
+      addToast("Erro ao carregar equipes da escala.");
     });
 
     const qSchedules = collection(db, 'schedules');
@@ -363,6 +366,9 @@ export default function EscalaView({
       } else {
         setSchedule({});
       }
+    }, (err) => {
+      console.error("Erro ao carregar escala semanal:", err);
+      addToast("Erro ao carregar escala semanal.");
     });
 
     return () => {
@@ -490,6 +496,12 @@ export default function EscalaView({
     return counts;
   }, [teams, weekDatesFull, localObras, localServicos]);
 
+  const teamsWithSchedulesCount = useMemo(() => {
+    return teams.filter(t => (teamScheduleCounts[t.id] || 0) > 0).length;
+  }, [teams, teamScheduleCounts]);
+
+  const emptyTeamsCount = teams.length - teamsWithSchedulesCount;
+
   // Equipes visíveis na escala conforme o filtro de agendamento automático
   const visibleTeams = useMemo(() => {
     if (!hideEmptyTeams) return teams;
@@ -534,25 +546,38 @@ export default function EscalaView({
     }
   };
 
-  const handleQuickStatusChangeObra = async (obra: Obra, newStatus: string, e?: React.MouseEvent) => {
+  const handleQuickStatusChangeObra = async (obra: Obra, newStatus: string, e?: React.SyntheticEvent) => {
     e?.stopPropagation();
-    const targetId = obra.firebaseId || (obra as any).id;
-    if (!targetId) return;
+    const docId = obra.firebaseId ? String(obra.firebaseId) : null;
+    if (!docId) {
+      addToast("Erro: ID no Firebase não encontrado.");
+      return;
+    }
+
+    const updatePayload: Record<string, any> = {
+      situacao: newStatus,
+      updatedAt: serverTimestamp()
+    };
+    if (newStatus === 'Concluído' && !obra.dataConclusao) {
+      const now = new Date();
+      updatePayload.dataConclusao = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    }
 
     // Atualização otimista imediata para mudança instantânea da cor (Azul / Verde) na UI
     setLocalObras(prev => prev.map(o => {
-      if (o.firebaseId === targetId || String(o.id) === String(targetId)) {
-        return { ...o, situacao: newStatus as any };
+      if (o.firebaseId === docId || o.id === obra.id) {
+        return {
+          ...o,
+          situacao: newStatus as any,
+          ...(updatePayload.dataConclusao ? { dataConclusao: updatePayload.dataConclusao } : {})
+        };
       }
       return o;
     }));
 
     try {
-      const docRef = doc(db, 'obras', targetId);
-      await updateDoc(docRef, {
-        situacao: newStatus,
-        updatedAt: serverTimestamp()
-      });
+      const docRef = doc(db, 'obras', docId);
+      await updateDoc(docRef, updatePayload);
       addToast(`Status de "${obra.cliente}" alterado para "${newStatus}"`);
     } catch (err) {
       console.error("Erro ao alterar status da obra:", err);
@@ -561,21 +586,24 @@ export default function EscalaView({
     }
   };
 
-  const handleQuickStatusChangeServico = async (servico: Servico, newStatus: string, e?: React.MouseEvent) => {
+  const handleQuickStatusChangeServico = async (servico: Servico, newStatus: string, e?: React.SyntheticEvent) => {
     e?.stopPropagation();
-    const targetId = servico.firebaseId || (servico as any).id;
-    if (!targetId) return;
+    const docId = servico.firebaseId ? String(servico.firebaseId) : null;
+    if (!docId) {
+      addToast("Erro: ID no Firebase não encontrado.");
+      return;
+    }
 
     // Atualização otimista imediata para mudança instantânea da cor (Azul / Verde) na UI
     setLocalServicos(prev => prev.map(s => {
-      if (s.firebaseId === targetId || String(s.id) === String(targetId)) {
+      if (s.firebaseId === docId || s.id === servico.id) {
         return { ...s, situacao: newStatus as any };
       }
       return s;
     }));
 
     try {
-      const docRef = doc(db, 'servicos', targetId);
+      const docRef = doc(db, 'servicos', docId);
       await updateDoc(docRef, {
         situacao: newStatus,
         updatedAt: serverTimestamp()
@@ -771,7 +799,8 @@ export default function EscalaView({
       const head = [['Dia / Data', ...targetTeams.map(t => t.name)]];
       const body = DAYS.map((day, i) => {
         const fullDate = weekDatesFull[i];
-        let dayText = `${day}\n(${weekDates[i]})`;
+        const feriadoPdf = getFeriado(fullDate);
+        let dayText = `${day}\n(${weekDates[i]})${feriadoPdf ? `\n[FERIADO: ${feriadoPdf.nome}]` : ''}`;
 
         return [
           dayText,
@@ -1029,7 +1058,9 @@ export default function EscalaView({
                   : 'bg-slate-50 hover:bg-slate-100 text-slate-700 border-slate-200'
               }`}
               title={hideEmptyTeams 
-                ? `Filtro ativo: ${teams.length - visibleTeams.length} equipes sem agendamento ocultas. Clique para exibir todas.` 
+                ? (teamsWithSchedulesCount > 0
+                    ? `Filtro ativo: ${emptyTeamsCount} equipes sem agendamento ocultas. Clique para exibir todas.`
+                    : `Filtro ativo: nenhuma equipe tem agendamento nesta semana, exibindo todas para visualização.`)
                 : "Clique para ocultar equipes que não têm agendamento nesta semana"}
             >
               {hideEmptyTeams ? (
@@ -1037,16 +1068,16 @@ export default function EscalaView({
                   <EyeOff size={14} className="stroke-[2.5]" />
                   <span>Ocultar s/ Agendamento</span>
                   <span className="bg-amber-700/80 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black">
-                    {teams.length - visibleTeams.length} ocultas
+                    {teamsWithSchedulesCount > 0 ? `${emptyTeamsCount} ocultas` : 'Todas visíveis'}
                   </span>
                 </>
               ) : (
                 <>
                   <Eye size={14} className="text-slate-500" />
                   <span>Ocultar s/ Agendamento</span>
-                  {teams.length - visibleTeams.length > 0 && (
+                  {emptyTeamsCount > 0 && (
                     <span className="bg-slate-200 text-slate-700 text-[10px] px-1.5 py-0.2 rounded-full font-black">
-                      {teams.length - visibleTeams.length} vazias
+                      {emptyTeamsCount} vazias
                     </span>
                   )}
                 </>
@@ -1129,14 +1160,14 @@ export default function EscalaView({
           <div className="flex items-center gap-2">
             <EyeOff size={14} className="text-amber-700 shrink-0" />
             <span>
-              {visibleTeams.length > 0 ? (
+              {teamsWithSchedulesCount > 0 ? (
                 <>
                   Exibindo <strong>{visibleTeams.length}</strong> de {teams.length} equipes com agendamentos automáticos na semana ({weekRange}).{' '}
-                  <span className="text-amber-700 font-medium">({teams.length - visibleTeams.length} {teams.length - visibleTeams.length === 1 ? 'equipe sem agendamento ocultada' : 'equipes sem agendamento ocultadas'})</span>
+                  <span className="text-amber-700 font-medium">({emptyTeamsCount} {emptyTeamsCount === 1 ? 'equipe sem agendamento ocultada' : 'equipes sem agendamento ocultadas'})</span>
                 </>
               ) : (
                 <>
-                  Nenhuma equipe possui agendamentos automáticos de obras ou serviços na semana de <strong>{weekRange}</strong>.
+                  Nenhuma equipe possui agendamentos automáticos na semana de <strong>{weekRange}</strong>. Exibindo todas as <strong>{teams.length}</strong> equipes para visualização.
                 </>
               )}
             </span>
@@ -2503,8 +2534,11 @@ export default function EscalaView({
                                 value={item.formaPagamento || ''}
                                 onChange={async (e) => {
                                   const newPayment = e.target.value;
-                                  const targetId = item.firebaseId || (item as any).id;
-                                  if (!targetId) return;
+                                  const targetId = item.firebaseId ? String(item.firebaseId) : null;
+                                  if (!targetId) {
+                                    addToast("Erro: ID no Firebase não encontrado.");
+                                    return;
+                                  }
 
                                   if (isObra) {
                                     setLocalObras(prev => prev.map(o => (o.firebaseId === targetId || String(o.id) === String(targetId)) ? { ...o, formaPagamento: newPayment } : o));
