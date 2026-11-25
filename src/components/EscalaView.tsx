@@ -335,17 +335,16 @@ export default function EscalaView({
 
   const [weekOffset, setWeekOffset] = useState(calculateInitialOffset());
 
-  // Firestore Listeners
+  // Firestore Listener for Teams (subscribes once)
   useEffect(() => {
     const qTeams = query(collection(db, 'teams'), orderBy('name'));
     const unsubscribeTeams = onSnapshot(qTeams, (snapshot) => {
-      const teamsData = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Team));
-      // Sort by order field, then by name
+      const teamsData = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Team));
       teamsData.sort((a, b) => {
         const orderA = a.order ?? 999;
         const orderB = b.order ?? 999;
         if (orderA !== orderB) return orderA - orderB;
-        return a.name.localeCompare(b.name);
+        return (a.name || '').localeCompare(b.name || '');
       });
       setTeams(teamsData);
     }, (err) => {
@@ -353,15 +352,21 @@ export default function EscalaView({
       addToast("Erro ao carregar equipes da escala.");
     });
 
-    const qSchedules = collection(db, 'schedules');
-    const unsubscribeSchedules = onSnapshot(qSchedules, (snapshot) => {
-      const currentScheduleDoc = snapshot.docs.find(doc => doc.id === `week_${weekOffset}`);
-      if (currentScheduleDoc) {
+    return () => unsubscribeTeams();
+  }, []);
+
+  // Firestore Listener for Current Week Schedule Document Only
+  useEffect(() => {
+    const scheduleDocRef = doc(db, 'schedules', `week_${weekOffset}`);
+    const unsubscribeSchedule = onSnapshot(scheduleDocRef, (docSnap) => {
+      if (docSnap.exists()) {
         try {
-          const parsedData = JSON.parse(currentScheduleDoc.data().data);
-          setSchedule(parsedData);
+          const raw = docSnap.data()?.data;
+          const parsedData = raw ? JSON.parse(raw) : {};
+          setSchedule(parsedData && typeof parsedData === 'object' ? parsedData : {});
         } catch (e) {
           console.error("Error parsing schedule data", e);
+          setSchedule({});
         }
       } else {
         setSchedule({});
@@ -371,10 +376,7 @@ export default function EscalaView({
       addToast("Erro ao carregar escala semanal.");
     });
 
-    return () => {
-      unsubscribeTeams();
-      unsubscribeSchedules();
-    };
+    return () => unsubscribeSchedule();
   }, [weekOffset]);
 
   const addToast = (message: string) => {
@@ -473,7 +475,7 @@ export default function EscalaView({
     const counts: Record<string, number> = {};
 
     teams.forEach(t => {
-      const tName = t.name.trim().toLowerCase();
+      const tName = (t.name || '').trim().toLowerCase();
       let count = 0;
       localObras.forEach(o => {
         const datePart = (o.dataObra || '').split('T')[0];
@@ -805,7 +807,7 @@ export default function EscalaView({
         return [
           dayText,
           ...targetTeams.map(team => {
-            const teamName = team.name.trim().toLowerCase();
+            const teamName = (team.name || '').trim().toLowerCase();
             const cellItems: string[] = [];
 
             // 1. Manual Text entered by user (excluding automated prefix relics)
@@ -908,7 +910,7 @@ export default function EscalaView({
             if (!team) return;
             const day = DAYS[data.row.index];
             const fullDate = weekDatesFull[data.row.index];
-            const teamName = team.name.trim().toLowerCase();
+            const teamName = (team.name || '').trim().toLowerCase();
 
             const matchingObras = localObras.filter(o => {
               const obraEquipe = (o.equipe || '').trim().toLowerCase();
@@ -1327,7 +1329,7 @@ export default function EscalaView({
                     // Match automatically scheduled items
                     const matchingObras = localObras.filter(o => {
                       const obraEquipe = (o.equipe || '').trim().toLowerCase();
-                      const teamName = team.name.trim().toLowerCase();
+                      const teamName = (team.name || '').trim().toLowerCase();
                       const isTeamMatch = obraEquipe === teamName;
                       if (!isTeamMatch) return false;
                       
@@ -1340,7 +1342,7 @@ export default function EscalaView({
                     const matchingServicos = localServicos.filter(s => {
                       const sDate = (s.dataServico || '').split('T')[0];
                       if (sDate !== fullDate) return false;
-                      const teamName = team.name.trim().toLowerCase();
+                      const teamName = (team.name || '').trim().toLowerCase();
                       const sTeams = getServicoTeams(s);
                       return sTeams.some(st => st.trim().toLowerCase() === teamName);
                     });
@@ -1353,7 +1355,7 @@ export default function EscalaView({
                     const colorObj = COLORS.find(c => c.bg.toLowerCase() === cellColor.toLowerCase());
                     const isDark = colorObj ? colorObj.isDark : (cellColor === '#3b82f6' || cellColor === '#22c55e' || cellColor === '#1e2f3e');
 
-                    const cleanManualText = cellData.text.split('\n').filter(line => {
+                    const cleanManualText = (cellData.text || '').split('\n').filter(line => {
                       const trimmed = line.trim();
                       return !trimmed.startsWith('Cliente:') && 
                              !trimmed.startsWith('• [OBRA]') && 

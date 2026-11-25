@@ -1,4 +1,4 @@
-const CACHE_NAME = 'escala-gestao-v1';
+const CACHE_NAME = 'escala-gestao-v2';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -24,35 +24,56 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  // Let the browser handle Firebase connections or third-party APIs
-  if (event.request.url.includes('firestore.googleapis.com') || event.request.url.includes('firebase')) {
+  if (event.request.method !== 'GET') return;
+
+  const url = event.request.url;
+  // Let the browser handle Firebase, Google APIs, and cross-origin requests directly
+  if (
+    url.includes('firestore.googleapis.com') ||
+    url.includes('firebase') ||
+    url.includes('googleapis.com') ||
+    !url.startsWith(self.location.origin)
+  ) {
     return;
   }
 
+  // Network-first for HTML / navigation requests so updates never serve stale bundles
+  if (event.request.mode === 'navigate' || event.request.headers.get('accept')?.includes('text/html')) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const clone = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, clone));
+          }
+          return networkResponse;
+        })
+        .catch(async () => {
+          const cached = await caches.match(event.request) || await caches.match('/index.html');
+          return cached || Response.error();
+        })
+    );
+    return;
+  }
+
+  // Cache-first with network fallback for static assets
   event.respondWith(
     caches.match(event.request).then((cachedResponse) => {
       if (cachedResponse) {
-        // Fetch background update
-        fetch(event.request).then((networkResponse) => {
-          if (networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
-          }
-        }).catch(() => {});
         return cachedResponse;
       }
-
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
+      return fetch(event.request)
+        .then((response) => {
+          if (!response || response.status !== 200 || response.type !== 'basic') {
+            return response;
+          }
+          const responseToCache = response.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, responseToCache);
+          });
           return response;
-        }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        return response;
-      }).catch(() => {
-        // Fallback or handle offline
-      });
+        })
+        .catch(() => Response.error());
     })
   );
 });

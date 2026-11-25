@@ -1,6 +1,7 @@
 import {StrictMode} from 'react';
 import {createRoot} from 'react-dom/client';
 import App from './App.tsx';
+import ErrorBoundary from './components/ErrorBoundary.tsx';
 import './index.css';
 
 // Register Service Worker for Mobile PWA
@@ -8,6 +9,7 @@ if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/sw.js')
       .then((reg) => {
+        reg.update().catch(() => {});
         console.log('Service Worker registrado com sucesso:', reg.scope);
       })
       .catch((err) => {
@@ -18,6 +20,8 @@ if ('serviceWorker' in navigator && (import.meta as any).env?.PROD) {
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
   </StrictMode>,
 );

@@ -736,7 +736,7 @@ export default function App() {
   };
 
   const selectAllServicoTeams = () => {
-    const activeNames = equipes.filter(e => e.ativo).map(e => e.nome.trim());
+    const activeNames = equipes.filter(e => e.ativo).map(e => (e.nome || '').trim()).filter(Boolean);
     setServicoFormData(prev => {
       const current = Array.isArray(prev.equipes) ? prev.equipes : [];
       const merged = Array.from(new Set([...current, ...activeNames]));
@@ -815,7 +815,13 @@ export default function App() {
       })) as any[];
       setObras(obrasData);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'obras');
+      console.error('Erro ao carregar obras:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Quota exceeded')) {
+        addToast('⚠️ Limite diário de leituras do banco atingido. Tente novamente mais tarde.');
+      } else {
+        addToast('⚠️ Falha temporária de conexão ao carregar obras.');
+      }
     });
 
     return () => unsubscribe();
@@ -836,7 +842,13 @@ export default function App() {
       })) as any[];
       setServicos(servicosData);
     }, (error) => {
-      handleFirestoreError(error, OperationType.LIST, 'servicos');
+      console.error('Erro ao carregar serviços:', error);
+      const msg = error instanceof Error ? error.message : String(error);
+      if (msg.includes('Quota exceeded')) {
+        addToast('⚠️ Limite diário de leituras do banco atingido. Tente novamente mais tarde.');
+      } else {
+        addToast('⚠️ Falha temporária de conexão ao carregar serviços.');
+      }
     });
 
     return () => unsubscribe();
@@ -897,7 +909,7 @@ export default function App() {
     const ativas = obras.filter(o => o.situacao === 'Em Andamento' || o.situacao === 'Pendente').length;
     const emEspera = obras.filter(o => o.situacao === 'Em Espera').length;
     const concluidas = obras.filter(o => o.situacao === 'Concluído').length;
-    const valorTotal = obras.reduce((sum, o) => sum + o.valorReceber, 0);
+    const valorTotal = obras.reduce((sum, o) => sum + Number(o.valorReceber || 0), 0);
     return { total, ativas, concluidas, emEspera, valorTotal };
   }, [obras]);
 
@@ -1386,7 +1398,7 @@ export default function App() {
     try {
       const teamsSnapshot = await getDocs(collection(db, 'teams'));
       let teamDoc = teamsSnapshot.docs.find(doc => 
-        doc.data().name.trim().toLowerCase() === teamName.trim().toLowerCase()
+        (doc.data().name || '').trim().toLowerCase() === teamName.trim().toLowerCase()
       );
       
       if (!teamDoc) {
@@ -1484,7 +1496,7 @@ export default function App() {
         o.local,
         o.equipe,
         formatDateBR(o.dataObra),
-        `R$ ${o.valorReceber.toLocaleString('pt-BR')}`
+        `R$ ${Number(o.valorReceber || 0).toLocaleString('pt-BR')}`
       ];
       tableRows.push(obraData);
     });
@@ -2049,7 +2061,7 @@ export default function App() {
     texto += `REGISTROS ATIVOS (${ativos.length}):\n`;
     texto += "-".repeat(50) + "\n";
     ativos.forEach(o => {
-      texto += `[${o.numeroRegistro}] ${o.cliente} | ${o.prioridade} | ${o.situacao} | R$ ${o.valorReceber.toLocaleString('pt-BR')}\n`;
+      texto += `[${o.numeroRegistro}] ${o.cliente} | ${o.prioridade} | ${o.situacao} | R$ ${Number(o.valorReceber || 0).toLocaleString('pt-BR')}\n`;
     });
     
     const concluidas = obras.filter(o => o.situacao === 'Concluído');
@@ -2669,7 +2681,7 @@ export default function App() {
       o.local,
       formatDateBR(o.dataContrato),
       o.quantidadePlacas,
-      `R$ ${o.valorReceber.toLocaleString('pt-BR')}`
+      `R$ ${Number(o.valorReceber || 0).toLocaleString('pt-BR')}`
     ]);
 
     autoTable(doc, {
@@ -2746,7 +2758,7 @@ export default function App() {
     doc.setTextColor(textDark[0], textDark[1], textDark[2]);
     doc.text("CLIENTE:", margin + 5, y);
     doc.setFont("helvetica", "normal");
-    doc.text(o.cliente.toUpperCase(), margin + 30, y);
+    doc.text(String(o.cliente || '---').toUpperCase(), margin + 30, y);
 
     y += 6;
     doc.setFont("helvetica", "bold");
@@ -2775,7 +2787,7 @@ export default function App() {
 
     y += 10;
     const technicalData = [
-      ["SITUAÇÃO:", o.situacao.toUpperCase(), "PRIORIDADE:", o.prioridade.toUpperCase()],
+      ["SITUAÇÃO:", String(o.situacao || "---").toUpperCase(), "PRIORIDADE:", String(o.prioridade || "---").toUpperCase()],
       ["EQUIPE:", String(o.equipe || "---").toUpperCase(), "INVERSOR:", String(o.inversor || "---").toUpperCase()],
       ["CONTRATO:", formatDateBR(o.dataContrato), "PLACAS (QTD):", String(o.quantidadePlacas)],
       ["CHEGADA PLACAS:", o.dataChegadaPlacas ? formatDateBR(o.dataChegadaPlacas) : "---", "PREVISÃO OBRA:", o.dataObra ? formatDateBR(o.dataObra) : "---"],
@@ -2824,14 +2836,14 @@ export default function App() {
     
     doc.setFontSize(18);
     doc.setFont("helvetica", "bold");
-    doc.text(`R$ ${o.valorReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y + 18, { align: 'center' });
+    doc.text(`R$ ${Number(o.valorReceber || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, pageWidth - margin - 40, y + 18, { align: 'center' });
 
     // --- FOOTER ---
     doc.setFontSize(7);
     doc.setTextColor(textLight[0], textLight[1], textLight[2]);
     doc.text("Gerado por CBC Solaris Cloud Management System", pageWidth / 2, pageHeight - 10, { align: 'center' });
 
-    doc.save(`Obra_${o.numeroRegistro}_${o.cliente.replace(/\s+/g, '_')}.pdf`);
+    doc.save(`Obra_${o.numeroRegistro}_${String(o.cliente || 'Cliente').replace(/\s+/g, '_')}.pdf`);
   };
 
   const exportarIndividualTXT = (o: Obra) => {
@@ -2853,8 +2865,8 @@ export default function App() {
     texto += "-".repeat(60) + "\n";
     texto += "FINANCEIRO & TÉCNICO\n";
     texto += `Quantidade de Placas:  ${o.quantidadePlacas} unidades\n`;
-    texto += `Valor Mão de Obra(un): R$ ${o.valorMaoObra.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
-    texto += `Valor Total a Receber: R$ ${o.valorReceber.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+    texto += `Valor Mão de Obra(un): R$ ${Number(o.valorMaoObra || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
+    texto += `Valor Total a Receber: R$ ${Number(o.valorReceber || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}\n`;
     texto += `Forma de Pagamento:    ${o.formaPagamento || '---'}\n`;
     texto += "-".repeat(60) + "\n";
     texto += "OBSERVAÇÕES ADICIONAIS\n";
@@ -2867,7 +2879,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `obra_${o.numeroRegistro}_${o.cliente.replace(/[^a-z0-9]/gi, '_')}.txt`;
+    link.download = `obra_${o.numeroRegistro}_${String(o.cliente || 'Cliente').replace(/[^a-z0-9]/gi, '_')}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -2889,7 +2901,7 @@ export default function App() {
       texto += `- Prioridade: ${o.prioridade}\n`;
       texto += `- Equipe: ${o.equipe || '---'}\n`;
       texto += `- Data da Obra: ${o.dataObra ? formatDateBR(o.dataObra) : '---'}\n`;
-      texto += `- Valor: R$ ${o.valorReceber.toLocaleString('pt-BR')}\n`;
+      texto += `- Valor: R$ ${Number(o.valorReceber || 0).toLocaleString('pt-BR')}\n`;
       texto += "-".repeat(40) + "\n\n";
     });
 
@@ -3687,7 +3699,7 @@ export default function App() {
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs focus:ring-2 focus:ring-indigo-500 outline-none shadow-xs font-medium"
               >
                 <option value="">Todas Equipes</option>
-                {[...equipes].sort((a, b) => a.nome.localeCompare(b.nome)).map((e) => (
+                {[...equipes].sort((a, b) => (a.nome || '').localeCompare(b.nome || '')).map((e) => (
                   <option key={e.id} value={e.nome}>{e.nome}</option>
                 ))}
               </select>
@@ -7280,7 +7292,7 @@ export default function App() {
                         <div className="space-y-1">
                           <div className="flex flex-wrap gap-1">
                             {equipes.filter(e => e.ativo).map(eq => {
-                              const isSelected = selectedServicoTeamsList.some(t => t.toLowerCase() === eq.nome.trim().toLowerCase());
+                              const isSelected = selectedServicoTeamsList.some(t => t.toLowerCase() === (eq.nome || '').trim().toLowerCase());
                               return (
                                 <button
                                   key={eq.id}
