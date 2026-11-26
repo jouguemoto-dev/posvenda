@@ -13,7 +13,7 @@
   }
 
   html {
-    font-size: clamp(14px, 0.25vw + 13px, 18px);
+    font-size: clamp(14px, 0.12vw + 13.5px, 16px);
     -webkit-text-size-adjust: 100%;
     overflow-x: clip;
     scroll-behavior: smooth;
@@ -38,42 +38,42 @@
     max-width: 100%;
   }
 
-  /* Adaptive typography with clamp() across all screen sizes (mobile -> TV) */
+  /* Adaptive typography with clamp() calibrated so dense UIs/tables never inflate & clip */
   [class*="text-[9px]"] {
-    font-size: clamp(0.68rem, 0.18vw + 0.62rem, 0.78rem) !important;
+    font-size: clamp(9px, 0.1vw + 8.5px, 11px) !important;
   }
   [class*="text-[10px]"] {
-    font-size: clamp(0.72rem, 0.2vw + 0.66rem, 0.82rem) !important;
+    font-size: clamp(10px, 0.12vw + 9.5px, 12px) !important;
   }
   [class*="text-[11px]"] {
-    font-size: clamp(0.76rem, 0.22vw + 0.7rem, 0.88rem) !important;
+    font-size: clamp(11px, 0.12vw + 10.5px, 13px) !important;
   }
   [class*="text-[12px]"],
   [class*="text-xs"] {
-    font-size: clamp(0.78rem, 0.25vw + 0.72rem, 0.92rem) !important;
+    font-size: clamp(12px, 0.12vw + 11.2px, 13.5px) !important;
   }
   [class*="text-[13px]"],
   [class*="text-[14px]"],
   [class*="text-sm"] {
-    font-size: clamp(0.875rem, 0.28vw + 0.8rem, 1rem) !important;
+    font-size: clamp(13px, 0.15vw + 12px, 15px) !important;
   }
   [class*="text-base"] {
-    font-size: clamp(0.95rem, 0.35vw + 0.85rem, 1.125rem) !important;
+    font-size: clamp(15px, 0.2vw + 13.5px, 17px) !important;
   }
   [class*="text-lg"] {
-    font-size: clamp(1.05rem, 0.45vw + 0.92rem, 1.28rem) !important;
+    font-size: clamp(17px, 0.3vw + 15px, 20px) !important;
   }
   [class*="text-xl"],
   [class*="text-[20px]"] {
-    font-size: clamp(1.125rem, 0.6vw + 0.98rem, 1.45rem) !important;
+    font-size: clamp(18px, 0.4vw + 16px, 22px) !important;
   }
   [class*="text-2xl"],
   [class*="text-[24px]"] {
-    font-size: clamp(1.25rem, 0.9vw + 1rem, 1.75rem) !important;
+    font-size: clamp(21px, 0.6vw + 18px, 28px) !important;
   }
   [class*="text-3xl"],
   [class*="text-[32px]"] {
-    font-size: clamp(1.5rem, 1.2vw + 1.15rem, 2.2rem) !important;
+    font-size: clamp(24px, 0.9vw + 20px, 34px) !important;
   }
 }
 
@@ -91,7 +91,7 @@
     width: 100%;
     max-width: 100%;
     margin-inline: auto;
-    padding-inline: clamp(0.5rem, 1.5vw, 2rem);
+    padding-inline: clamp(0.5rem, 1vw, 1.5rem);
   }
 
   /* Fluid CSS Grid for cards, KPI panels, and lists */
@@ -116,13 +116,71 @@
     gap: clamp(0.375rem, 0.9vw, 0.75rem);
   }
 
-  /* Responsive horizontal scroll wrapper for dense data tables */
+  /* Responsive horizontal scroll wrapper for dense data tables with visible slim scrollbar */
   .table-responsive-wrap {
     width: 100%;
     max-width: 100%;
-    overflow-x: auto;
+    max-height: 72dvh;
+    overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
+    scrollbar-width: thin;
+    scrollbar-color: #94a3b8 #f1f5f9;
+  }
+
+  .table-responsive-wrap::-webkit-scrollbar {
+    height: 9px;
+    width: 8px;
+  }
+
+  .table-responsive-wrap::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 9999px;
+  }
+
+  .table-responsive-wrap::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 9999px;
+    border: 2px solid #f1f5f9;
+  }
+
+  .table-responsive-wrap::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+  }
+
+  .table-responsive-wrap > table > thead > tr > th {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8fafc;
+    box-shadow: inset 0 -1px 0 #e2e8f0;
+    padding-inline: clamp(0.28rem, 0.35vw, 0.5rem);
+    letter-spacing: 0.015em;
+    white-space: nowrap;
+  }
+
+  .table-responsive-wrap > table > tbody > tr > td {
+    padding-inline: clamp(0.28rem, 0.35vw, 0.5rem);
+    padding-block: 0.55rem;
+  }
+
+  .table-responsive-wrap > table > thead > tr > th.sticky-actions-col {
+    position: sticky;
+    right: 0;
+    top: 0;
+    z-index: 15;
+    background-color: #f8fafc;
+    box-shadow: -6px 0 10px -6px rgba(15, 23, 42, 0.14), inset 0 -1px 0 #e2e8f0;
+  }
+
+  .table-responsive-wrap > table > tbody > tr > td.sticky-actions-col {
+    position: sticky;
+    right: 0;
+    z-index: 5;
+    background-color: rgba(255, 255, 255, 0.96);
+    backdrop-filter: blur(4px);
+    box-shadow: -6px 0 10px -6px rgba(15, 23, 42, 0.12);
+    white-space: nowrap;
   }
 
   /* Responsive modal surface constraint */
@@ -162,7 +220,7 @@
 /* Mobile Grande / Paisagem (480px+) */
 @media (min-width: 480px) {
   .fluid-container {
-    padding-inline: clamp(0.75rem, 1.8vw, 1.5rem);
+    padding-inline: clamp(0.65rem, 1.2vw, 1.25rem);
   }
 }
 
@@ -177,25 +235,25 @@
 /* Tablet Paisagem / Notebook (1024px+) */
 @media (min-width: 1024px) {
   .fluid-container {
-    padding-inline: clamp(1rem, 1.8vw, 2rem);
+    padding-inline: clamp(0.75rem, 1.2vw, 1.5rem);
   }
 }
 
 /* Desktop (1280px+) */
 @media (min-width: 1280px) {
   .fluid-container {
-    padding-inline: clamp(1.25rem, 2vw, 2.5rem);
+    padding-inline: clamp(0.85rem, 1.3vw, 1.75rem);
   }
 }
 
 /* Ultrawide & TV Screens (1920px+) */
 @media (min-width: 1920px) {
   html {
-    font-size: clamp(17px, 0.45vw + 9px, 22px);
+    font-size: clamp(16px, 0.2vw + 13px, 18px);
   }
 
   .fluid-container {
-    max-width: min(96vw, 2200px);
-    padding-inline: clamp(1.5rem, 2.5vw, 3.5rem);
+    max-width: min(98vw, 2400px);
+    padding-inline: clamp(1rem, 1.5vw, 2rem);
   }
 }

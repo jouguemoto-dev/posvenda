@@ -37,7 +37,10 @@ import {
   Filter,
   Type,
   CreditCard,
-  Sun
+  Sun,
+  Monitor,
+  Columns2,
+  Rows2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db } from '../firebase';
@@ -219,6 +222,41 @@ export default function EscalaView({
   const [isGCalModalOpen, setIsGCalModalOpen] = useState(false);
   // Tamanho da letra da escala: padrão 'normal' (1x) e organizado
   const [fontSizeLevel, setFontSizeLevel] = useState<'normal' | 'large' | 'xlarge'>('normal');
+  // Modo de visualização para Monitor Horizontal vs Vertical (Auto detecta orientação da tela)
+  const [monitorMode, setMonitorMode] = useState<'auto' | 'horizontal' | 'vertical'>(() => {
+    try {
+      const saved = localStorage.getItem('escala_monitor_mode');
+      if (saved === 'auto' || saved === 'horizontal' || saved === 'vertical') return saved;
+    } catch {}
+    return 'auto';
+  });
+  const [isPortraitViewport, setIsPortraitViewport] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.innerHeight > window.innerWidth : false
+  );
+  const [expandedVerticalCells, setExpandedVerticalCells] = useState<Record<string, boolean>>({});
+
+  useEffect(() => {
+    const updateOrientation = () => {
+      setIsPortraitViewport(window.innerHeight > window.innerWidth);
+    };
+    updateOrientation();
+    window.addEventListener('resize', updateOrientation);
+    window.addEventListener('orientationchange', updateOrientation);
+    return () => {
+      window.removeEventListener('resize', updateOrientation);
+      window.removeEventListener('orientationchange', updateOrientation);
+    };
+  }, []);
+
+  const handleMonitorModeChange = (mode: 'auto' | 'horizontal' | 'vertical') => {
+    setMonitorMode(mode);
+    try {
+      localStorage.setItem('escala_monitor_mode', mode);
+    } catch {}
+  };
+
+  const activeMonitorLayout: 'horizontal' | 'vertical' =
+    monitorMode === 'auto' ? (isPortraitViewport ? 'vertical' : 'horizontal') : monitorMode;
 
   const fontConfig = useMemo(() => {
     if (fontSizeLevel === 'large') {
@@ -955,10 +993,712 @@ export default function EscalaView({
     }
   };
 
+  const getCellState = (day: string, dayIdx: number, team: Team) => {
+    const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
+    const fullDate = weekDatesFull[dayIdx];
+    const teamName = (team.name || '').trim().toLowerCase();
+
+    const matchingObras = localObras.filter(o => {
+      const obraEquipe = (o.equipe || '').trim().toLowerCase();
+      if (obraEquipe !== teamName) return false;
+      const oDate = (o.dataObra || '').split('T')[0];
+      return oDate === fullDate;
+    });
+
+    const matchingServicos = localServicos.filter(s => {
+      const sDate = (s.dataServico || '').split('T')[0];
+      if (sDate !== fullDate) return false;
+      const sTeams = getServicoTeams(s);
+      return sTeams.some(st => st.trim().toLowerCase() === teamName);
+    });
+
+    const autoColorInfo = getAutoCellColor(matchingObras, matchingServicos, cellData.color);
+    const cellColor = autoColorInfo.color;
+    const colorObj = COLORS.find(c => c.bg.toLowerCase() === cellColor.toLowerCase());
+    const isDark = colorObj ? colorObj.isDark : (cellColor === '#3b82f6' || cellColor === '#22c55e' || cellColor === '#1e2f3e');
+
+    const cleanManualText = (cellData.text || '').split('\n').filter(line => {
+      const trimmed = line.trim();
+      return !trimmed.startsWith('Cliente:') &&
+             !trimmed.startsWith('• [OBRA]') &&
+             !trimmed.startsWith('• [SERVIÇO]');
+    }).join('\n').trim();
+
+    const hasItems = matchingObras.length > 0 || matchingServicos.length > 0;
+    const hasCustomBg = Boolean(cellColor && cellColor.toLowerCase() !== '#ffffff');
+    const hasContent = hasItems || Boolean(cleanManualText) || hasCustomBg;
+
+    return {
+      cellData,
+      fullDate,
+      matchingObras,
+      matchingServicos,
+      cellColor,
+      isDark,
+      cleanManualText,
+      hasItems,
+      hasContent
+    };
+  };
+
+  const renderCellBody = (day: string, dayIdx: number, team: Team, cellState: ReturnType<typeof getCellState>) => {
+    const {
+      cellData,
+      fullDate,
+      matchingObras,
+      matchingServicos,
+      cellColor,
+      isDark,
+      cleanManualText,
+      hasItems
+    } = cellState;
+
+    return (
+      <>
+        {/* Holiday Banner inside cell */}
+        {(() => {
+          const feriado = getFeriado(fullDate);
+          if (!feriado) return null;
+          if (feriado.tipo === 'nacional') {
+            return (
+              <div className="mb-1 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-950 text-[10px] font-extrabold flex items-center justify-between shadow-2xs backdrop-blur-xs min-w-0" title={`Alerta de Feriado Nacional: ${feriado.nome}. Agendamento permitido.`}>
+                <span className="truncate">⚠️ {feriado.nome}</span>
+                <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-amber-600 text-white font-black shrink-0 ml-1">Feriado</span>
+              </div>
+            );
+          }
+          if (feriado.tipo === 'municipal_recife' || feriado.tipo === 'estadual_pe') {
+            return (
+              <div className={`mb-1 px-1.5 py-0.5 rounded ${feriado.tipo === 'municipal_recife' ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-950' : 'bg-blue-500/15 border-blue-400/40 text-blue-950'} border text-[10px] font-extrabold flex items-center gap-1 shadow-2xs backdrop-blur-xs min-w-0`} title={feriado.descricao || feriado.nome}>
+                <span className="truncate">{feriado.tipo === 'municipal_recife' ? '🏛️ Recife' : '⭐ PE'}: {feriado.nome}</span>
+              </div>
+            );
+          }
+          return null;
+        })()}
+        <textarea 
+          value={cleanManualText} 
+          onChange={(e) => {
+            updateCell(day, team.id, e.target.value, cellColor);
+          }}
+          placeholder={hasItems ? "" : "..."}
+          className={`w-full ${
+            hasItems && !cleanManualText 
+              ? 'h-3.5 min-h-[14px] opacity-0 group-hover:opacity-60 focus:opacity-100 transition-opacity' 
+              : fontConfig.textarea
+          } p-0.5 bg-transparent resize-none outline-none leading-tight transition-colors ${
+            isDark 
+              ? 'text-white placeholder:text-white/40' 
+              : cellColor === '#eab308' 
+              ? 'text-amber-950 placeholder:text-amber-900/40 font-semibold' 
+              : 'text-[#1e2f3e] placeholder:text-slate-300'
+          }`}
+        />
+
+        {/* Automatic Items Display */}
+        {(matchingObras.length > 0 || matchingServicos.length > 0) && (
+          <div className="mt-1 space-y-1.5 px-0.5 pb-1 min-w-0">
+            {matchingObras.map(o => {
+              const concluido = isStatusConcluido(o.situacao);
+              return (
+              <div 
+                key={o.firebaseId || o.id} 
+                onClick={() => setSelectedDetails({ type: 'obra', item: o })}
+                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer min-w-0 overflow-hidden ${
+                  o.situacao === 'Em Espera' 
+                    ? 'bg-slate-50 text-slate-600 border-slate-200' 
+                    : concluido
+                    ? (cellColor === '#22c55e' ? 'bg-white/25 text-emerald-950 border-white/35 backdrop-blur-xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200') 
+                    : isDark 
+                    ? 'bg-white/15 text-white border-white/25 backdrop-blur-xs' 
+                    : cellColor === '#eab308'
+                    ? 'bg-white/95 text-amber-950 border-amber-300 shadow-xs'
+                    : 'bg-white text-slate-800 border-slate-200/90'
+                }`}
+              >
+                {/* Linha 1: Status & Placas */}
+                <div className="flex flex-wrap items-center justify-between gap-1 mb-1 min-w-0">
+                  <div className="flex items-center gap-1 min-w-0 max-w-full">
+                    <ClipboardList size={11} className={`${isDark && !concluido ? 'text-white/80' : cellColor === '#eab308' ? 'text-amber-800' : 'text-indigo-600'} opacity-80 shrink-0`} />
+                    <select
+                      value={concluido ? 'Concluído' : (o.situacao || 'Em Andamento')}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleQuickStatusChangeObra(o, e.target.value, e)}
+                      className={`${fontConfig.statusSelect} min-w-0 max-w-full outline-none cursor-pointer transition-all shadow-2xs ${
+                        concluido
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
+                          : o.situacao === 'Em Espera'
+                          ? 'bg-slate-200 text-slate-700 border-slate-300 font-extrabold'
+                          : o.situacao === 'Pendente'
+                          ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
+                          : isDark
+                          ? 'bg-white text-blue-800 border-blue-200 font-extrabold'
+                          : 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
+                      }`}
+                      title="Alterar status deste agendamento de obra"
+                    >
+                      <option value="Em Andamento">Em Andamento</option>
+                      <option value="Concluído">Concluído</option>
+                      <option value="Pendente">Pendente</option>
+                      <option value="Em Espera">Em Espera</option>
+                    </select>
+                  </div>
+                  {o.quantidadePlacas > 0 && (
+                    <span className={`${fontConfig.placasBadge} ${
+                      cellColor === '#22c55e' || isDark
+                        ? 'text-white bg-white/25 border-white/40 font-black'
+                        : cellColor === '#eab308'
+                        ? 'text-amber-950 bg-amber-200 border-amber-400 font-black'
+                        : 'text-indigo-950 bg-indigo-100 border-indigo-300 font-black'
+                    } border shrink-0 inline-flex items-center gap-1 leading-none shadow-2xs`}
+                    title={`Quantidade de Placas: ${o.quantidadePlacas} unidades`}
+                    >
+                      <Sun size={14} className="shrink-0 stroke-[2.5] text-amber-500" />
+                      <span>{o.quantidadePlacas} PL</span>
+                    </span>
+                  )}
+                </div>
+
+                {/* Linha 2: Nome do Cliente + Badges integrados */}
+                <div className="my-0.5 flex items-center gap-1.5 flex-wrap min-w-0">
+                  <span 
+                    className={`font-black ${fontConfig.clientName} cursor-pointer transition-colors break-words min-w-0 ${
+                      concluido 
+                        ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black') 
+                        : isDark 
+                        ? 'text-white font-black' 
+                        : cellColor === '#eab308'
+                        ? 'text-amber-950 font-black'
+                        : 'text-slate-900 font-black hover:text-indigo-600'
+                    }`}
+                    title={o.cliente}
+                  >
+                    {o.cliente}
+                  </span>
+
+                  <span 
+                    className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} max-w-full font-black tracking-wide border shadow-2xs ${
+                      concluido
+                        ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/60'
+                        : cellColor === '#3b82f6'
+                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/50'
+                        : cellColor === '#eab308'
+                        ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs'
+                        : isDark
+                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black'
+                        : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
+                    }`}
+                    title={`Tipo de Serviço: Instalação Solar ${o.inversor ? `• ${o.inversor}` : ''}`}
+                  >
+                    <Zap size={9} className="shrink-0 stroke-[2.5]" />
+                    <span className="truncate">Obra Solar</span>
+                  </span>
+
+                  {o.inversor && (
+                    <span 
+                      className={`text-[8.5px] font-black truncate max-w-full px-1.5 py-0.2 rounded border ${
+                        cellColor === '#22c55e' || isDark
+                          ? 'bg-white/20 text-white border-white/30 font-bold'
+                          : cellColor === '#eab308'
+                          ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                          : 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
+                      }`} 
+                      title={`Inversor: ${o.inversor}`}
+                    >
+                      {o.inversor}
+                    </span>
+                  )}
+
+                  {o.formaPagamento && (
+                    <span 
+                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} max-w-full font-black tracking-wide border shadow-2xs ${
+                        concluido
+                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                          : cellColor === '#3b82f6'
+                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs ring-1 ring-emerald-400/50'
+                          : cellColor === '#eab308'
+                          ? 'bg-emerald-800 text-white border-emerald-700 font-black shadow-xs ring-1 ring-emerald-600/40'
+                          : isDark
+                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs'
+                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 font-extrabold shadow-2xs'
+                      }`}
+                      title={`Forma de Pagamento: ${o.formaPagamento}${o.situacaoPagamento ? ` (${o.situacaoPagamento})` : ''}`}
+                    >
+                      <CreditCard size={9} className="shrink-0 stroke-[2.5]" />
+                      <span className="truncate">{o.formaPagamento}</span>
+                      {o.situacaoPagamento && (
+                        <span className="opacity-80 text-[7px] uppercase font-bold shrink-0">• {o.situacaoPagamento}</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                {/* Linha 3: Barra de Ações */}
+                <div className="flex flex-wrap items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
+                  <button 
+                    onClick={(e) => handleQuickStatusChangeObra(o, concluido ? 'Em Andamento' : 'Concluído', e)}
+                    className={`compact-chip transition-all flex items-center gap-1 shadow-2xs shrink-0 ${fontConfig.concluirBtn} ${
+                      concluido
+                        ? 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 font-extrabold'
+                        : isDark
+                        ? 'text-slate-800 bg-white hover:bg-slate-100 border border-white/40 font-extrabold'
+                        : cellColor === '#eab308'
+                        ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 font-extrabold'
+                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
+                    }`}
+                    title={concluido ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
+                  >
+                    <Check size={fontConfig.checkIconSize} className={concluido ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                    <span>{concluido ? 'Concluído' : 'Concluir'}</span>
+                  </button>
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = generateObraGCalUrl(o, fullDate, team.name);
+                        if (url) window.open(url, '_blank');
+                      }}
+                      className={`compact-chip p-1 rounded transition-colors ${
+                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
+                      }`}
+                      title="Anexar ao Google Agenda"
+                    >
+                      <CalendarClock size={fontConfig.actionIconSize} />
+                    </button>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onEditObra?.(o); 
+                      }}
+                      className={`compact-chip p-1 rounded transition-colors ${
+                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'
+                      }`}
+                      title="Editar Registro"
+                    >
+                      <Edit size={fontConfig.actionIconSize} />
+                    </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setItemToDelete({ type: 'obra', item: o }); 
+                        }}
+                        className={`compact-chip p-1 rounded transition-colors ${
+                          isDark ? 'text-red-300 hover:text-red-100 hover:bg-red-900/40' : cellColor === '#22c55e' ? 'text-red-800 hover:text-red-950 hover:bg-red-100/50' : cellColor === '#eab308' ? 'text-red-900 hover:text-red-950 hover:bg-red-200/50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title="Excluir Lançamento (Admin)"
+                      >
+                        <Trash2 size={fontConfig.actionIconSize} />
+                      </button>
+                    )}
+                    {o.txtFile && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
+                        className={`compact-chip p-1 rounded transition-colors ${
+                          isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'
+                        }`}
+                        title="Ver TXT"
+                      >
+                        <FileText size={fontConfig.actionIconSize} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Linha 4: Observações */}
+                {o.observacoes && (
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingObs({
+                        cliente: o.cliente,
+                        tipo: 'Obra',
+                        observacao: o.observacoes,
+                        data: o.dataObra ? formatDateBR(o.dataObra) : undefined,
+                        firebaseId: o.firebaseId,
+                        collectionName: 'obras',
+                        onSave: async (newCombined: string) => {
+                          if (o.firebaseId) {
+                            await updateDoc(doc(db, 'obras', o.firebaseId), {
+                              observacoes: newCombined,
+                              updatedAt: serverTimestamp()
+                            });
+                          }
+                          setLocalObras(prev => prev.map(item => (item.firebaseId === o.firebaseId || item.id === o.id) ? { ...item, observacoes: newCombined } : item));
+                          addToast("Observação atualizada com sucesso!");
+                        }
+                      });
+                    }}
+                    className={`${fontConfig.obsBox} ${
+                      cellColor === '#22c55e' || isDark
+                        ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                        : 'bg-amber-100/90 text-amber-950 border-amber-300 font-bold'
+                    } border leading-snug shadow-2xs cursor-pointer hover:bg-amber-200 transition-colors min-w-0`} 
+                    title={`Observação: ${o.observacoes}`}
+                  >
+                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
+                      OBS
+                    </span>
+                    <span className={`line-clamp-2 flex-1 min-w-0 ${fontConfig.obsText}`}>{o.observacoes}</span>
+                  </div>
+                )}
+              </div>
+              );
+            })}
+            {matchingServicos.map(s => {
+              const isAdm = s.tipoAtendimento === 'Administrativo';
+              const sTeams = getServicoTeams(s);
+              const hasMultipleTeams = sTeams.length > 1;
+              const concluido = isStatusConcluido(s.situacao);
+              return (
+              <div 
+                key={s.firebaseId || s.id} 
+                onClick={() => setSelectedDetails({ type: 'servico', item: s })}
+                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer min-w-0 overflow-hidden ${
+                  s.situacao === 'Em Espera'
+                    ? 'bg-slate-50 text-slate-600 border-slate-200'
+                    : concluido
+                    ? (cellColor === '#22c55e' ? 'bg-white/25 text-emerald-950 border-white/35 backdrop-blur-xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200')
+                    : isDark 
+                    ? (isAdm ? 'bg-purple-950/70 text-purple-200 border-purple-500/50' : 'bg-white/15 text-white border-white/25 backdrop-blur-xs')
+                    : cellColor === '#eab308'
+                    ? 'bg-white/95 text-amber-950 border-amber-300 shadow-xs'
+                    : isAdm
+                    ? 'bg-purple-50/80 text-purple-950 border-purple-300 ring-1 ring-purple-400/30'
+                    : 'bg-white text-slate-800 border-slate-200/90'
+                }`}
+              >
+                {/* Linha 1: Status & Tags */}
+                <div className="flex flex-wrap items-center justify-between gap-1 mb-1 min-w-0">
+                  <div className="flex items-center gap-1 min-w-0 max-w-full">
+                    {isAdm ? (
+                      <Briefcase size={11} className={`${isDark && !concluido ? 'text-purple-300' : 'text-purple-600'} shrink-0`} />
+                    ) : (
+                      <Wrench size={11} className={`${isDark && !concluido ? 'text-white/80' : cellColor === '#eab308' ? 'text-amber-800' : 'text-blue-600'} opacity-80 shrink-0`} />
+                    )}
+                    {isAdm && (
+                      <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-1 py-0.2 rounded shrink-0">
+                        ADMIN
+                      </span>
+                    )}
+                    <select
+                      value={concluido ? 'Concluído' : (s.situacao || 'Em Andamento')}
+                      onClick={(e) => e.stopPropagation()}
+                      onChange={(e) => handleQuickStatusChangeServico(s, e.target.value, e)}
+                      className={`${fontConfig.statusSelect} min-w-0 max-w-full outline-none cursor-pointer transition-all shadow-2xs ${
+                        concluido
+                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
+                          : s.situacao === 'Em Espera'
+                          ? 'bg-slate-200 text-slate-700 border-slate-300 font-extrabold'
+                          : s.situacao === 'Pendente'
+                          ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
+                          : isAdm
+                          ? 'bg-purple-100 text-purple-900 border-purple-300 font-extrabold'
+                          : isDark
+                          ? 'bg-white text-blue-800 border-blue-200 font-extrabold'
+                          : 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
+                      }`}
+                      title="Alterar status deste agendamento"
+                    >
+                      <option value="Em Andamento">Em Andamento</option>
+                      <option value="Concluído">Concluído</option>
+                      <option value="Pendente">Pendente</option>
+                      <option value="Em Espera">Em Espera</option>
+                    </select>
+                  </div>
+                  {hasMultipleTeams && (
+                    <span 
+                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded border shrink-0 ${
+                        cellColor === '#22c55e' || isDark
+                          ? 'bg-white/25 text-emerald-950 border-white/40 font-extrabold'
+                          : cellColor === '#eab308'
+                          ? 'bg-amber-100 text-amber-950 border-amber-300 font-extrabold'
+                          : 'bg-indigo-100/90 text-indigo-900 border-indigo-200'
+                      }`} 
+                      title={`Equipes neste serviço: ${sTeams.join(' + ')}`}
+                    >
+                      +{sTeams.length}eq
+                    </span>
+                  )}
+                </div>
+
+                {/* Linha 2: Nome do Cliente + Serviço e Pagamento */}
+                <div className="my-0.5 flex items-center gap-1.5 flex-wrap min-w-0">
+                  <span 
+                    className={`font-black ${fontConfig.clientName} cursor-pointer transition-colors break-words min-w-0 ${
+                      concluido
+                        ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black')
+                        : isDark
+                        ? 'text-white font-black'
+                        : cellColor === '#eab308'
+                        ? 'text-amber-950 font-black'
+                        : (isAdm ? 'hover:text-purple-700 text-purple-950 font-black' : 'hover:text-blue-600 text-slate-900 font-black')
+                    }`}
+                    title={s.cliente}
+                  >
+                    {s.cliente}
+                  </span>
+
+                  {s.servico && (
+                    <span 
+                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} max-w-full font-black tracking-wide border shadow-2xs ${
+                        concluido
+                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                          : cellColor === '#3b82f6'
+                          ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/60'
+                          : cellColor === '#eab308'
+                          ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs ring-1 ring-indigo-500/40'
+                          : isDark
+                          ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs'
+                          : isAdm
+                          ? 'bg-purple-700 text-white border-purple-800 font-black shadow-xs'
+                          : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
+                      }`}
+                      title={`Serviço: ${s.servico || (isAdm ? 'Atendimento Administrativo' : 'Serviço Técnico')}`}
+                    >
+                      {isAdm ? (
+                        <Briefcase size={9} className="shrink-0 stroke-[2.5]" />
+                      ) : (
+                        <Wrench size={9} className="shrink-0 stroke-[2.5]" />
+                      )}
+                      <span className="truncate font-black">
+                        {s.servico || (isAdm ? 'Atend. Administrativo' : 'Serviço')}
+                      </span>
+                    </span>
+                  )}
+
+                  {s.formaPagamento && (
+                    <span 
+                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} max-w-full font-black tracking-wide border shadow-2xs ${
+                        concluido
+                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
+                          : cellColor === '#3b82f6'
+                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs ring-1 ring-emerald-400/50'
+                          : cellColor === '#eab308'
+                          ? 'bg-emerald-800 text-white border-emerald-700 font-black shadow-xs ring-1 ring-emerald-600/40'
+                          : isDark
+                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs'
+                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 font-extrabold shadow-2xs'
+                      }`}
+                      title={`Forma de Pagamento: ${s.formaPagamento}${s.situacaoPagamento ? ` (${s.situacaoPagamento})` : ''}`}
+                    >
+                      <CreditCard size={9} className="shrink-0 stroke-[2.5]" />
+                      <span className="truncate">{s.formaPagamento}</span>
+                      {s.situacaoPagamento && (
+                        <span className="opacity-80 text-[7px] uppercase font-bold shrink-0">• {s.situacaoPagamento}</span>
+                      )}
+                    </span>
+                  )}
+                </div>
+
+                {/* Linha 3: Barra de Ações */}
+                <div className="flex flex-wrap items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
+                  <button 
+                    onClick={(e) => handleQuickStatusChangeServico(s, concluido ? 'Em Andamento' : 'Concluído', e)}
+                    className={`compact-chip transition-all flex items-center gap-1 shadow-2xs shrink-0 ${fontConfig.concluirBtn} ${
+                      concluido
+                        ? 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 font-extrabold'
+                        : isDark
+                        ? 'text-slate-800 bg-white hover:bg-slate-100 border border-white/40 font-extrabold'
+                        : cellColor === '#eab308'
+                        ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 font-extrabold'
+                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
+                    }`}
+                    title={concluido ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
+                  >
+                    <Check size={fontConfig.checkIconSize} className={concluido ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
+                    <span>{concluido ? 'Concluído' : 'Concluir'}</span>
+                  </button>
+
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        const url = generateServicoGCalUrl(s, fullDate, team.name);
+                        if (url) window.open(url, '_blank');
+                      }}
+                      className={`compact-chip p-1 rounded transition-colors ${
+                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80')
+                      }`}
+                      title="Anexar ao Google Agenda"
+                    >
+                      <CalendarClock size={fontConfig.actionIconSize} />
+                    </button>
+                    <button 
+                      onClick={(e) => { 
+                        e.stopPropagation(); 
+                        onEditServico?.(s); 
+                      }}
+                      className={`compact-chip p-1 rounded transition-colors ${
+                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50')
+                      }`}
+                      title="Editar Serviço"
+                    >
+                      <Edit size={fontConfig.actionIconSize} />
+                    </button>
+                    {isAdmin && (
+                      <button 
+                        onClick={(e) => { 
+                          e.stopPropagation(); 
+                          setItemToDelete({ type: 'servico', item: s }); 
+                        }}
+                        className={`compact-chip p-1 rounded transition-colors ${
+                          isDark ? 'text-red-300 hover:text-red-100 hover:bg-red-900/40' : cellColor === '#22c55e' ? 'text-red-800 hover:text-red-950 hover:bg-red-100/50' : cellColor === '#eab308' ? 'text-red-900 hover:text-red-950 hover:bg-red-200/50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
+                        }`}
+                        title="Excluir Lançamento (Admin)"
+                      >
+                        <Trash2 size={fontConfig.actionIconSize} />
+                      </button>
+                    )}
+                    {s.txtFile && (
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
+                        className={`compact-chip p-1 rounded transition-colors ${
+                          isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50')
+                        }`}
+                        title="Ver TXT"
+                      >
+                        <FileText size={fontConfig.actionIconSize} />
+                      </button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Linha 4: Observações */}
+                {s.observacao && (
+                  <div 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setViewingObs({
+                        cliente: s.cliente,
+                        tipo: isAdm ? 'Atendimento Administrativo' : 'Agendamento de Serviço',
+                        observacao: s.observacao,
+                        data: s.dataServico ? formatDateBR(s.dataServico) : undefined,
+                        firebaseId: s.firebaseId,
+                        collectionName: 'servicos',
+                        onSave: async (newCombined: string) => {
+                          if (s.firebaseId) {
+                            await updateDoc(doc(db, 'servicos', s.firebaseId), {
+                              observacao: newCombined,
+                              updatedAt: serverTimestamp()
+                            });
+                          }
+                          setLocalServicos(prev => prev.map(item => (item.firebaseId === s.firebaseId || item.id === s.id) ? { ...item, observacao: newCombined } : item));
+                          addToast("Observação atualizada com sucesso!");
+                        }
+                      });
+                    }}
+                    className={`${fontConfig.obsBox} ${
+                      cellColor === '#22c55e' || isDark
+                        ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
+                        : 'bg-amber-100/90 text-amber-950 border-amber-300 font-bold'
+                    } border leading-snug shadow-2xs cursor-pointer hover:bg-amber-200 transition-colors min-w-0`} 
+                    title={`Observação: ${s.observacao}`}
+                  >
+                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
+                      OBS
+                    </span>
+                    <span className={`line-clamp-2 flex-1 min-w-0 ${fontConfig.obsText}`}>{s.observacao}</span>
+                  </div>
+                )}
+              </div>
+              );
+            })}
+          </div>
+        )}
+
+        {/* Cell Actions Menu */}
+        <div className="absolute top-1.5 right-1.5 opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity z-10 flex gap-1">
+          <button 
+            onClick={() => {
+              const isOpening = !(addingClientTo?.day === day && addingClientTo?.teamId === team.id);
+              if (isOpening) {
+                const feriado = getFeriado(fullDate);
+                if (feriado) {
+                  addToast(`⚠️ Alerta: ${feriado.nome} (agendamento permitido)`);
+                }
+              }
+              setAddingClientTo(isOpening ? {day, teamId: team.id} : null);
+            }}
+            className={`compact-chip p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-indigo-600'}`}
+            title="Adicionar Cliente"
+          >
+            <UserPlus size={14} />
+          </button>
+
+          <button 
+            onClick={() => setActiveCell(activeCell?.day === day && activeCell?.teamId === team.id ? null : {day, teamId: team.id})}
+            className={`compact-chip p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400 hover:text-indigo-600'}`}
+            title="Cor da Célula"
+          >
+            <Palette size={14} />
+          </button>
+          
+          <AnimatePresence>
+            {addingClientTo?.day === day && addingClientTo?.teamId === team.id && (
+              <motion.div 
+                key={`add-client-${day}-${team.id}`}
+                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                className="absolute right-0 mt-8 bg-white p-2 rounded-xl shadow-2xl border border-slate-200 w-48 max-h-64 overflow-y-auto z-30"
+              >
+                <p className="text-[10px] font-bold text-slate-400 uppercase px-2 mb-1">Clientes Ativos</p>
+                {Array.from(new Set([
+                  ...localObras.map(o => o.cliente),
+                  ...localServicos.map(s => s.cliente)
+                ])).filter(Boolean).sort().map(clientName => (
+                  <button 
+                    key={clientName}
+                    onClick={() => {
+                      const currentText = cellData.text ? cellData.text + '\n' : '';
+                      updateCell(day, team.id, currentText + clientName, cellData.color);
+                      setAddingClientTo(null);
+                    }}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 rounded-lg text-slate-700 font-medium"
+                  >
+                    {clientName}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+
+            {activeCell?.day === day && activeCell?.teamId === team.id && (
+              <motion.div 
+                key={`palette-${day}-${team.id}`}
+                initial={{ opacity: 0, scale: 0.9, y: -10 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                className="absolute right-0 mt-8 bg-white p-2 rounded-xl shadow-2xl border border-slate-200 grid grid-cols-4 gap-1 w-32 z-30"
+              >
+                {COLORS.map(c => (
+                  <button 
+                    key={c.bg}
+                    onClick={() => {
+                      updateCell(day, team.id, cellData.text, c.bg);
+                      setActiveCell(null);
+                    }}
+                    className="compact-chip w-6 h-6 rounded-md border border-slate-200 transition-transform hover:scale-110"
+                    style={{ backgroundColor: c.bg }}
+                    title={c.name}
+                  />
+                ))}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+      </>
+    );
+  };
+
+  const dayColWidth = fontSizeLevel === 'xlarge' ? 155 : fontSizeLevel === 'large' ? 145 : 135;
+  const teamColMinWidth = fontSizeLevel === 'xlarge' ? 255 : fontSizeLevel === 'large' ? 235 : 215;
+  const horizontalTableMinWidth = visibleTeams.length > 0 ? dayColWidth + visibleTeams.length * teamColMinWidth : 640;
+
   return (
-    <div className="min-h-[100dvh] lg:h-[100dvh] flex flex-col bg-[#eef2f7] p-2 sm:p-3 md:p-4 font-sans text-base text-[#1e2f3e] overflow-x-clip lg:overflow-hidden">
+    <div className="min-h-[100dvh] md:h-[100dvh] flex flex-col bg-[#eef2f7] p-1.5 sm:p-2.5 md:p-3 font-sans text-base text-[#1e2f3e] overflow-x-clip md:overflow-hidden">
       {/* Header Container Organizado */}
-      <div className="flex-none bg-white rounded-2xl border border-slate-200/90 shadow-sm p-3 mb-3 space-y-2.5 touch-controls">
+      <div className="flex-none bg-white rounded-2xl border border-slate-200/90 shadow-sm p-3 mb-2.5 space-y-2.5 touch-controls">
         {/* Linha 1: Título, Navegador de Semana e Ações Principais */}
         <div className="flex flex-col lg:flex-row justify-between items-center gap-3">
           {/* Lado Esquerdo: Voltar + Ícone + Título */}
@@ -1126,6 +1866,54 @@ export default function EscalaView({
                 2.5x
               </button>
             </div>
+
+            {/* Seletor de Orientação de Monitor (Auto / Horizontal / Vertical) */}
+            <div className="flex items-center min-h-[44px] sm:min-h-[32px] bg-slate-50 rounded-xl border border-slate-200 shadow-2xs p-0.5 gap-0.5">
+              <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 px-2 flex items-center gap-1">
+                <Monitor size={12} className="text-indigo-600" />
+                Monitor:
+              </span>
+              <button
+                onClick={() => handleMonitorModeChange('auto')}
+                className={`compact-chip px-2 py-1 rounded-lg font-black text-xs transition-all flex items-center gap-1 ${
+                  monitorMode === 'auto'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title={`Automático (Atual: ${activeMonitorLayout === 'vertical' ? 'Vertical' : 'Horizontal'})`}
+              >
+                <span>Auto</span>
+                {monitorMode === 'auto' && (
+                  <span className="text-[9px] opacity-85 uppercase">
+                    ({activeMonitorLayout === 'vertical' ? 'V' : 'H'})
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => handleMonitorModeChange('horizontal')}
+                className={`compact-chip px-2 py-1 rounded-lg font-black text-xs transition-all flex items-center gap-1 ${
+                  monitorMode === 'horizontal'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title="Grade em Tabela para Monitor Horizontal (Paisagem)"
+              >
+                <Columns2 size={12} />
+                <span>Horizontal</span>
+              </button>
+              <button
+                onClick={() => handleMonitorModeChange('vertical')}
+                className={`compact-chip px-2 py-1 rounded-lg font-black text-xs transition-all flex items-center gap-1 ${
+                  monitorMode === 'vertical'
+                    ? 'bg-indigo-600 text-white shadow-2xs'
+                    : 'text-slate-600 hover:bg-white'
+                }`}
+                title="Cards por Dia para Monitor Vertical (Retrato)"
+              >
+                <Rows2 size={12} />
+                <span>Vertical</span>
+              </button>
+            </div>
           </div>
 
           {/* Lado Direito da Linha 2: Indicador / Legenda de Cores */}
@@ -1183,833 +1971,369 @@ export default function EscalaView({
         </div>
       )}
 
-      {/* Main Table */}
+      {/* Main Schedule Board: Horizontal Matrix OR Vertical Portrait Monitor Layout */}
       <div className="flex-1 bg-white rounded-2xl shadow-xl border border-slate-200 overflow-hidden flex flex-col min-h-[360px]">
-        <div className="table-responsive-wrap overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
-          <table className={`w-full border-collapse table-fixed ${visibleTeams.length > 5 ? 'min-w-[1350px]' : visibleTeams.length > 3 ? 'min-w-[980px]' : 'min-w-full'}`}>
-            <thead className="sticky top-0 z-30">
-              <tr className="bg-[#1e2f3e] text-white">
-                <th className="p-2.5 text-left font-bold border-r border-white/10 w-32 text-xs sm:text-sm">Dia / Data</th>
-                {visibleTeams.map((team, vIdx) => (
-                  <th key={team.id} className="p-2.5 text-center font-bold border-r border-white/10 text-xs sm:text-sm relative group/header">
-                    <div className="flex items-center justify-center gap-3">
-                      <button 
-                        onClick={() => moveVisibleTeam(team.id, 'left')}
-                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${vIdx === 0 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
-                        disabled={vIdx === 0}
-                        title="Mover equipe para a esquerda"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      
-                      <div className="flex flex-col items-center min-w-0">
-                        <span className="truncate max-w-[140px] font-black text-sm">{team.name}</span>
-                        {teamScheduleCounts[team.id] > 0 && (
-                          <span className="text-[11px] font-bold text-amber-300 opacity-90 tracking-wide">
-                            {teamScheduleCounts[team.id]} {teamScheduleCounts[team.id] === 1 ? 'agendamento' : 'agendamentos'}
+        {activeMonitorLayout === 'vertical' ? (
+          <div className="overflow-y-auto flex-1 p-2.5 sm:p-3.5 space-y-3 bg-slate-50/70 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+            {visibleTeams.length === 0 ? (
+              <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center text-slate-500 text-sm">
+                {teams.length === 0 ? (
+                  'Nenhuma equipe cadastrada.'
+                ) : (
+                  <div className="space-y-2">
+                    <p className="font-semibold">Nenhuma equipe possui agendamentos automáticos nesta semana ({weekRange}).</p>
+                    <button
+                      onClick={toggleHideEmptyTeams}
+                      className="px-4 py-2 bg-indigo-600 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all"
+                    >
+                      Exibir todas as equipes
+                    </button>
+                  </div>
+                )}
+              </div>
+            ) : (
+              DAYS.map((day, dayIdx) => {
+                const fullDate = weekDatesFull[dayIdx];
+                const isToday = fullDate === todayStr;
+                const feriado = getFeriado(fullDate);
+                const dayAdminServicos = localServicos.filter(s => {
+                  const sDate = (s.dataServico || '').split('T')[0];
+                  return sDate === fullDate && s.tipoAtendimento === 'Administrativo';
+                });
+
+                const teamStates = visibleTeams.map((team, vIdx) => ({
+                  team,
+                  vIdx,
+                  cellKey: `${day}__${team.id}`,
+                  state: getCellState(day, dayIdx, team)
+                }));
+
+                const dayTotalAppointments = teamStates.reduce(
+                  (acc, item) => acc + item.state.matchingObras.length + item.state.matchingServicos.length,
+                  0
+                );
+
+                // In vertical monitor mode, show teams that have items/notes/colors OR were manually expanded,
+                // or show all visible teams if total visibleTeams <= 4 so compact setups always look balanced.
+                const showAllDirectly = visibleTeams.length <= 4;
+                const primaryTeams = showAllDirectly
+                  ? teamStates
+                  : teamStates.filter(item => item.state.hasContent || expandedVerticalCells[item.cellKey]);
+                const emptyTeams = showAllDirectly
+                  ? []
+                  : teamStates.filter(item => !item.state.hasContent && !expandedVerticalCells[item.cellKey]);
+
+                return (
+                  <section
+                    key={day}
+                    className={`rounded-2xl border overflow-hidden shadow-xs transition-colors ${
+                      isToday ? 'border-indigo-400 bg-indigo-50/40 ring-1 ring-indigo-200' : 'border-slate-200 bg-white'
+                    }`}
+                  >
+                    {/* Day Header Bar */}
+                    <div className={`px-3.5 py-2.5 flex flex-wrap items-center justify-between gap-2 ${isToday ? 'bg-indigo-900 text-white' : 'bg-[#1e2f3e] text-white'}`}>
+                      <div className="flex flex-wrap items-center gap-2 min-w-0">
+                        <span className={`font-black ${fontConfig.dayText}`}>{day}</span>
+                        <span className={`px-2 py-0.5 rounded-md bg-white/15 font-bold ${fontConfig.dateText}`}>{weekDates[dayIdx]}</span>
+                        {isToday && (
+                          <span className="px-2 py-0.5 bg-amber-400 text-slate-950 text-[10px] font-black rounded-full uppercase tracking-wider">
+                            Hoje
+                          </span>
+                        )}
+                        {feriado && (
+                          <span
+                            className={`px-2 py-0.5 rounded-md text-[10px] font-black border ${
+                              feriado.tipo === 'municipal_recife'
+                                ? 'bg-emerald-500/20 border-emerald-300/60 text-emerald-100'
+                                : feriado.tipo === 'estadual_pe'
+                                ? 'bg-blue-500/25 border-blue-300/60 text-blue-100'
+                                : 'bg-amber-400 text-amber-950 border-amber-300'
+                            }`}
+                            title={feriado.descricao || feriado.nome}
+                          >
+                            {feriado.tipo === 'municipal_recife'
+                              ? `🏛️ Recife: ${feriado.nome}`
+                              : feriado.tipo === 'estadual_pe'
+                              ? `⭐ PE: ${feriado.nome}`
+                              : `⚠️ Feriado: ${feriado.nome}`}
                           </span>
                         )}
                       </div>
-                      
-                      <button 
-                        onClick={() => moveVisibleTeam(team.id, 'right')}
-                        className={`p-1.5 hover:bg-white/20 rounded-lg transition-all ${vIdx === visibleTeams.length - 1 ? 'opacity-0 cursor-default' : 'opacity-0 group-hover/header:opacity-100'}`}
-                        disabled={vIdx === visibleTeams.length - 1}
-                        title="Mover equipe para a direita"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  </th>
-                ))}
-                {visibleTeams.length === 0 && (
-                  <th className="p-4 text-center italic text-white/70 font-normal">
-                    {teams.length === 0 
-                      ? 'Nenhuma equipe cadastrada' 
-                      : (
-                        <span>
-                          Nenhuma equipe possui agendamentos automáticos nesta semana.{' '}
-                          <button 
-                            onClick={toggleHideEmptyTeams}
-                            className="underline text-amber-300 hover:text-amber-200 font-bold ml-1 cursor-pointer"
+
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        {dayAdminServicos.map(as => (
+                          <button
+                            key={as.firebaseId || as.id}
+                            onClick={() => setSelectedDetails({ type: 'servico', item: as })}
+                            className="compact-chip px-2 py-0.5 rounded-md bg-purple-500/30 hover:bg-purple-500/50 border border-purple-300/50 text-purple-100 text-[10px] font-black flex items-center gap-1 transition-colors"
+                            title={`Atendimento Administrativo: ${as.cliente}`}
                           >
-                            Exibir todas as equipes
+                            <Briefcase size={10} />
+                            <span className="truncate max-w-[140px]">{as.cliente}</span>
                           </button>
+                        ))}
+                        <span className="text-[11px] font-black px-2.5 py-0.5 rounded-full bg-white/15 text-amber-300 whitespace-nowrap">
+                          {dayTotalAppointments} {dayTotalAppointments === 1 ? 'agendamento' : 'agendamentos'}
                         </span>
-                      )
-                    }
+                      </div>
+                    </div>
+
+                    {/* Teams Fluid Grid inside Day */}
+                    {primaryTeams.length > 0 && (
+                      <div className="p-2.5 sm:p-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5">
+                        {primaryTeams.map(({ team, vIdx, cellKey, state }) => {
+                          const totalTeamDayItems = state.matchingObras.length + state.matchingServicos.length;
+                          return (
+                            <div
+                              key={team.id}
+                              className="rounded-xl border border-slate-200 shadow-xs overflow-hidden flex flex-col min-w-0"
+                            >
+                              {/* Team Card Header */}
+                              <div className="bg-slate-800 text-white px-2.5 py-1.5 flex items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1 min-w-0">
+                                  <button
+                                    onClick={() => moveVisibleTeam(team.id, 'left')}
+                                    className={`compact-chip p-1 hover:bg-white/15 rounded transition-colors shrink-0 ${vIdx === 0 ? 'opacity-25 cursor-default' : ''}`}
+                                    disabled={vIdx === 0}
+                                    title="Mover equipe para a esquerda"
+                                  >
+                                    <ChevronLeft size={13} />
+                                  </button>
+                                  <span className="font-black text-xs sm:text-sm truncate" title={team.name}>{team.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1 shrink-0">
+                                  {totalTeamDayItems > 0 && (
+                                    <span className="text-[10px] font-black px-1.5 py-0.2 rounded bg-amber-400/20 text-amber-300">
+                                      {totalTeamDayItems}
+                                    </span>
+                                  )}
+                                  {!showAllDirectly && !state.hasContent && expandedVerticalCells[cellKey] && (
+                                    <button
+                                      onClick={() => setExpandedVerticalCells(prev => ({ ...prev, [cellKey]: false }))}
+                                      className="compact-chip p-1 hover:bg-white/15 rounded text-slate-300 hover:text-white"
+                                      title="Recolher equipe vazia"
+                                    >
+                                      <X size={12} />
+                                    </button>
+                                  )}
+                                  <button
+                                    onClick={() => moveVisibleTeam(team.id, 'right')}
+                                    className={`compact-chip p-1 hover:bg-white/15 rounded transition-colors shrink-0 ${vIdx === visibleTeams.length - 1 ? 'opacity-25 cursor-default' : ''}`}
+                                    disabled={vIdx === visibleTeams.length - 1}
+                                    title="Mover equipe para a direita"
+                                  >
+                                    <ChevronRight size={13} />
+                                  </button>
+                                </div>
+                              </div>
+
+                              {/* Cell Body */}
+                              <div
+                                className={`p-2 relative group flex-1 min-w-0 transition-colors duration-300 ${fontConfig.cellMinHeight}`}
+                                style={{ backgroundColor: state.cellColor }}
+                              >
+                                {renderCellBody(day, dayIdx, team, state)}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    {/* Compact Empty Teams Strip */}
+                    {emptyTeams.length > 0 && (
+                      <div className="px-3 py-2 bg-slate-50/90 border-t border-slate-100 flex flex-wrap items-center gap-1.5">
+                        <span className="text-[10px] font-black uppercase tracking-wider text-slate-400 mr-1">
+                          {primaryTeams.length === 0 ? 'Equipes sem agendamento:' : 'Livres no dia:'}
+                        </span>
+                        {emptyTeams.map(({ team, cellKey }) => (
+                          <button
+                            key={team.id}
+                            onClick={() => setExpandedVerticalCells(prev => ({ ...prev, [cellKey]: true }))}
+                            className="compact-chip px-2 py-1 rounded-lg bg-white hover:bg-indigo-50 text-slate-600 hover:text-indigo-700 border border-slate-200 hover:border-indigo-300 text-[11px] font-bold flex items-center gap-1 transition-all shadow-2xs"
+                            title={`Abrir célula de ${team.name} em ${day}`}
+                          >
+                            <Plus size={11} className="text-slate-400" />
+                            <span>{team.name}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </section>
+                );
+              })
+            )}
+          </div>
+        ) : (
+          <div className="table-responsive-wrap overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+            <table
+              className="w-full border-collapse table-fixed"
+              style={{ minWidth: `${horizontalTableMinWidth}px` }}
+            >
+              <colgroup>
+                <col style={{ width: `${dayColWidth}px` }} />
+                {visibleTeams.map(team => (
+                  <col key={team.id} style={{ minWidth: `${teamColMinWidth}px` }} />
+                ))}
+              </colgroup>
+              <thead className="sticky top-0 z-30">
+                <tr className="bg-[#1e2f3e] text-white">
+                  <th className="sticky left-0 z-40 bg-[#1e2f3e] p-2.5 text-left font-bold border-r border-white/15 text-xs sm:text-sm shadow-[2px_0_6px_-2px_rgba(0,0,0,0.3)]">
+                    Dia / Data
                   </th>
-                )}
-              </tr>
-            </thead>
-            <tbody>
-              {DAYS.map((day, dayIdx) => {
-                const isToday = weekDatesFull[dayIdx] === todayStr;
-                return (
-                  <tr key={day} className={`border-b border-slate-200 last:border-0 ${isToday ? 'bg-indigo-50/40' : ''}`}>
-                    <td className={`p-2.5 border-r border-slate-200 w-32 transition-colors ${isToday ? 'bg-indigo-100/50' : 'bg-slate-50'}`}>
-                      <div className="flex flex-col">
-                        <div className="flex items-center gap-1">
-                          <p className={`font-black text-[#1e2f3e] ${fontConfig.dayText}`}>{day}</p>
-                          {isToday && (
-                            <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
+                  {visibleTeams.map((team, vIdx) => (
+                    <th key={team.id} className="p-2 text-center font-bold border-r border-white/10 text-xs sm:text-sm relative group/header overflow-hidden">
+                      <div className="flex items-center justify-between gap-1 min-w-0">
+                        <button 
+                          onClick={() => moveVisibleTeam(team.id, 'left')}
+                          className={`compact-chip p-1 hover:bg-white/20 rounded-lg transition-all shrink-0 ${vIdx === 0 ? 'opacity-0 pointer-events-none' : 'opacity-60 lg:opacity-0 lg:group-hover/header:opacity-100'}`}
+                          disabled={vIdx === 0}
+                          title="Mover equipe para a esquerda"
+                        >
+                          <ChevronLeft size={15} />
+                        </button>
+                        
+                        <div className="flex flex-col items-center min-w-0 flex-1 overflow-hidden">
+                          <span className="block w-full truncate font-black text-xs sm:text-sm leading-tight" title={team.name}>
+                            {team.name}
+                          </span>
+                          {teamScheduleCounts[team.id] > 0 && (
+                            <span className="text-[10px] font-bold text-amber-300 opacity-95 tracking-wide whitespace-nowrap truncate max-w-full">
+                              {teamScheduleCounts[team.id]} {teamScheduleCounts[team.id] === 1 ? 'agendamento' : 'agendamentos'}
+                            </span>
                           )}
                         </div>
-                        <p className={`font-semibold text-slate-500 ${fontConfig.dateText}`}>{weekDates[dayIdx]}</p>
+                        
+                        <button 
+                          onClick={() => moveVisibleTeam(team.id, 'right')}
+                          className={`compact-chip p-1 hover:bg-white/20 rounded-lg transition-all shrink-0 ${vIdx === visibleTeams.length - 1 ? 'opacity-0 pointer-events-none' : 'opacity-60 lg:opacity-0 lg:group-hover/header:opacity-100'}`}
+                          disabled={vIdx === visibleTeams.length - 1}
+                          title="Mover equipe para a direita"
+                        >
+                          <ChevronRight size={15} />
+                        </button>
+                      </div>
+                    </th>
+                  ))}
+                  {visibleTeams.length === 0 && (
+                    <th className="p-4 text-center italic text-white/70 font-normal">
+                      {teams.length === 0 
+                        ? 'Nenhuma equipe cadastrada' 
+                        : (
+                          <span>
+                            Nenhuma equipe possui agendamentos automáticos nesta semana.{' '}
+                            <button 
+                              onClick={toggleHideEmptyTeams}
+                              className="underline text-amber-300 hover:text-amber-200 font-bold ml-1 cursor-pointer"
+                            >
+                              Exibir todas as equipes
+                            </button>
+                          </span>
+                        )
+                      }
+                    </th>
+                  )}
+                </tr>
+              </thead>
+              <tbody>
+                {DAYS.map((day, dayIdx) => {
+                  const isToday = weekDatesFull[dayIdx] === todayStr;
+                  return (
+                    <tr key={day} className={`border-b border-slate-200 last:border-0 ${isToday ? 'bg-indigo-50/40' : ''}`}>
+                      <td className={`sticky left-0 z-20 p-2.5 border-r border-slate-200 transition-colors align-top shadow-[2px_0_6px_-2px_rgba(15,23,42,0.12)] ${isToday ? 'bg-indigo-50' : 'bg-slate-50'}`}>
+                        <div className="flex flex-col">
+                          <div className="flex items-center gap-1 flex-wrap">
+                            <p className={`font-black text-[#1e2f3e] ${fontConfig.dayText}`}>{day}</p>
+                            {isToday && (
+                              <span className="px-1.5 py-0.5 bg-indigo-600 text-white text-[9px] font-bold rounded-full uppercase tracking-tight">Hoje</span>
+                            )}
+                          </div>
+                          <p className={`font-semibold text-slate-500 ${fontConfig.dateText}`}>{weekDates[dayIdx]}</p>
+                          {(() => {
+                            const feriado = getFeriado(weekDatesFull[dayIdx]);
+                            if (!feriado) return null;
+                            if (feriado.tipo === 'municipal_recife') {
+                              return (
+                                <div className="mt-1 px-1.5 py-0.5 rounded bg-emerald-100 border border-emerald-300 text-emerald-900 text-[10px] font-bold leading-tight" title={feriado.descricao || feriado.nome}>
+                                  🏛️ RECIFE: {feriado.nome}
+                                </div>
+                              );
+                            }
+                            if (feriado.tipo === 'estadual_pe') {
+                              return (
+                                <div className="mt-1 px-1.5 py-0.5 rounded bg-blue-100 border border-blue-300 text-blue-900 text-[10px] font-bold leading-tight" title={feriado.descricao || feriado.nome}>
+                                  ⭐ PE: {feriado.nome}
+                                </div>
+                              );
+                            }
+                            if (feriado.tipo === 'nacional') {
+                              return (
+                                <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-950 text-[10px] font-bold leading-tight" title={`Alerta de Feriado Nacional: ${feriado.nome}. Agendamento permitido.`}>
+                                  ⚠️ FERIADO: {feriado.nome}
+                                  <div className="text-[9px] text-amber-800 font-bold mt-0.5">Agendamento permitido</div>
+                                </div>
+                              );
+                            }
+                            return (
+                              <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold leading-tight">
+                                📅 {feriado.nome}
+                              </div>
+                            );
+                          })()}
+                        </div>
+
+                        {/* Atendimentos Administrativos do Dia Visíveis */}
                         {(() => {
-                          const feriado = getFeriado(weekDatesFull[dayIdx]);
-                          if (!feriado) return null;
-                          if (feriado.tipo === 'municipal_recife') {
-                            return (
-                              <div className="mt-1 px-1.5 py-0.5 rounded bg-emerald-100 border border-emerald-300 text-emerald-900 text-[10px] font-bold leading-tight" title={feriado.descricao || feriado.nome}>
-                                🏛️ RECIFE: {feriado.nome}
-                              </div>
-                            );
-                          }
-                          if (feriado.tipo === 'estadual_pe') {
-                            return (
-                              <div className="mt-1 px-1.5 py-0.5 rounded bg-blue-100 border border-blue-300 text-blue-900 text-[10px] font-bold leading-tight" title={feriado.descricao || feriado.nome}>
-                                ⭐ PE: {feriado.nome}
-                              </div>
-                            );
-                          }
-                          if (feriado.tipo === 'nacional') {
-                            return (
-                              <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-950 text-[10px] font-bold leading-tight" title={`Alerta de Feriado Nacional: ${feriado.nome}. Agendamento permitido.`}>
-                                ⚠️ FERIADO: {feriado.nome}
-                                <div className="text-[9px] text-amber-800 font-bold mt-0.5">Agendamento permitido</div>
-                              </div>
-                            );
-                          }
+                          const fullDate = weekDatesFull[dayIdx];
+                          const dayAdminServicos = localServicos.filter(s => {
+                            const sDate = (s.dataServico || '').split('T')[0];
+                            return sDate === fullDate && s.tipoAtendimento === 'Administrativo';
+                          });
+                          if (dayAdminServicos.length === 0) return null;
                           return (
-                            <div className="mt-1 px-1.5 py-0.5 rounded bg-amber-100 border border-amber-300 text-amber-900 text-[10px] font-bold leading-tight">
-                              📅 {feriado.nome}
+                            <div className="mt-1.5 space-y-1">
+                              {dayAdminServicos.map(as => (
+                                <div
+                                  key={as.firebaseId || as.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setSelectedDetails({ type: 'servico', item: as });
+                                  }}
+                                  className={`rounded bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-black cursor-pointer truncate shadow-2xs flex items-center gap-1 transition-all ${fontConfig.adminDayBadge}`}
+                                  title={`Atendimento Administrativo: ${as.cliente} - ${as.servico || 'Sem descrição'}`}
+                                >
+                                  <Briefcase size={fontConfig.adminIconSize} className="shrink-0 text-purple-700" />
+                                  <span className="truncate">{as.cliente}</span>
+                                </div>
+                              ))}
                             </div>
                           );
                         })()}
-                      </div>
-
-                      {/* Atendimentos Administrativos do Dia Visíveis */}
-                      {(() => {
-                        const fullDate = weekDatesFull[dayIdx];
-                        const dayAdminServicos = localServicos.filter(s => {
-                          const sDate = (s.dataServico || '').split('T')[0];
-                          return sDate === fullDate && s.tipoAtendimento === 'Administrativo';
-                        });
-                        if (dayAdminServicos.length === 0) return null;
-                        return (
-                          <div className="mt-1.5 space-y-1">
-                            {dayAdminServicos.map(as => (
-                              <div
-                                key={as.firebaseId || as.id}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setSelectedDetails({ type: 'servico', item: as });
-                                }}
-                                className={`rounded bg-purple-100 hover:bg-purple-200 text-purple-900 border border-purple-300 font-black cursor-pointer truncate shadow-2xs flex items-center gap-1 transition-all ${fontConfig.adminDayBadge}`}
-                                title={`Atendimento Administrativo: ${as.cliente} - ${as.servico || 'Sem descrição'}`}
-                              >
-                                <Briefcase size={fontConfig.adminIconSize} className="shrink-0 text-purple-700" />
-                                <span className="truncate">{as.cliente}</span>
-                              </div>
-                            ))}
-                          </div>
-                        );
-                      })()}
-                    </td>
-                  {visibleTeams.length === 0 && (
-                    <td className="p-3 text-center text-slate-400 italic text-xs bg-slate-50/40">
-                      Sem agendamentos nesta data
-                    </td>
-                  )}
-                  {visibleTeams.map(team => {
-                    const cellData = schedule[day]?.[team.id] || { text: '', color: '#ffffff' };
-                    const fullDate = weekDatesFull[dayIdx];
-
-                    // Match automatically scheduled items
-                    const matchingObras = localObras.filter(o => {
-                      const obraEquipe = (o.equipe || '').trim().toLowerCase();
-                      const teamName = (team.name || '').trim().toLowerCase();
-                      const isTeamMatch = obraEquipe === teamName;
-                      if (!isTeamMatch) return false;
-                      
-                      const oDate = (o.dataObra || '').split('T')[0];
-                      const isExactDate = oDate === fullDate;
-                      
-                      return isExactDate;
-                    });
-
-                    const matchingServicos = localServicos.filter(s => {
-                      const sDate = (s.dataServico || '').split('T')[0];
-                      if (sDate !== fullDate) return false;
-                      const teamName = (team.name || '').trim().toLowerCase();
-                      const sTeams = getServicoTeams(s);
-                      return sTeams.some(st => st.trim().toLowerCase() === teamName);
-                    });
-
-                    // Automatic status-based color calculation:
-                    // - Em Andamento / Pendente => Azul (#3b82f6)
-                    // - Concluído => Verde (#22c55e)
-                    const autoColorInfo = getAutoCellColor(matchingObras, matchingServicos, cellData.color);
-                    const cellColor = autoColorInfo.color;
-                    const colorObj = COLORS.find(c => c.bg.toLowerCase() === cellColor.toLowerCase());
-                    const isDark = colorObj ? colorObj.isDark : (cellColor === '#3b82f6' || cellColor === '#22c55e' || cellColor === '#1e2f3e');
-
-                    const cleanManualText = (cellData.text || '').split('\n').filter(line => {
-                      const trimmed = line.trim();
-                      return !trimmed.startsWith('Cliente:') && 
-                             !trimmed.startsWith('• [OBRA]') && 
-                             !trimmed.startsWith('• [SERVIÇO]');
-                    }).join('\n').trim();
-                    const hasItems = matchingObras.length > 0 || matchingServicos.length > 0;
-
-                    return (
-                      <td 
-                        key={team.id} 
-                        className={`p-1.5 border-r border-slate-200 relative group ${fontConfig.cellMinHeight} align-top transition-colors duration-300`}
-                        style={{ backgroundColor: cellColor }}
-                      >
-                        {/* Holiday Banner inside cell */}
-                        {(() => {
-                          const feriado = getFeriado(fullDate);
-                          if (!feriado) return null;
-                          if (feriado.tipo === 'nacional') {
-                            return (
-                              <div className="mb-1 px-1.5 py-0.5 rounded bg-amber-500/20 border border-amber-400/50 text-amber-950 text-[10px] font-extrabold flex items-center justify-between shadow-2xs backdrop-blur-xs" title={`Alerta de Feriado Nacional: ${feriado.nome}. Agendamento permitido.`}>
-                                <span className="truncate">⚠️ {feriado.nome}</span>
-                                <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-amber-600 text-white font-black shrink-0 ml-1">Feriado</span>
-                              </div>
-                            );
-                          }
-                          if (feriado.tipo === 'municipal_recife' || feriado.tipo === 'estadual_pe') {
-                            return (
-                              <div className={`mb-1 px-1.5 py-0.5 rounded ${feriado.tipo === 'municipal_recife' ? 'bg-emerald-500/15 border-emerald-400/40 text-emerald-950' : 'bg-blue-500/15 border-blue-400/40 text-blue-950'} border text-[10px] font-extrabold flex items-center gap-1 shadow-2xs backdrop-blur-xs`} title={feriado.descricao || feriado.nome}>
-                                <span className="truncate">{feriado.tipo === 'municipal_recife' ? '🏛️ Recife' : '⭐ PE'}: {feriado.nome}</span>
-                              </div>
-                            );
-                          }
-                          return null;
-                        })()}
-                        <textarea 
-                          value={cleanManualText} 
-                          onChange={(e) => {
-                            // When user changes text manually, we keep their changes
-                            // But we filter out the auto-synced part to avoid redundancy in the view state if any remains
-                            updateCell(day, team.id, e.target.value, cellColor);
-                          }}
-                          placeholder={hasItems ? "" : "..."}
-                          className={`w-full ${
-                            hasItems && !cleanManualText 
-                              ? 'h-3.5 min-h-[14px] opacity-0 group-hover:opacity-60 focus:opacity-100 transition-opacity' 
-                              : fontConfig.textarea
-                          } p-0.5 bg-transparent resize-none outline-none leading-tight transition-colors ${
-                            isDark 
-                              ? 'text-white placeholder:text-white/40' 
-                              : cellColor === '#eab308' 
-                              ? 'text-amber-950 placeholder:text-amber-900/40 font-semibold' 
-                              : 'text-[#1e2f3e] placeholder:text-slate-300'
-                          }`}
-                        />
-
-                        {/* Automatic Items Display */}
-                        { (matchingObras.length > 0 || matchingServicos.length > 0) && (
-                          <div className="mt-1 space-y-1.5 px-0.5 pb-1">
-                            {matchingObras.map(o => {
-                              const concluido = isStatusConcluido(o.situacao);
-                              return (
-                              <div 
-                                key={o.firebaseId || o.id} 
-                                onClick={() => setSelectedDetails({ type: 'obra', item: o })}
-                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${
-                                  o.situacao === 'Em Espera' 
-                                    ? 'bg-slate-50 text-slate-600 border-slate-200' 
-                                    : concluido
-                                    ? (cellColor === '#22c55e' ? 'bg-white/25 text-emerald-950 border-white/35 backdrop-blur-xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200') 
-                                    : isDark 
-                                    ? 'bg-white/15 text-white border-white/25 backdrop-blur-xs' 
-                                    : cellColor === '#eab308'
-                                    ? 'bg-white/95 text-amber-950 border-amber-300 shadow-xs'
-                                    : 'bg-white text-slate-800 border-slate-200/90'
-                                }`}
-                              >
-                                {/* Linha 1: Status & Placas */}
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    <ClipboardList size={11} className={`${isDark && !concluido ? 'text-white/80' : cellColor === '#eab308' ? 'text-amber-800' : 'text-indigo-600'} opacity-80 shrink-0`} />
-                                    <select
-                                      value={concluido ? 'Concluído' : (o.situacao || 'Em Andamento')}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => handleQuickStatusChangeObra(o, e.target.value, e)}
-                                      className={`${fontConfig.statusSelect} outline-none cursor-pointer transition-all shadow-2xs ${
-                                        concluido
-                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
-                                          : o.situacao === 'Em Espera'
-                                          ? 'bg-slate-200 text-slate-700 border-slate-300 font-extrabold'
-                                          : o.situacao === 'Pendente'
-                                          ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
-                                          : isDark
-                                          ? 'bg-white text-blue-800 border-blue-200 font-extrabold'
-                                          : 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
-                                      }`}
-                                      title="Alterar status deste agendamento de obra"
-                                    >
-                                      <option value="Em Andamento">Em Andamento</option>
-                                      <option value="Concluído">Concluído</option>
-                                      <option value="Pendente">Pendente</option>
-                                      <option value="Em Espera">Em Espera</option>
-                                    </select>
-                                  </div>
-                                  {o.quantidadePlacas > 0 && (
-                                    <span className={`${fontConfig.placasBadge} ${
-                                      cellColor === '#22c55e' || isDark
-                                        ? 'text-white bg-white/25 border-white/40 font-black'
-                                        : cellColor === '#eab308'
-                                        ? 'text-amber-950 bg-amber-200 border-amber-400 font-black'
-                                        : 'text-indigo-950 bg-indigo-100 border-indigo-300 font-black'
-                                    } border shrink-0 inline-flex items-center gap-1 leading-none shadow-2xs`}
-                                    title={`Quantidade de Placas: ${o.quantidadePlacas} unidades`}
-                                    >
-                                      <Sun size={15} className="shrink-0 stroke-[2.5] text-amber-500" />
-                                      <span>{o.quantidadePlacas} PL</span>
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Linha 2: Nome do Cliente + Badges integrados (sem espaço vazio) */}
-                                <div className="my-0.5 flex items-center gap-1.5 flex-wrap">
-                                  <span 
-                                    className={`font-black ${fontConfig.clientName} cursor-pointer transition-colors ${
-                                      concluido 
-                                        ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black') 
-                                        : isDark 
-                                        ? 'text-white font-black' 
-                                        : cellColor === '#eab308'
-                                        ? 'text-amber-950 font-black'
-                                        : 'text-slate-900 font-black hover:text-indigo-600'
-                                    }`}
-                                    title={o.cliente}
-                                  >
-                                    {o.cliente}
-                                  </span>
-
-                                  <span 
-                                    className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
-                                      concluido
-                                        ? 'bg-emerald-900/90 text-emerald-100 border-emerald-700/60'
-                                        : cellColor === '#3b82f6'
-                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/50'
-                                        : cellColor === '#eab308'
-                                        ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs'
-                                        : isDark
-                                        ? 'bg-amber-300 text-amber-950 border-amber-400 font-black'
-                                        : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
-                                    }`}
-                                    title={`Tipo de Serviço: Instalação Solar ${o.inversor ? `• ${o.inversor}` : ''}`}
-                                  >
-                                    <Zap size={9} className="shrink-0 stroke-[2.5]" />
-                                    <span className="truncate max-w-[130px]">Obra Solar</span>
-                                  </span>
-
-                                  {o.inversor && (
-                                    <span 
-                                      className={`text-[8.5px] font-black truncate max-w-[95px] px-1.5 py-0.2 rounded border ${
-                                        cellColor === '#22c55e' || isDark
-                                          ? 'bg-white/20 text-white border-white/30 font-bold'
-                                          : cellColor === '#eab308'
-                                          ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
-                                          : 'bg-slate-100 text-slate-700 border-slate-200 font-bold'
-                                      }`} 
-                                      title={`Inversor: ${o.inversor}`}
-                                    >
-                                      {o.inversor}
-                                    </span>
-                                  )}
-
-                                  {o.formaPagamento && (
-                                    <span 
-                                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
-                                        concluido
-                                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
-                                          : cellColor === '#3b82f6'
-                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs ring-1 ring-emerald-400/50'
-                                          : cellColor === '#eab308'
-                                          ? 'bg-emerald-800 text-white border-emerald-700 font-black shadow-xs ring-1 ring-emerald-600/40'
-                                          : isDark
-                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs'
-                                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 font-extrabold shadow-2xs'
-                                      }`}
-                                      title={`Forma de Pagamento: ${o.formaPagamento}${o.situacaoPagamento ? ` (${o.situacaoPagamento})` : ''}`}
-                                    >
-                                      <CreditCard size={9} className="shrink-0 stroke-[2.5]" />
-                                      <span className="truncate max-w-[120px]">{o.formaPagamento}</span>
-                                      {o.situacaoPagamento && (
-                                        <span className="opacity-80 text-[7px] uppercase font-bold">• {o.situacaoPagamento}</span>
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
-                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
-                                  <button 
-                                    onClick={(e) => handleQuickStatusChangeObra(o, concluido ? 'Em Andamento' : 'Concluído', e)}
-                                    className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
-                                      concluido
-                                        ? 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 font-extrabold'
-                                        : isDark
-                                        ? 'text-slate-800 bg-white hover:bg-slate-100 border border-white/40 font-extrabold'
-                                        : cellColor === '#eab308'
-                                        ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 font-extrabold'
-                                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
-                                    }`}
-                                    title={concluido ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
-                                  >
-                                    <Check size={fontConfig.checkIconSize} className={concluido ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
-                                    <span>{concluido ? 'Concluído' : 'Concluir'}</span>
-                                  </button>
-                                  <div className="flex items-center gap-0.5">
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const url = generateObraGCalUrl(o, fullDate, team.name);
-                                        if (url) window.open(url, '_blank');
-                                      }}
-                                      className={`p-1 rounded transition-colors ${
-                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'
-                                      }`}
-                                      title="Anexar ao Google Agenda"
-                                    >
-                                      <CalendarClock size={fontConfig.actionIconSize} />
-                                    </button>
-                                    <button 
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        onEditObra?.(o); 
-                                      }}
-                                      className={`p-1 rounded transition-colors ${
-                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'
-                                      }`}
-                                      title="Editar Registro"
-                                    >
-                                      <Edit size={fontConfig.actionIconSize} />
-                                    </button>
-                                    {isAdmin && (
-                                      <button 
-                                        onClick={(e) => { 
-                                          e.stopPropagation(); 
-                                          setItemToDelete({ type: 'obra', item: o }); 
-                                        }}
-                                        className={`p-1 rounded transition-colors ${
-                                          isDark ? 'text-red-300 hover:text-red-100 hover:bg-red-900/40' : cellColor === '#22c55e' ? 'text-red-800 hover:text-red-950 hover:bg-red-100/50' : cellColor === '#eab308' ? 'text-red-900 hover:text-red-950 hover:bg-red-200/50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                                        }`}
-                                        title="Excluir Lançamento (Admin)"
-                                      >
-                                        <Trash2 size={fontConfig.actionIconSize} />
-                                      </button>
-                                    )}
-                                    {o.txtFile && (
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); setViewingTxt(o.txtFile || null); }}
-                                        className={`p-1 rounded transition-colors ${
-                                          isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : 'text-slate-400 hover:text-indigo-600 hover:bg-slate-100'
-                                        }`}
-                                        title="Ver TXT"
-                                      >
-                                        <FileText size={fontConfig.actionIconSize} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Linha 4: Observações com letra maior e mais legível */}
-                                {o.observacoes && (
-                                  <div 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingObs({
-                                        cliente: o.cliente,
-                                        tipo: 'Obra',
-                                        observacao: o.observacoes,
-                                        data: o.dataObra ? formatDateBR(o.dataObra) : undefined,
-                                        firebaseId: o.firebaseId,
-                                        collectionName: 'obras',
-                                        onSave: async (newCombined: string) => {
-                                          if (o.firebaseId) {
-                                            await updateDoc(doc(db, 'obras', o.firebaseId), {
-                                              observacoes: newCombined,
-                                              updatedAt: serverTimestamp()
-                                            });
-                                          }
-                                          setLocalObras(prev => prev.map(item => (item.firebaseId === o.firebaseId || item.id === o.id) ? { ...item, observacoes: newCombined } : item));
-                                          addToast("Observação atualizada com sucesso!");
-                                        }
-                                      });
-                                    }}
-                                    className={`${fontConfig.obsBox} ${
-                                      cellColor === '#22c55e' || isDark
-                                        ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
-                                        : 'bg-amber-100/90 text-amber-950 border-amber-300 font-bold'
-                                    } border leading-snug shadow-2xs cursor-pointer hover:bg-amber-200 transition-colors`} 
-                                    title={`Observação: ${o.observacoes}`}
-                                  >
-                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
-                                      OBS
-                                    </span>
-                                    <span className={`line-clamp-2 flex-1 ${fontConfig.obsText}`}>{o.observacoes}</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                            })}
-                            {matchingServicos.map(s => {
-                              const isAdm = s.tipoAtendimento === 'Administrativo';
-                              const sTeams = getServicoTeams(s);
-                              const hasMultipleTeams = sTeams.length > 1;
-                              const concluido = isStatusConcluido(s.situacao);
-                              return (
-                              <div 
-                                key={s.firebaseId || s.id} 
-                                onClick={() => setSelectedDetails({ type: 'servico', item: s })}
-                                className={`font-bold ${fontConfig.cardPadding} flex flex-col shadow-xs border transition-all hover:scale-[1.01] hover:shadow-md cursor-pointer ${
-                                  s.situacao === 'Em Espera'
-                                    ? 'bg-slate-50 text-slate-600 border-slate-200'
-                                    : concluido
-                                    ? (cellColor === '#22c55e' ? 'bg-white/25 text-emerald-950 border-white/35 backdrop-blur-xs' : 'bg-emerald-50/70 text-emerald-900 border-emerald-200')
-                                    : isDark 
-                                    ? (isAdm ? 'bg-purple-950/70 text-purple-200 border-purple-500/50' : 'bg-white/15 text-white border-white/25 backdrop-blur-xs')
-                                    : cellColor === '#eab308'
-                                    ? 'bg-white/95 text-amber-950 border-amber-300 shadow-xs'
-                                    : isAdm
-                                    ? 'bg-purple-50/80 text-purple-950 border-purple-300 ring-1 ring-purple-400/30'
-                                    : 'bg-white text-slate-800 border-slate-200/90'
-                                }`}
-                              >
-                                {/* Linha 1: Status & Tags (Admin / Equipes) */}
-                                <div className="flex items-center justify-between gap-1 mb-1">
-                                  <div className="flex items-center gap-1 min-w-0">
-                                    {isAdm ? (
-                                      <Briefcase size={11} className={`${isDark && !concluido ? 'text-purple-300' : 'text-purple-600'} shrink-0`} />
-                                    ) : (
-                                      <Wrench size={11} className={`${isDark && !concluido ? 'text-white/80' : cellColor === '#eab308' ? 'text-amber-800' : 'text-blue-600'} opacity-80 shrink-0`} />
-                                    )}
-                                    {isAdm && (
-                                      <span className="text-[7.5px] font-black uppercase tracking-wider bg-purple-200 text-purple-900 px-1 py-0.2 rounded shrink-0">
-                                        ADMIN
-                                      </span>
-                                    )}
-                                    <select
-                                      value={concluido ? 'Concluído' : (s.situacao || 'Em Andamento')}
-                                      onClick={(e) => e.stopPropagation()}
-                                      onChange={(e) => handleQuickStatusChangeServico(s, e.target.value, e)}
-                                      className={`${fontConfig.statusSelect} outline-none cursor-pointer transition-all shadow-2xs ${
-                                        concluido
-                                          ? 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold'
-                                          : s.situacao === 'Em Espera'
-                                          ? 'bg-slate-200 text-slate-700 border-slate-300 font-extrabold'
-                                          : s.situacao === 'Pendente'
-                                          ? 'bg-amber-100 text-amber-900 border-amber-300 font-extrabold'
-                                          : isAdm
-                                          ? 'bg-purple-100 text-purple-900 border-purple-300 font-extrabold'
-                                          : isDark
-                                          ? 'bg-white text-blue-800 border-blue-200 font-extrabold'
-                                          : 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold'
-                                      }`}
-                                      title="Alterar status deste agendamento"
-                                    >
-                                      <option value="Em Andamento">Em Andamento</option>
-                                      <option value="Concluído">Concluído</option>
-                                      <option value="Pendente">Pendente</option>
-                                      <option value="Em Espera">Em Espera</option>
-                                    </select>
-                                  </div>
-                                  {hasMultipleTeams && (
-                                    <span 
-                                      className={`text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded border shrink-0 ${
-                                        cellColor === '#22c55e' || isDark
-                                          ? 'bg-white/25 text-emerald-950 border-white/40 font-extrabold'
-                                          : cellColor === '#eab308'
-                                          ? 'bg-amber-100 text-amber-950 border-amber-300 font-extrabold'
-                                          : 'bg-indigo-100/90 text-indigo-900 border-indigo-200'
-                                      }`} 
-                                      title={`Equipes neste serviço: ${sTeams.join(' + ')}`}
-                                    >
-                                      +{sTeams.length}eq
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Linha 2: Nome do Cliente + Serviço e Pagamento integrados (sem espaço vazio) */}
-                                <div className="my-0.5 flex items-center gap-1.5 flex-wrap">
-                                  <span 
-                                    className={`font-black ${fontConfig.clientName} cursor-pointer transition-colors ${
-                                      concluido
-                                        ? (cellColor === '#22c55e' ? 'line-through opacity-85 text-emerald-950 font-black' : 'line-through opacity-60 text-slate-500 font-black')
-                                        : isDark
-                                        ? 'text-white font-black'
-                                        : cellColor === '#eab308'
-                                        ? 'text-amber-950 font-black'
-                                        : (isAdm ? 'hover:text-purple-700 text-purple-950 font-black' : 'hover:text-blue-600 text-slate-900 font-black')
-                                    }`}
-                                    title={s.cliente}
-                                  >
-                                    {s.cliente}
-                                  </span>
-
-                                  {s.servico && (
-                                    <span 
-                                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
-                                        concluido
-                                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
-                                          : cellColor === '#3b82f6' // Célula Azul (Em Andamento) => Badge em Amarelo Ouro / Âmbar vibrante
-                                          ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs ring-1 ring-amber-400/60'
-                                          : cellColor === '#eab308' // Célula Amarela (Pendente) => Badge em Índigo / Roxo vibrante
-                                          ? 'bg-indigo-900 text-white border-indigo-700 font-black shadow-xs ring-1 ring-indigo-500/40'
-                                          : isDark
-                                          ? 'bg-amber-300 text-amber-950 border-amber-400 font-black shadow-xs'
-                                          : isAdm
-                                          ? 'bg-purple-700 text-white border-purple-800 font-black shadow-xs'
-                                          : 'bg-indigo-600 text-white border-indigo-700 font-black shadow-xs'
-                                      }`}
-                                      title={`Serviço: ${s.servico || (isAdm ? 'Atendimento Administrativo' : 'Serviço Técnico')}`}
-                                    >
-                                      {isAdm ? (
-                                        <Briefcase size={9} className="shrink-0 stroke-[2.5]" />
-                                      ) : (
-                                        <Wrench size={9} className="shrink-0 stroke-[2.5]" />
-                                      )}
-                                      <span className="truncate max-w-[140px] font-black">
-                                        {s.servico || (isAdm ? 'Atend. Administrativo' : 'Serviço')}
-                                      </span>
-                                    </span>
-                                  )}
-
-                                  {s.formaPagamento && (
-                                    <span 
-                                      className={`inline-flex items-center gap-1 ${fontConfig.serviceBadge} font-black tracking-wide border shadow-2xs ${
-                                        concluido
-                                          ? 'bg-emerald-950 text-emerald-100 border-emerald-700/60'
-                                          : cellColor === '#3b82f6'
-                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs ring-1 ring-emerald-400/50'
-                                          : cellColor === '#eab308'
-                                          ? 'bg-emerald-800 text-white border-emerald-700 font-black shadow-xs ring-1 ring-emerald-600/40'
-                                          : isDark
-                                          ? 'bg-emerald-300 text-emerald-950 border-emerald-400 font-black shadow-xs'
-                                          : 'bg-emerald-50 text-emerald-900 border-emerald-300 font-extrabold shadow-2xs'
-                                      }`}
-                                      title={`Forma de Pagamento: ${s.formaPagamento}${s.situacaoPagamento ? ` (${s.situacaoPagamento})` : ''}`}
-                                    >
-                                      <CreditCard size={9} className="shrink-0 stroke-[2.5]" />
-                                      <span className="truncate max-w-[120px]">{s.formaPagamento}</span>
-                                      {s.situacaoPagamento && (
-                                        <span className="opacity-80 text-[7px] uppercase font-bold">• {s.situacaoPagamento}</span>
-                                      )}
-                                    </span>
-                                  )}
-                                </div>
-
-                                {/* Linha 3: Barra de Ações (Concluir à esquerda, ícones à direita) */}
-                                <div className="flex items-center justify-between gap-1 mt-1 pt-1 border-t border-slate-100/30 select-none">
-                                  <button 
-                                    onClick={(e) => handleQuickStatusChangeServico(s, concluido ? 'Em Andamento' : 'Concluído', e)}
-                                    className={`transition-all flex items-center gap-1 shadow-2xs ${fontConfig.concluirBtn} ${
-                                      concluido
-                                        ? 'text-emerald-900 bg-emerald-100 hover:bg-emerald-200 border border-emerald-300 font-extrabold'
-                                        : isDark
-                                        ? 'text-slate-800 bg-white hover:bg-slate-100 border border-white/40 font-extrabold'
-                                        : cellColor === '#eab308'
-                                        ? 'text-amber-950 bg-amber-50 hover:bg-amber-100 border border-amber-300 font-extrabold'
-                                        : 'text-slate-600 hover:text-emerald-700 hover:bg-emerald-50 border border-slate-200 bg-slate-50'
-                                    }`}
-                                    title={concluido ? 'Agendamento Concluído ✓ (Clique para reabrir)' : 'Marcar como Concluído'}
-                                  >
-                                    <Check size={fontConfig.checkIconSize} className={concluido ? 'stroke-[3] text-emerald-700' : 'stroke-[2.5]'} />
-                                    <span>{concluido ? 'Concluído' : 'Concluir'}</span>
-                                  </button>
-
-                                  <div className="flex items-center gap-0.5">
-                                    <button 
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        const url = generateServicoGCalUrl(s, fullDate, team.name);
-                                        if (url) window.open(url, '_blank');
-                                      }}
-                                      className={`p-1 rounded transition-colors ${
-                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/80' : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50/80')
-                                      }`}
-                                      title="Anexar ao Google Agenda"
-                                    >
-                                      <CalendarClock size={fontConfig.actionIconSize} />
-                                    </button>
-                                    <button 
-                                      onClick={(e) => { 
-                                        e.stopPropagation(); 
-                                        onEditServico?.(s); 
-                                      }}
-                                      className={`p-1 rounded transition-colors ${
-                                        isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50')
-                                      }`}
-                                      title="Editar Serviço"
-                                    >
-                                      <Edit size={fontConfig.actionIconSize} />
-                                    </button>
-                                    {isAdmin && (
-                                      <button 
-                                        onClick={(e) => { 
-                                          e.stopPropagation(); 
-                                          setItemToDelete({ type: 'servico', item: s }); 
-                                        }}
-                                        className={`p-1 rounded transition-colors ${
-                                          isDark ? 'text-red-300 hover:text-red-100 hover:bg-red-900/40' : cellColor === '#22c55e' ? 'text-red-800 hover:text-red-950 hover:bg-red-100/50' : cellColor === '#eab308' ? 'text-red-900 hover:text-red-950 hover:bg-red-200/50' : 'text-slate-400 hover:text-red-600 hover:bg-red-50'
-                                        }`}
-                                        title="Excluir Lançamento (Admin)"
-                                      >
-                                        <Trash2 size={fontConfig.actionIconSize} />
-                                      </button>
-                                    )}
-                                    {s.txtFile && (
-                                      <button 
-                                        onClick={(e) => { e.stopPropagation(); setViewingTxt(s.txtFile || null); }}
-                                        className={`p-1 rounded transition-colors ${
-                                          isDark ? 'text-white/80 hover:text-white hover:bg-white/10' : cellColor === '#22c55e' ? 'text-emerald-900/70 hover:text-emerald-900 hover:bg-emerald-100/50' : cellColor === '#eab308' ? 'text-amber-900/80 hover:text-amber-950 hover:bg-amber-200/50' : (isAdm ? 'text-purple-600 hover:text-purple-800 hover:bg-purple-100/50' : 'text-slate-400 hover:text-blue-700 hover:bg-slate-100/50')
-                                        }`}
-                                        title="Ver TXT"
-                                      >
-                                        <FileText size={fontConfig.actionIconSize} />
-                                      </button>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Linha 4: Observações com letra maior e mais legível */}
-                                {s.observacao && (
-                                  <div 
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setViewingObs({
-                                        cliente: s.cliente,
-                                        tipo: isAdm ? 'Atendimento Administrativo' : 'Agendamento de Serviço',
-                                        observacao: s.observacao,
-                                        data: s.dataServico ? formatDateBR(s.dataServico) : undefined,
-                                        firebaseId: s.firebaseId,
-                                        collectionName: 'servicos',
-                                        onSave: async (newCombined: string) => {
-                                          if (s.firebaseId) {
-                                            await updateDoc(doc(db, 'servicos', s.firebaseId), {
-                                              observacao: newCombined,
-                                              updatedAt: serverTimestamp()
-                                            });
-                                          }
-                                          setLocalServicos(prev => prev.map(item => (item.firebaseId === s.firebaseId || item.id === s.id) ? { ...item, observacao: newCombined } : item));
-                                          addToast("Observação atualizada com sucesso!");
-                                        }
-                                      });
-                                    }}
-                                    className={`${fontConfig.obsBox} ${
-                                      cellColor === '#22c55e' || isDark
-                                        ? 'bg-amber-100 text-amber-950 border-amber-300 font-bold'
-                                        : 'bg-amber-100/90 text-amber-950 border-amber-300 font-bold'
-                                    } border leading-snug shadow-2xs cursor-pointer hover:bg-amber-200 transition-colors`} 
-                                    title={`Observação: ${s.observacao}`}
-                                  >
-                                    <span className={`bg-amber-300 text-amber-950 ${fontConfig.obsTag} shrink-0 tracking-wider font-black`}>
-                                      OBS
-                                    </span>
-                                    <span className={`line-clamp-2 flex-1 ${fontConfig.obsText}`}>{s.observacao}</span>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                            })}
-                          </div>
-                        )}
-                        {/* Cell Actions Menu */}
-                        <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity z-10 flex gap-1">
-                          <button 
-                            onClick={() => {
-                              const isOpening = !(addingClientTo?.day === day && addingClientTo?.teamId === team.id);
-                              if (isOpening) {
-                                const feriado = getFeriado(fullDate);
-                                if (feriado) {
-                                  addToast(`⚠️ Alerta: ${feriado.nome} (agendamento permitido)`);
-                                }
-                              }
-                              setAddingClientTo(isOpening ? {day, teamId: team.id} : null);
-                            }}
-                            className={`p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
-                            title="Adicionar Cliente"
-                          >
-                            <UserPlus size={14} />
-                          </button>
-
-                          <button 
-                            onClick={() => setActiveCell(activeCell?.day === day && activeCell?.teamId === team.id ? null : {day, teamId: team.id})}
-                            className={`p-1.5 rounded-lg shadow-md border ${isDark ? 'bg-white/20 border-white/30 text-white' : 'bg-white border-slate-200 text-slate-400'}`}
-                          >
-                            <Palette size={14} />
-                          </button>
-                          
-                          <AnimatePresence>
-                            {addingClientTo?.day === day && addingClientTo?.teamId === team.id && (
-                              <motion.div 
-                                key={`add-client-${day}-${team.id}`}
-                                initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                                className="absolute right-0 mt-8 bg-white p-2 rounded-xl shadow-2xl border border-slate-200 w-48 max-h-64 overflow-y-auto z-20"
-                              >
-                                <p className="text-[10px] font-bold text-slate-400 uppercase px-2 mb-1">Clientes Ativos</p>
-                                {Array.from(new Set([
-                                  ...localObras.map(o => o.cliente),
-                                  ...localServicos.map(s => s.cliente)
-                                ])).filter(Boolean).sort().map(clientName => (
-                                  <button 
-                                    key={clientName}
-                                    onClick={() => {
-                                      const currentText = cellData.text ? cellData.text + '\n' : '';
-                                      updateCell(day, team.id, currentText + clientName, cellData.color);
-                                      setAddingClientTo(null);
-                                    }}
-                                    className="w-full text-left px-3 py-2 text-xs hover:bg-slate-50 rounded-lg text-slate-700 font-medium"
-                                  >
-                                    {clientName}
-                                  </button>
-                                ))}
-                              </motion.div>
-                            )}
-
-                            {activeCell?.day === day && activeCell?.teamId === team.id && (
-                              <motion.div 
-                                key={`palette-${day}-${team.id}`}
-                                initial={{ opacity: 0, scale: 0.9, y: -10 }}
-                                animate={{ opacity: 1, scale: 1, y: 0 }}
-                                exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                                className="absolute right-0 mt-2 bg-white p-2 rounded-xl shadow-2xl border border-slate-200 grid grid-cols-4 gap-1 w-32"
-                              >
-                                {COLORS.map(c => (
-                                  <button 
-                                    key={c.bg}
-                                    onClick={() => {
-                                      updateCell(day, team.id, cellData.text, c.bg);
-                                      setActiveCell(null);
-                                    }}
-                                    className="w-6 h-6 rounded-md border border-slate-200 transition-transform hover:scale-110"
-                                    style={{ backgroundColor: c.bg }}
-                                    title={c.name}
-                                  />
-                                ))}
-                              </motion.div>
-                            )}
-                          </AnimatePresence>
-                        </div>
                       </td>
-                    );
-                  })}
-                </tr>
-              );
-            })}
-          </tbody>
-          </table>
-        </div>
+                    {visibleTeams.length === 0 && (
+                      <td className="p-3 text-center text-slate-400 italic text-xs bg-slate-50/40">
+                        Sem agendamentos nesta data
+                      </td>
+                    )}
+                    {visibleTeams.map(team => {
+                      const cellState = getCellState(day, dayIdx, team);
+                      return (
+                        <td 
+                          key={team.id} 
+                          className={`p-1.5 border-r border-slate-200 relative group ${fontConfig.cellMinHeight} align-top transition-colors duration-300 overflow-hidden`}
+                          style={{ backgroundColor: cellState.cellColor }}
+                        >
+                          {renderCellBody(day, dayIdx, team, cellState)}
+                        </td>
+                      );
+                    })}
+                  </tr>
+                );
+              })}
+            </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       {/* Team Management Modal */}

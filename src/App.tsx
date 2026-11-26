@@ -585,7 +585,7 @@ export default function App() {
         finalDisplay = (
           <div className="font-medium text-indigo-900 bg-indigo-50/90 hover:bg-indigo-100 px-2 py-1 rounded-lg border border-indigo-200/90 shadow-2xs transition-all cursor-pointer inline-flex items-center gap-1.5" title={`Equipes alocadas: ${teams.join(', ')}`}>
             <Users size={12} className="text-indigo-600 shrink-0" />
-            <span className="font-bold text-[11px] truncate max-w-[150px]">{teams.join(' + ')}</span>
+            <span className="font-bold text-[11px] whitespace-normal break-words leading-tight">{teams.join(' + ')}</span>
             <span className="text-[8.5px] bg-indigo-200 text-indigo-950 font-black px-1.5 py-0.2 rounded-full shrink-0">
               {teams.length} eq
             </span>
@@ -3263,9 +3263,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-[100dvh] lg:h-[100dvh] bg-slate-50 text-slate-900 font-sans flex flex-col overflow-x-clip lg:overflow-hidden">
+    <div className="min-h-[100dvh] md:h-[100dvh] bg-slate-50 text-slate-900 font-sans flex flex-col overflow-x-clip md:overflow-hidden">
       <MobilePWAInstall />
-      <main className="flex-1 overflow-y-auto py-2 md:py-4 pb-24 lg:pb-6 scrollbar-hide">
+      <main className={`flex-1 overflow-y-auto scrollbar-hide ${activeTab === 'escala' ? 'py-1 sm:py-2 pb-20 md:pb-2' : 'py-2 md:py-4 pb-24 md:pb-6'}`}>
         <div className="fluid-container space-y-4">
           {activeTab === 'notebook' ? (
             <NotebookView 
@@ -3885,7 +3885,7 @@ export default function App() {
                     {scheduledObras.length} obras
                   </span>
                 </div>
-                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-indigo-50/30 border-b border-indigo-100">
@@ -3977,7 +3977,7 @@ export default function App() {
                             Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
                           </div>
                         </th>
-                        <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right">Ações</th>
+                        <th className="px-3 py-3 text-[10px] font-bold text-indigo-700 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-indigo-50">
@@ -4043,8 +4043,8 @@ export default function App() {
                                 </select>
                               </td>
                               <td className="px-3 py-3">
-                                <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                  <span onClick={() => handleEdit(obra)} className="flex-1 truncate" title="Clique para editar informações">{obra.cliente}</span>
+                                <div className="text-xs font-bold text-slate-900 min-w-[140px] max-w-[260px] cursor-pointer hover:text-indigo-600 transition-colors flex items-start gap-1 group/name">
+                                  <span onClick={() => handleEdit(obra)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{obra.cliente}</span>
                                   {obra.txtFile && (
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
@@ -4066,18 +4066,18 @@ export default function App() {
                                         data: obra.dataObra ? formatDateBR(obra.dataObra) : undefined
                                       });
                                     }}
-                                    className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                    className="inline-flex items-start gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[300px] whitespace-normal break-words leading-snug shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
                                     title={`Clique para abrir observação: ${obra.observacoes}`}
                                   >
-                                    <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 mt-0.5 bg-amber-200/80 px-1 py-0.2 rounded">
                                       OBS
                                     </span>
-                                    <span className="truncate">{obra.observacoes}</span>
+                                    <span className="whitespace-normal break-words">{obra.observacoes}</span>
                                   </div>
                                 )}
                               </td>
-                              <td className="px-3 py-3">
-                                <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className={`text-[10px] font-bold px-2 py-1 rounded text-center whitespace-nowrap ${
                                   (() => {
                                     const dias = getDaysDiff(obra.dataContrato);
                                     return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -4087,7 +4087,7 @@ export default function App() {
                                 </div>
                               </td>
                               <td className="px-3 py-3">
-                                <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
+                                <div className="text-[10px] text-slate-600 min-w-[70px] max-w-[130px] whitespace-normal break-words leading-snug">{obra.local || '---'}</div>
                               </td>
                               {renderEditableCell(obra.id, 'vendedor', 'obra', obra.vendedor || '', 'vendedor')}
                               {renderEditableCell(
@@ -4190,7 +4190,7 @@ export default function App() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button 
                                     onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -4244,7 +4244,7 @@ export default function App() {
                     {unscheduledObras.length} obras
                   </span>
                 </div>
-                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -4336,7 +4336,7 @@ export default function App() {
                             Financ. {sortConfig.key === 'formaPagamento' && (sortConfig.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
                           </div>
                         </th>
-                        <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                        <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
@@ -4402,8 +4402,8 @@ export default function App() {
                                 </select>
                               </td>
                               <td className="px-3 py-3">
-                                <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                  <span onClick={() => handleEdit(obra)} className="flex-1 truncate" title="Clique para editar informações">{obra.cliente}</span>
+                                <div className="text-xs font-bold text-slate-900 min-w-[140px] max-w-[260px] cursor-pointer hover:text-indigo-600 transition-colors flex items-start gap-1 group/name">
+                                  <span onClick={() => handleEdit(obra)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{obra.cliente}</span>
                                   {obra.txtFile && (
                                     <button 
                                       onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
@@ -4425,18 +4425,18 @@ export default function App() {
                                         data: obra.dataContrato ? `Contrato: ${formatDateBR(obra.dataContrato)}` : undefined
                                       });
                                     }}
-                                    className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                    className="inline-flex items-start gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[300px] whitespace-normal break-words leading-snug shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
                                     title={`Clique para abrir observação: ${obra.observacoes}`}
                                   >
-                                    <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                    <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 mt-0.5 bg-amber-200/80 px-1 py-0.2 rounded">
                                       OBS
                                     </span>
-                                    <span className="truncate">{obra.observacoes}</span>
+                                    <span className="whitespace-normal break-words">{obra.observacoes}</span>
                                   </div>
                                 )}
                               </td>
-                              <td className="px-3 py-3">
-                                <div className={`text-[10px] font-bold px-2 py-1 rounded text-center ${
+                              <td className="px-3 py-3 whitespace-nowrap">
+                                <div className={`text-[10px] font-bold px-2 py-1 rounded text-center whitespace-nowrap ${
                                   (() => {
                                     const dias = getDaysDiff(obra.dataContrato);
                                     return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -4446,7 +4446,7 @@ export default function App() {
                                 </div>
                               </td>
                               <td className="px-3 py-3">
-                                <div className="text-[10px] text-slate-600 min-w-[100px]">{obra.local || '---'}</div>
+                                <div className="text-[10px] text-slate-600 min-w-[70px] max-w-[130px] whitespace-normal break-words leading-snug">{obra.local || '---'}</div>
                               </td>
                               {renderEditableCell(obra.id, 'vendedor', 'obra', obra.vendedor || '', 'vendedor')}
                               {renderEditableCell(
@@ -4549,7 +4549,7 @@ export default function App() {
                                   </div>
                                 </div>
                               </td>
-                              <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                                 <div className="flex items-center justify-end gap-1">
                                   <button 
                                     onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -4661,7 +4661,7 @@ export default function App() {
               </div>
               
               {showArchivedObras && (
-                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -4695,7 +4695,7 @@ export default function App() {
                         </div>
                       </th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Total</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -4720,8 +4720,8 @@ export default function App() {
                               </span>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => handleEdit(obra)} className="flex-1 truncate" title="Clique para editar informações">{obra.cliente}</span>
+                              <div className="text-xs font-bold text-slate-900 min-w-[140px] max-w-[260px] cursor-pointer hover:text-indigo-600 transition-colors flex items-start gap-1 group/name">
+                                <span onClick={() => handleEdit(obra)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{obra.cliente}</span>
                                 {obra.txtFile && (
                                   <button 
                                     onClick={(e) => { e.stopPropagation(); setViewingTxt(obra.txtFile || null); }}
@@ -4743,13 +4743,13 @@ export default function App() {
                                       data: (obra.dataConclusao || obra.dataObra) ? formatDateBR(obra.dataConclusao || obra.dataObra) : undefined
                                     });
                                   }}
-                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  className="inline-flex items-start gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[300px] whitespace-normal break-words leading-snug shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
                                   title={`Clique para abrir observação: ${obra.observacoes}`}
                                 >
-                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 mt-0.5 bg-amber-200/80 px-1 py-0.2 rounded">
                                     OBS
                                   </span>
-                                  <span className="truncate">{obra.observacoes}</span>
+                                  <span className="whitespace-normal break-words">{obra.observacoes}</span>
                                 </div>
                               )}
                             </td>
@@ -4757,7 +4757,7 @@ export default function App() {
                               {getDaysDiff(obra.dataContrato)} d
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-500 min-w-[100px]">{obra.local || '---'}</div>
+                              <div className="text-[10px] text-slate-500 min-w-[70px] max-w-[130px] whitespace-normal break-words leading-snug">{obra.local || '---'}</div>
                             </td>
                             {renderEditableCell(obra.id, 'vendedor', 'obra', obra.vendedor || '', 'vendedor')}
                             {renderEditableCell(
@@ -4859,7 +4859,7 @@ export default function App() {
                                 </div>
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => { setSelectedObra(obra); setIsDetailsModalOpen(true); }}
@@ -4932,7 +4932,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+              <div className="table-responsive-wrap overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-purple-50/40 border-b border-purple-100">
@@ -4957,7 +4957,7 @@ export default function App() {
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Valor</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data Agendada</th>
                       <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Financ.</th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-purple-100/60">
@@ -5028,8 +5028,8 @@ export default function App() {
                               {formatDateBR(servico.dataAtendimento)}
                             </span>
                           )}
-                          <td className="px-3 py-3 text-center">
-                            <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
+                          <td className="px-3 py-3 text-center whitespace-nowrap">
+                            <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block whitespace-nowrap ${
                               (() => {
                                 const dias = getDaysDiff(servico.dataAtendimento);
                                 return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -5039,8 +5039,8 @@ export default function App() {
                             </div>
                           </td>
                           <td className="px-3 py-3">
-                            <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-purple-700 transition-colors flex items-center gap-1 group/name">
-                              <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                            <div className="text-xs font-bold text-slate-900 min-w-[140px] max-w-[260px] cursor-pointer hover:text-purple-700 transition-colors flex items-start gap-1 group/name">
+                              <span onClick={() => handleServicoEdit(servico)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{servico.cliente}</span>
                               <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
                                 Admin
                               </span>
@@ -5065,15 +5065,15 @@ export default function App() {
                                     data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
                                   });
                                 }}
-                                className="mt-1 flex items-center gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold max-w-[200px] truncate cursor-pointer hover:bg-amber-100"
+                                className="mt-1 inline-flex items-start gap-1 px-1.5 py-0.5 rounded bg-amber-50 text-amber-800 border border-amber-200 text-[9px] font-bold max-w-[300px] whitespace-normal break-words leading-snug cursor-pointer hover:bg-amber-100"
                               >
-                                <FileText size={10} className="shrink-0 text-amber-600" />
-                                <span className="truncate">{servico.observacao}</span>
+                                <FileText size={10} className="shrink-0 mt-0.5 text-amber-600" />
+                                <span className="whitespace-normal break-words">{servico.observacao}</span>
                               </div>
                             )}
                           </td>
                           <td className="px-3 py-3">
-                            <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                            <div className="text-[10px] text-slate-600 min-w-[70px] max-w-[125px] whitespace-normal break-words leading-snug">{servico.local || '---'}</div>
                           </td>
                           {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
                           {renderEditableCell(
@@ -5087,8 +5087,8 @@ export default function App() {
                               <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-purple-500 shrink-0" />
                             </div>
                           )}
-                          <td className="px-3 py-3 text-[10px] font-semibold text-purple-900 min-w-[120px]">{servico.servico || '---'}</td>
-                          <td className="px-3 py-3 text-[15px] font-bold text-slate-900 whitespace-nowrap leading-tight">
+                          <td className="px-3 py-3 text-[10px] font-semibold text-purple-900 min-w-[85px] max-w-[150px] whitespace-normal break-words leading-snug">{servico.servico || '---'}</td>
+                          <td className="px-3 py-3 text-[13px] font-bold text-slate-900 whitespace-nowrap leading-tight">
                             R$ {Number(servico.valor || 0).toLocaleString('pt-BR')}
                           </td>
                           {renderEditableCell(
@@ -5114,7 +5114,7 @@ export default function App() {
                               {servico.formaPagamento || 'Não def.'}
                             </span>
                           </td>
-                          <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center justify-end gap-1">
                               <button 
                                 onClick={() => { setSelectedServico(servico); setIsDetailsModalOpen(true); }}
@@ -5170,7 +5170,7 @@ export default function App() {
                   {scheduledServicosList.length} registros
                 </span>
               </div>
-              <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+              <div className="table-responsive-wrap overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -5302,7 +5302,7 @@ export default function App() {
                           Financ. {sortConfigServicos.key === 'formaPagamento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
                         </div>
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -5394,8 +5394,8 @@ export default function App() {
                                 {formatDateBR(servico.dataAtendimento)}
                               </span>
                             )}
-                            <td className="px-3 py-3 text-center">
-                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
+                            <td className="px-3 py-3 text-center whitespace-nowrap">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block whitespace-nowrap ${
                                 (() => {
                                   const dias = getDaysDiff(servico.dataAtendimento);
                                   return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -5405,8 +5405,8 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                              <div className="text-xs font-bold text-slate-900 min-w-[125px] max-w-[195px] cursor-pointer hover:text-indigo-600 transition-colors flex items-start gap-1 group/name">
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{servico.cliente}</span>
                                 {servico.tipoAtendimento === 'Administrativo' && (
                                   <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
                                     Admin
@@ -5433,18 +5433,18 @@ export default function App() {
                                       data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
                                     });
                                   }}
-                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  className="inline-flex items-start gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[195px] whitespace-normal break-words leading-snug shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
                                   title={`Clique para abrir observação: ${servico.observacao}`}
                                 >
-                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 mt-0.5 bg-amber-200/80 px-1 py-0.2 rounded">
                                     OBS
                                   </span>
-                                  <span className="truncate">{servico.observacao}</span>
+                                  <span className="whitespace-normal break-words">{servico.observacao}</span>
                                 </div>
                               )}
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                              <div className="text-[10px] text-slate-600 min-w-[70px] max-w-[125px] whitespace-normal break-words leading-snug">{servico.local || '---'}</div>
                             </td>
                             {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
                             {renderEditableCell(
@@ -5458,8 +5458,8 @@ export default function App() {
                                 <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
                             )}
-                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[85px] max-w-[150px] whitespace-normal break-words leading-snug">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-[13px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             {renderEditableCell(
                               servico.id,
                               'equipeInstalou',
@@ -5512,13 +5512,13 @@ export default function App() {
                                     <option value="Outros">Outros</option>
                                   </select>
                                 ) : (
-                                  <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
+                                  <div className="text-[12px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block whitespace-nowrap">
                                     {servico.formaPagamento || 'DEFINIR PGTO'}
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -5579,7 +5579,7 @@ export default function App() {
                   {unscheduledServicosList.length} aguardando
                 </span>
               </div>
-              <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+              <div className="table-responsive-wrap overflow-x-auto">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -5703,7 +5703,15 @@ export default function App() {
                           Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
                         </div>
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      <th 
+                        className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-100/50 transition-colors"
+                        onClick={() => handleSortServicos('formaPagamento')}
+                      >
+                        <div className="flex items-center gap-1">
+                          Financ. {sortConfigServicos.key === 'formaPagamento' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
+                        </div>
+                      </th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -5739,7 +5747,7 @@ export default function App() {
                               <select 
                                 value={servico.situacao}
                                 onChange={(e) => updateServicoQuick(servico.id, 'situacao', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-normal px-1.5 py-1 rounded-full border outline-none transition-all ${
                                   servico.situacao === 'Pendente' 
                                     ? 'bg-amber-100 text-amber-700 border-amber-200' 
                                     : servico.situacao === 'Em Espera'
@@ -5757,7 +5765,7 @@ export default function App() {
                               <select 
                                 value={servico.prioridade}
                                 onChange={(e) => updateServicoQuick(servico.id, 'prioridade', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-lg border outline-none transition-all ${
+                                className={`text-[10px] font-bold uppercase tracking-normal px-1.5 py-1 rounded-lg border outline-none transition-all ${
                                   servico.prioridade === 'Alta' 
                                     ? 'bg-red-50 text-red-700 border-red-100' 
                                     : servico.prioridade === 'Média'
@@ -5774,7 +5782,7 @@ export default function App() {
                               <select 
                                 value={servico.tipoAtendimento || 'Técnico'}
                                 onChange={(e) => updateServicoQuick(servico.id, 'tipoAtendimento', e.target.value)}
-                                className={`text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-md border outline-none transition-all cursor-pointer ${
+                                className={`text-[10px] font-bold uppercase tracking-normal px-1.5 py-1 rounded-md border outline-none transition-all cursor-pointer max-w-[122px] ${
                                   servico.tipoAtendimento === 'Administrativo' 
                                     ? 'bg-purple-100 text-purple-800 border-purple-300 hover:bg-purple-200' 
                                     : 'bg-blue-50 text-blue-700 border-blue-200 hover:bg-blue-100'
@@ -5795,8 +5803,8 @@ export default function App() {
                                 {formatDateBR(servico.dataAtendimento)}
                               </span>
                             )}
-                            <td className="px-3 py-3 text-center">
-                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block ${
+                            <td className="px-3 py-3 text-center whitespace-nowrap">
+                              <div className={`text-[10px] font-bold px-2 py-1 rounded inline-block whitespace-nowrap ${
                                 (() => {
                                   const dias = getDaysDiff(servico.dataAtendimento);
                                   return dias > 30 ? 'bg-red-100 text-red-700' : dias > 15 ? 'bg-amber-100 text-amber-700' : 'bg-emerald-100 text-emerald-700';
@@ -5806,8 +5814,8 @@ export default function App() {
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                              <div className="text-xs font-bold text-slate-900 min-w-[125px] max-w-[195px] cursor-pointer hover:text-indigo-600 transition-colors flex items-start gap-1 group/name">
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{servico.cliente}</span>
                                 {servico.tipoAtendimento === 'Administrativo' && (
                                   <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
                                     Admin
@@ -5834,18 +5842,18 @@ export default function App() {
                                       data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
                                     });
                                   }}
-                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  className="inline-flex items-start gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[195px] whitespace-normal break-words leading-snug shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
                                   title={`Clique para abrir observação: ${servico.observacao}`}
                                 >
-                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 mt-0.5 bg-amber-200/80 px-1 py-0.2 rounded">
                                     OBS
                                   </span>
-                                  <span className="truncate">{servico.observacao}</span>
+                                  <span className="whitespace-normal break-words">{servico.observacao}</span>
                                 </div>
                               )}
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                              <div className="text-[10px] text-slate-600 min-w-[70px] max-w-[125px] whitespace-normal break-words leading-snug">{servico.local || '---'}</div>
                             </td>
                             {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
                             {renderEditableCell(
@@ -5859,8 +5867,8 @@ export default function App() {
                                 <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
                             )}
-                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
-                            <td className="px-3 py-3 text-[17px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[85px] max-w-[150px] whitespace-normal break-words leading-snug">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-[13px] font-bold text-slate-900 whitespace-nowrap leading-tight">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             {renderEditableCell(
                               servico.id,
                               'equipeInstalou',
@@ -5913,13 +5921,13 @@ export default function App() {
                                     <option value="Outros">Outros</option>
                                   </select>
                                 ) : (
-                                  <div className="text-[13px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block truncate max-w-[100px]">
+                                  <div className="text-[12px] font-black text-indigo-700 bg-indigo-50 px-2 py-1 rounded border border-indigo-200 shadow-sm inline-block whitespace-nowrap">
                                     {servico.formaPagamento || 'DEFINIR PGTO'}
                                   </div>
                                 )}
                               </div>
                             </td>
-                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -5957,7 +5965,7 @@ export default function App() {
                         ))
                       ) : (
                         <tr>
-                          <td colSpan={16} className="px-6 py-10 text-center text-slate-400">
+                          <td colSpan={17} className="px-6 py-10 text-center text-slate-400">
                             Nenhum serviço sem data prevista.
                           </td>
                         </tr>
@@ -6027,7 +6035,7 @@ export default function App() {
               </div>
               
               {showArchivedServicos && (
-                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto">
                   <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -6151,7 +6159,7 @@ export default function App() {
                           Data {sortConfigServicos.key === 'dataServico' && (sortConfigServicos.direction === 'asc' ? <ArrowUp size={10} /> : <ArrowDown size={10} />)}
                         </div>
                       </th>
-                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right">Ações</th>
+                      <th className="px-3 py-3 text-[10px] font-bold text-slate-500 uppercase tracking-wider text-right sticky-actions-col">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -6212,14 +6220,14 @@ export default function App() {
                                 {formatDateBR(servico.dataAtendimento)}
                               </span>
                             )}
-                            <td className="px-3 py-3 text-center">
-                              <div className="text-[10px] font-bold px-2 py-1 rounded inline-block bg-slate-100 text-slate-600">
+                            <td className="px-3 py-3 text-center whitespace-nowrap">
+                              <div className="text-[10px] font-bold px-2 py-1 rounded inline-block whitespace-nowrap bg-slate-100 text-slate-600">
                                 {getDaysDiff(servico.dataAtendimento)} d
                               </div>
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-xs font-bold text-slate-900 min-w-[120px] cursor-pointer hover:text-indigo-600 transition-colors flex items-center gap-1 group/name">
-                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 truncate" title="Clique para editar informações">{servico.cliente}</span>
+                              <div className="text-xs font-bold text-slate-900 min-w-[140px] max-w-[260px] cursor-pointer hover:text-indigo-600 transition-colors flex items-start gap-1 group/name">
+                                <span onClick={() => handleServicoEdit(servico)} className="flex-1 whitespace-normal break-words leading-snug" title="Clique para editar informações">{servico.cliente}</span>
                                 {servico.tipoAtendimento === 'Administrativo' && (
                                   <span className="px-1.5 py-0.5 rounded text-[8px] font-black uppercase tracking-wider bg-purple-100 text-purple-800 border border-purple-200 shrink-0">
                                     Admin
@@ -6246,18 +6254,18 @@ export default function App() {
                                       data: servico.dataServico ? formatDateBR(servico.dataServico) : (servico.dataAtendimento ? formatDateBR(servico.dataAtendimento) : undefined)
                                     });
                                   }}
-                                  className="inline-flex items-center gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[320px] shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
+                                  className="inline-flex items-start gap-1.5 mt-1 px-2 py-0.5 rounded-md bg-amber-50 border border-amber-300 text-amber-950 font-semibold text-[10px] max-w-[300px] whitespace-normal break-words leading-snug shadow-2xs hover:bg-amber-100 hover:border-amber-400 cursor-pointer transition-all active:scale-[0.98]" 
                                   title={`Clique para abrir observação: ${servico.observacao}`}
                                 >
-                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 bg-amber-200/80 px-1 py-0.2 rounded">
+                                  <span className="flex items-center gap-0.5 font-black text-amber-800 uppercase text-[8px] tracking-wider shrink-0 mt-0.5 bg-amber-200/80 px-1 py-0.2 rounded">
                                     OBS
                                   </span>
-                                  <span className="truncate">{servico.observacao}</span>
+                                  <span className="whitespace-normal break-words">{servico.observacao}</span>
                                 </div>
                               )}
                             </td>
                             <td className="px-3 py-3">
-                              <div className="text-[10px] text-slate-600 min-w-[100px]">{servico.local || '---'}</div>
+                              <div className="text-[10px] text-slate-600 min-w-[70px] max-w-[125px] whitespace-normal break-words leading-snug">{servico.local || '---'}</div>
                             </td>
                             {renderEditableCell(servico.id, 'vendedor', 'servico', servico.vendedor || '', 'vendedor')}
                             {renderEditableCell(
@@ -6271,7 +6279,7 @@ export default function App() {
                                 <Edit size={8} className="opacity-0 group-hover/cell:opacity-100 text-indigo-500 shrink-0" />
                               </div>
                             )}
-                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[120px]">{servico.servico || '---'}</td>
+                            <td className="px-3 py-3 text-[10px] font-semibold text-slate-600 min-w-[85px] max-w-[150px] whitespace-normal break-words leading-snug">{servico.servico || '---'}</td>
                             <td className="px-3 py-3 text-sm font-bold text-slate-900 whitespace-nowrap leading-tight text-slate-900">R$ {Number(servico.valor).toLocaleString('pt-BR')}</td>
                             {renderEditableCell(
                               servico.id,
@@ -6298,7 +6306,7 @@ export default function App() {
                                 </div>
                               </div>
                             )}
-                            <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                            <td className="px-3 py-3 text-right sticky-actions-col" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-1">
                                 <button 
                                   onClick={() => gerarReciboServicoPDF(servico)}
@@ -8700,10 +8708,10 @@ export default function App() {
         )}
       </AnimatePresence>
 
-      {/* Mobile Fixed Bottom Navigation Bar (< 1024px) */}
+      {/* Mobile Fixed Bottom Navigation Bar (< 768px smartphones only, frees vertical desktop monitors) */}
       <nav
         aria-label="Navegação Mobile"
-        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.06)] pb-[env(safe-area-inset-bottom)]"
+        className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.06)] pb-[env(safe-area-inset-bottom)]"
       >
         <div className="grid grid-cols-5 items-center px-1 py-1">
           {[
@@ -9112,8 +9120,8 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
 
           {selectedEquipe ? (
             <div className="space-y-3">
-              <div className="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden">
-                <table className="w-full text-left">
+              <div className="bg-slate-50 rounded-xl border border-slate-200 table-responsive-wrap">
+                <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-100 border-b border-slate-200">
                       <th className="px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-wider">Data</th>
