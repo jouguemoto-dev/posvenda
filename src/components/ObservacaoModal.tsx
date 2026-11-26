@@ -191,7 +191,7 @@ export default function ObservacaoModal({ data, onClose }: ObservacaoModalProps)
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-          className="relative w-full max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh] border-2 border-amber-300 ring-4 ring-amber-500/10"
+          className="relative modal-responsive w-[95vw] sm:w-[90vw] max-w-3xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] border-2 border-amber-300 ring-4 ring-amber-500/10"
         >
           {/* Header minimalista com foco no cliente e tipo */}
           <div className="px-6 py-4 bg-gradient-to-r from-amber-500 via-amber-600 to-amber-700 text-white flex items-center justify-between shadow-sm shrink-0">

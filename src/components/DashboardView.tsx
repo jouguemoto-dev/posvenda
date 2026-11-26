@@ -371,7 +371,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
         </div>
 
         {/* Local Tab Selector */}
-        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 flex-wrap gap-1">
+        <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 flex-wrap gap-1 touch-controls">
           {[
             { id: 'geral', label: 'Geral Consolidado' },
             { id: 'obras', label: 'Obras' },
@@ -415,7 +415,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3">
+        <div className="fluid-grid-filters touch-controls">
           {/* Group 1: Search text */}
           <div className="space-y-1">
             <label className="text-[10px] font-bold uppercase text-slate-400 block">Busca Textual</label>
@@ -554,7 +554,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
       {selectedSubTab === 'geral' && (
         <div className="space-y-6">
           {/* Card stats row */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="fluid-grid-cards">
             
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs relative overflow-hidden group">
               <div className="absolute right-0 bottom-0 text-indigo-50 translate-x-3 translate-y-3 group-hover:scale-105 transition-transform duration-300">
@@ -666,7 +666,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
                 Nenhuma obra concluída com data registrada no período selecionado.
               </div>
             ) : (
-              <div className="h-72 w-full pt-4">
+              <div className="h-72 w-full min-w-0 pt-4">
                 <ResponsiveContainer width="100%" height="100%">
                   <BarChart
                     data={faturamentoMensalConcluido}
@@ -795,7 +795,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
       {/* SUBTAB CONTENT: OBRAS */}
       {selectedSubTab === 'obras' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="fluid-grid-cards">
             <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs">
               <span className="text-[10px] uppercase font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full inline-block mb-3">
                 Sucesso Operacional (Filtrado)
@@ -865,7 +865,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
       {/* SUBTAB CONTENT: SERVICOS */}
       {selectedSubTab === 'servicos' && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="fluid-grid-cards">
             <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
               <span className="text-[10px] font-bold uppercase tracking-wider block text-slate-400">Total de Agendamentos (Filtrado)</span>
               <div className="text-3xl font-black text-slate-950 mt-1">{totalServicosCount}</div>
@@ -892,7 +892,7 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs">
             <h3 className="font-bold text-slate-950 text-sm mb-4">Serviços por categoria (Filtrado)</h3>
             <p className="text-xs text-slate-500 mb-4">Estimativa das palavras-chave mais comuns na descrição dos serviços cadastrados.</p>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="fluid-grid-cards">
               {[
                 { tag: 'Manutenção / Limpeza', regex: /limpeza|manutenc|sujeira/gi },
                 { tag: 'Inversor', regex: /inversor|configurac/gi },
@@ -933,12 +933,12 @@ export default function DashboardView({ obras, servicos, equipes, vendedores, on
                 const ratio = (v.valor / totalSales) * 100;
                 return (
                   <div key={v.nome} className="py-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                    <div className="flex items-center gap-3 min-w-[200px]">
-                      <div className="h-8 w-8 text-xs font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center">
+                    <div className="flex items-center gap-3 min-w-[min(100%,200px)]">
+                      <div className="h-8 w-8 text-xs font-black bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
                         #{idx + 1}
                       </div>
-                      <div>
-                        <h4 className="font-bold text-slate-00 text-xs truncate">{v.nome}</h4>
+                      <div className="min-w-0">
+                        <h4 className="font-bold text-slate-900 text-xs truncate">{v.nome}</h4>
                         <span className="text-[9px] text-slate-400 font-bold">{v.count} {v.count === 1 ? 'Obra' : 'Obras'} vendida(s)</span>
                       </div>
                     </div>

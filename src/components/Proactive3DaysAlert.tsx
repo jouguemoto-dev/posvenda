@@ -145,16 +145,16 @@ export default function Proactive3DaysAlert({ obras, onSelectObra, formatDateBR 
             </div>
           </div>
 
-          <div className="flex items-center gap-2 self-end md:self-center shrink-0">
+          <div className="flex flex-wrap items-center gap-2 self-end md:self-center shrink-0 touch-controls">
             <button
               onClick={() => setIsMinimized(!isMinimized)}
-              className="px-3 py-1.5 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 text-xs font-semibold rounded-xl border border-indigo-700/50 transition-all"
+              className="px-3 py-2 bg-indigo-900/60 hover:bg-indigo-800/80 text-indigo-200 text-xs font-semibold rounded-xl border border-indigo-700/50 transition-all"
             >
               {isMinimized ? 'Expandir Painel' : 'Minimizar'}
             </button>
             <button
               onClick={() => setIsDismissed(true)}
-              className="px-3 py-1.5 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 text-xs font-bold rounded-xl border border-slate-700/60 transition-all flex items-center gap-1.5 active:scale-95"
+              className="px-3 py-2 bg-slate-800/80 hover:bg-slate-700/90 text-slate-200 text-xs font-bold rounded-xl border border-slate-700/60 transition-all flex items-center gap-1.5 active:scale-95"
               title="Ocultar alerta proativo"
             >
               <EyeOff size={14} className="text-amber-400" />
@@ -162,7 +162,7 @@ export default function Proactive3DaysAlert({ obras, onSelectObra, formatDateBR 
             </button>
             <button
               onClick={() => setIsDismissed(true)}
-              className="p-1.5 bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white rounded-xl border border-slate-700/50 transition-all"
+              className="p-2 bg-slate-800/60 hover:bg-slate-700/80 text-slate-400 hover:text-white rounded-xl border border-slate-700/50 transition-all"
               title="Fechar"
             >
               <X size={16} />
@@ -176,7 +176,7 @@ export default function Proactive3DaysAlert({ obras, onSelectObra, formatDateBR 
               O sistema verificou automaticamente e identificou as seguintes obras agendadas para os próximos 3 dias:
             </p>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-3">
+            <div className="fluid-grid-cards mt-3">
               {upcomingInstallations.map(({ obra, timingLabel, badgeStyle }) => {
                 const gcalUrl = generateObraGCalUrl(obra);
                 return (

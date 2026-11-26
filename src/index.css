@@ -6,26 +6,75 @@
 }
 
 @layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
   html {
-    font-size: 18px;
+    font-size: clamp(14px, 0.25vw + 13px, 18px);
+    -webkit-text-size-adjust: 100%;
+    overflow-x: clip;
+    scroll-behavior: smooth;
   }
+
   body {
-    @apply antialiased;
+    @apply antialiased bg-slate-50 text-slate-900;
+    min-height: 100dvh;
+    overflow-x: clip;
+    width: 100%;
+    margin: 0;
   }
-  
-  /* Scale hardcoded Tailwind font size classes by ~3px */
-  [class*="text-[9px]"] { font-size: 12px !important; }
-  [class*="text-[10px]"] { font-size: 13px !important; }
-  [class*="text-[11px]"] { font-size: 14px !important; }
-  [class*="text-[12px]"] { font-size: 15px !important; }
-  [class*="text-[13px]"] { font-size: 16px !important; }
-  [class*="text-[14px]"] { font-size: 17px !important; }
-  [class*="text-xs"] { font-size: 15px !important; }
-  [class*="text-sm"] { font-size: 17px !important; }
-  [class*="text-base"] { font-size: 19px !important; }
-  [class*="text-[20px]"] { font-size: 23px !important; }
-  [class*="text-[24px]"] { font-size: 27px !important; }
-  [class*="text-[32px]"] { font-size: 35px !important; }
+
+  img,
+  video,
+  canvas {
+    max-width: 100%;
+    height: auto;
+  }
+
+  svg {
+    max-width: 100%;
+  }
+
+  /* Adaptive typography with clamp() across all screen sizes (mobile -> TV) */
+  [class*="text-[9px]"] {
+    font-size: clamp(0.68rem, 0.18vw + 0.62rem, 0.78rem) !important;
+  }
+  [class*="text-[10px]"] {
+    font-size: clamp(0.72rem, 0.2vw + 0.66rem, 0.82rem) !important;
+  }
+  [class*="text-[11px]"] {
+    font-size: clamp(0.76rem, 0.22vw + 0.7rem, 0.88rem) !important;
+  }
+  [class*="text-[12px]"],
+  [class*="text-xs"] {
+    font-size: clamp(0.78rem, 0.25vw + 0.72rem, 0.92rem) !important;
+  }
+  [class*="text-[13px]"],
+  [class*="text-[14px]"],
+  [class*="text-sm"] {
+    font-size: clamp(0.875rem, 0.28vw + 0.8rem, 1rem) !important;
+  }
+  [class*="text-base"] {
+    font-size: clamp(0.95rem, 0.35vw + 0.85rem, 1.125rem) !important;
+  }
+  [class*="text-lg"] {
+    font-size: clamp(1.05rem, 0.45vw + 0.92rem, 1.28rem) !important;
+  }
+  [class*="text-xl"],
+  [class*="text-[20px]"] {
+    font-size: clamp(1.125rem, 0.6vw + 0.98rem, 1.45rem) !important;
+  }
+  [class*="text-2xl"],
+  [class*="text-[24px]"] {
+    font-size: clamp(1.25rem, 0.9vw + 1rem, 1.75rem) !important;
+  }
+  [class*="text-3xl"],
+  [class*="text-[32px]"] {
+    font-size: clamp(1.5rem, 1.2vw + 1.15rem, 2.2rem) !important;
+  }
 }
 
 @layer utilities {
@@ -35,5 +84,118 @@
   .scrollbar-hide {
     -ms-overflow-style: none;
     scrollbar-width: none;
+  }
+
+  /* Fluid container with adaptive padding & ultrawide/TV max-width guard */
+  .fluid-container {
+    width: 100%;
+    max-width: 100%;
+    margin-inline: auto;
+    padding-inline: clamp(0.5rem, 1.5vw, 2rem);
+  }
+
+  /* Fluid CSS Grid for cards, KPI panels, and lists */
+  .fluid-grid-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 280px), 1fr));
+    gap: clamp(0.75rem, 1.5vw, 1.5rem);
+  }
+
+  /* Fluid CSS Grid for filter controls */
+  .fluid-grid-filters {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 190px), 1fr));
+    gap: clamp(0.5rem, 1vw, 0.85rem);
+  }
+
+  /* Fluid Flexbox toolbar & button groups */
+  .fluid-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: clamp(0.375rem, 0.9vw, 0.75rem);
+  }
+
+  /* Responsive horizontal scroll wrapper for dense data tables */
+  .table-responsive-wrap {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+  }
+
+  /* Responsive modal surface constraint */
+  .modal-responsive {
+    width: min(95vw, var(--modal-max-w, 48rem));
+    max-width: 95vw;
+    max-height: 90dvh;
+    overflow-y: auto;
+  }
+
+  /* Touch-friendly target sizing (44x44px minimum on mobile/touch) */
+  .touch-target {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* ==========================================================================
+   Mobile-First Responsive Breakpoints (min-width)
+   ========================================================================== */
+
+/* Base Mobile (0px - 479px): touch-first controls and viewport-safe modals */
+@media (max-width: 767px) {
+  .modal-responsive {
+    width: 95vw;
+    max-height: 90dvh;
+  }
+
+  /* Ensure interactive form controls & primary buttons meet 44px tap targets on mobile */
+  .touch-controls button:not(.compact-chip),
+  .touch-controls select,
+  .touch-controls input:not([type="checkbox"]):not([type="radio"]) {
+    min-height: 44px;
+  }
+}
+
+/* Mobile Grande / Paisagem (480px+) */
+@media (min-width: 480px) {
+  .fluid-container {
+    padding-inline: clamp(0.75rem, 1.8vw, 1.5rem);
+  }
+}
+
+/* Tablet Retrato (768px+) */
+@media (min-width: 768px) {
+  .modal-responsive {
+    width: min(90vw, var(--modal-max-w, 48rem));
+    max-width: 90vw;
+  }
+}
+
+/* Tablet Paisagem / Notebook (1024px+) */
+@media (min-width: 1024px) {
+  .fluid-container {
+    padding-inline: clamp(1rem, 1.8vw, 2rem);
+  }
+}
+
+/* Desktop (1280px+) */
+@media (min-width: 1280px) {
+  .fluid-container {
+    padding-inline: clamp(1.25rem, 2vw, 2.5rem);
+  }
+}
+
+/* Ultrawide & TV Screens (1920px+) */
+@media (min-width: 1920px) {
+  html {
+    font-size: clamp(17px, 0.45vw + 9px, 22px);
+  }
+
+  .fluid-container {
+    max-width: min(96vw, 2200px);
+    padding-inline: clamp(1.5rem, 2.5vw, 3.5rem);
   }
 }

@@ -173,7 +173,7 @@ export default function MobilePWAInstall() {
               initial={{ opacity: 0, scale: 0.96, y: 15 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.96, y: 15 }}
-              className="relative w-full max-w-sm bg-white rounded-3xl shadow-2xl overflow-hidden border border-slate-100 flex flex-col"
+              className="relative w-[95vw] sm:w-[90vw] max-w-sm max-h-[90dvh] overflow-y-auto bg-white rounded-3xl shadow-2xl border border-slate-100 flex flex-col"
             >
               {/* Image Banner Header */}
               <div className="relative bg-gradient-to-br from-indigo-600 via-indigo-700 to-violet-800 p-6 text-white text-center flex flex-col items-center">

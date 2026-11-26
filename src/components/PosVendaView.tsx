@@ -429,15 +429,15 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
 
   return (
     <div className="space-y-6 pb-20">
-      <div className="flex items-center justify-between">
+      <div className="flex flex-wrap items-center justify-between gap-3 touch-controls">
         <button 
           onClick={onBack}
-          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-bold transition-all"
+          className="flex items-center gap-2 text-slate-500 hover:text-slate-800 font-bold transition-all px-2 py-2 rounded-xl"
         >
           <ArrowLeft size={18} />
           Voltar
         </button>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 sm:gap-3">
           {status && (
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
@@ -473,10 +473,10 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
       </div>
 
       {/* Tabs */}
-      <div className="flex bg-slate-100 p-1 rounded-2xl w-fit mx-auto">
+      <div className="flex flex-wrap justify-center bg-slate-100 p-1 rounded-2xl w-fit max-w-full mx-auto gap-1 touch-controls">
         <button
           onClick={() => setActiveTab('proposta')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 sm:px-6 py-2 rounded-xl text-sm font-bold transition-all ${
             activeTab === 'proposta' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -485,7 +485,7 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
         </button>
         <button
           onClick={() => setActiveTab('recibo')}
-          className={`flex items-center gap-2 px-6 py-2 rounded-xl text-sm font-bold transition-all ${
+          className={`flex items-center gap-2 px-4 sm:px-6 py-2 rounded-xl text-sm font-bold transition-all ${
             activeTab === 'recibo' ? 'bg-white text-emerald-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
           }`}
         >
@@ -847,7 +847,7 @@ export default function PosVendaView({ onBack }: PosVendaViewProps) {
           <h2 className="font-bold text-sm uppercase tracking-wider">Histórico Recente</h2>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="fluid-grid-cards">
             {isLoadingHistory ? (
               <div className="col-span-full py-10 flex justify-center">
                 <div className="w-6 h-6 border-2 border-slate-200 border-t-indigo-500 rounded-full animate-spin" />

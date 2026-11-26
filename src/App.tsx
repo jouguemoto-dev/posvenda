@@ -60,7 +60,8 @@ import {
   Bell,
   BellRing,
   Volume2,
-  Sparkles
+  Sparkles,
+  Menu
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import * as XLSX from 'xlsx';
@@ -254,6 +255,7 @@ export default function App() {
   const [isAuthReady, setIsAuthReady] = useState(false);
   const [currentUser, setCurrentUser] = useState<User>(USERS[0]);
   const [activeTab, setActiveTab] = useState<'obras' | 'servicos' | 'escala' | 'posvenda' | 'notebook' | 'dashboard' | 'alertas'>('obras');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const [obras, setObras] = useState<Obra[]>([]);
 
@@ -3261,10 +3263,10 @@ export default function App() {
   }
 
   return (
-    <div className="h-screen bg-slate-50 text-slate-900 font-sans flex flex-col overflow-hidden">
+    <div className="min-h-[100dvh] lg:h-[100dvh] bg-slate-50 text-slate-900 font-sans flex flex-col overflow-x-clip lg:overflow-hidden">
       <MobilePWAInstall />
-      <main className="flex-1 overflow-y-auto p-2 md:p-4 scrollbar-hide">
-        <div className="w-full space-y-4">
+      <main className="flex-1 overflow-y-auto py-2 md:py-4 pb-24 lg:pb-6 scrollbar-hide">
+        <div className="fluid-container space-y-4">
           {activeTab === 'notebook' ? (
             <NotebookView 
               user={{ id: currentUser.id, name: currentUser.name }} 
@@ -3310,19 +3312,19 @@ export default function App() {
             />
           ) : activeTab === 'alertas' ? (
             <div className="space-y-6">
-              <div className="flex items-center justify-between bg-white p-4.5 rounded-2xl border border-slate-200 shadow-sm">
-                <div className="flex items-center gap-3">
+              <div className="flex flex-wrap items-center justify-between gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm touch-controls">
+                <div className="flex items-center gap-3 min-w-0">
                   <button
                     onClick={() => setActiveTab('obras')}
-                    className="p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors"
+                    className="p-2 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors shrink-0"
                     title="Voltar"
                   >
                     <ArrowLeft size={20} />
                   </button>
-                  <div>
+                  <div className="min-w-0">
                     <h2 className="text-xl font-extrabold text-slate-900 flex items-center gap-2">
-                      <CalendarClock className="text-amber-500" size={24} />
-                      Aba de Alertas (Próximos 3 Dias)
+                      <CalendarClock className="text-amber-500 shrink-0" size={24} />
+                      <span className="truncate">Aba de Alertas (Próximos 3 Dias)</span>
                     </h2>
                     <p className="text-xs text-slate-500 font-medium mt-0.5">
                       Obras com instalações agendadas para hoje, amanhã ou nos próximos 3 dias.
@@ -3349,164 +3351,223 @@ export default function App() {
           ) : (
             <>
               {/* Header */}
-              <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-white p-4 rounded-2xl shadow-sm border border-slate-200">
-          <div className="flex items-center gap-4">
-            <div className="bg-indigo-600 p-2 rounded-xl text-white">
-              <ClipboardList size={24} />
-            </div>
-            <div>
-              <h1 className="text-xl font-bold tracking-tight text-slate-900">Sistema de Gestão</h1>
-              <p className="text-slate-500 text-xs">Controle de agendamentos e financeiro</p>
-            </div>
-          </div>
-          
-            {/* Tab Switcher */}
-            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 flex-wrap gap-1">
-              <button 
-                onClick={() => setActiveTab('obras')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'obras' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Obras
-              </button>
-              <button 
-                onClick={() => setActiveTab('servicos')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'servicos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Agendamento de Serviço
-              </button>
-              <button 
-                onClick={() => setActiveTab('escala')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'escala' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Escala Semanal
-              </button>
-              <button 
-                onClick={() => setActiveTab('posvenda')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'posvenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Pós-Venda
-              </button>
-              <button 
-                onClick={() => setActiveTab('notebook')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'notebook' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Bloco de Notas
-              </button>
-              <button 
-                onClick={() => setActiveTab('dashboard')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                Dashboard
-              </button>
-              <button 
-                onClick={() => setActiveTab('alertas')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'alertas' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-              >
-                <CalendarClock size={14} className={activeTab === 'alertas' ? 'text-slate-950' : 'text-amber-500'} />
-                <span>Alertas 3 Dias</span>
-                {upcoming3DaysCount > 0 && (
-                  <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse">
-                    {upcoming3DaysCount}
-                  </span>
-                )}
-              </button>
-            </div>
+              <header className="bg-white p-3 sm:p-4 rounded-2xl shadow-sm border border-slate-200 touch-controls">
+                {/* Mobile Compact Header (< 1024px) */}
+                <div className="flex lg:hidden items-center justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
+                    <div className="bg-indigo-600 p-2 rounded-xl text-white shrink-0">
+                      <ClipboardList size={20} />
+                    </div>
+                    <div className="min-w-0">
+                      <h1 className="text-base font-bold tracking-tight text-slate-900 truncate">Sistema de Gestão</h1>
+                      <p className="text-slate-500 text-[11px] truncate">{activeTab === 'obras' ? 'Obras' : 'Serviços'} • {currentUser.name}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button 
+                      onClick={() => setIsLembretesHubOpen(true)}
+                      className={`relative p-2.5 rounded-xl transition-all touch-target flex items-center justify-center ${
+                        alarmesDeHoje.length > 0
+                          ? 'bg-amber-100 text-amber-600 hover:bg-amber-200 ring-2 ring-amber-400 animate-pulse'
+                          : 'text-slate-600 hover:text-indigo-600 bg-slate-100'
+                      }`}
+                      title="Central de Alarmes e Lembretes"
+                    >
+                      <Bell size={20} />
+                      {alarmesDeHoje.length > 0 && (
+                        <span className="absolute -top-1 -right-1 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border border-white">
+                          {alarmesDeHoje.length}
+                        </span>
+                      )}
+                    </button>
+                    {canCreate && (
+                      <button 
+                        onClick={() => { 
+                          if (activeTab === 'obras') {
+                            resetForm(); 
+                            setIsFormOpen(true); 
+                          } else {
+                            resetServicoForm();
+                            setIsServicoFormOpen(true);
+                          }
+                        }}
+                        className="flex items-center gap-1.5 bg-indigo-600 hover:bg-indigo-700 text-white px-3 py-2.5 rounded-xl font-bold text-xs transition-all active:scale-95 shadow-md shadow-indigo-200 min-h-[44px]"
+                      >
+                        <Plus size={18} />
+                        <span className="hidden xs:inline sm:inline">{activeTab === 'obras' ? 'Nova Obra' : 'Novo Serviço'}</span>
+                      </button>
+                    )}
+                    <button
+                      onClick={() => setIsMobileMenuOpen(true)}
+                      className="p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 transition-all touch-target flex items-center justify-center"
+                      aria-label="Abrir Menu"
+                      title="Menu Completo"
+                    >
+                      <Menu size={22} />
+                    </button>
+                  </div>
+                </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex flex-col items-end">
-              <div className="flex items-center gap-1.5">
-                <span className="text-sm font-bold text-slate-900">{user.displayName || user.email}</span>
-                {isAdminActive && (
-                  <span 
-                    title="Administrador Sempre Ativo: Todas as funções liberadas (Criar, Editar, Excluir, Importar, Configurações)"
-                    className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs cursor-default"
-                  >
-                    <ShieldCheck size={11} className="text-white" />
-                    Admin Ativo
-                  </span>
-                )}
-              </div>
-              <button onClick={handleLogout} className="text-[10px] font-bold text-red-500 hover:text-red-600 flex items-center gap-1 mt-0.5">
-                <LogOut size={10} />
-                Sair
-              </button>
-            </div>
-            <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
-              <UserIcon size={16} className={isAdminActive ? "text-amber-600" : "text-slate-500"} />
-              <select 
-                value={currentUser.id}
-                onChange={(e) => {
-                  const selectedUser = availableUsers.find(u => u.id === e.target.value);
-                  if (selectedUser) setCurrentUser(selectedUser);
-                }}
-                className="bg-transparent text-sm font-semibold outline-none text-slate-700 cursor-pointer"
-                title="Função do Usuário"
-              >
-                {availableUsers.map(u => (
-                  <option key={u.id} value={u.id}>{u.name}</option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-2">
-              <button 
-                onClick={() => setIsLembretesHubOpen(true)}
-                className={`relative p-2.5 rounded-xl transition-all ${
-                  alarmesDeHoje.length > 0
-                    ? 'bg-amber-100 text-amber-600 hover:bg-amber-200 ring-2 ring-amber-400 ring-offset-1 animate-pulse'
-                    : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100'
-                }`}
-                title="Central de Alarmes e Lembretes"
-              >
-                <Bell size={20} className={alarmesDeHoje.length > 0 ? "animate-bounce" : ""} />
-                {alarmesDeHoje.length > 0 && (
-                  <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border border-white">
-                    {alarmesDeHoje.length}
-                  </span>
-                )}
-              </button>
-              <button 
-                onClick={() => setIsPayrollOpen(true)}
-                className="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
-                title="Folha de Pagamento"
-              >
-                <Wallet size={20} />
-              </button>
-              <button 
-                onClick={() => setIsSettingsOpen(true)}
-                className="p-2.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
-                title="Configurações"
-              >
-                <Settings size={20} />
-              </button>
-              {canImport && (
-                <button 
-                  onClick={() => setIsImportModalOpen(true)}
-                  className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-all active:scale-95"
-                >
-                  <FileSpreadsheet size={20} className="text-emerald-600" />
-                  Importar (Colar)
-                </button>
-              )}
-              {canCreate && (
-                <button 
-                  onClick={() => { 
-                    if (activeTab === 'obras') {
-                      resetForm(); 
-                      setIsFormOpen(true); 
-                    } else {
-                      resetServicoForm();
-                      setIsServicoFormOpen(true);
-                    }
-                  }}
-                  className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-all active:scale-95 shadow-lg shadow-indigo-200"
-                >
-                  <Plus size={20} />
-                  {activeTab === 'obras' ? 'Nova Obra' : 'Novo Serviço'}
-                </button>
-              )}
-            </div>
-          </div>
-        </header>
+                {/* Desktop Full Header (>= 1024px) */}
+                <div className="hidden lg:flex lg:flex-wrap lg:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="bg-indigo-600 p-2 rounded-xl text-white shrink-0">
+                      <ClipboardList size={24} />
+                    </div>
+                    <div>
+                      <h1 className="text-xl font-bold tracking-tight text-slate-900">Sistema de Gestão</h1>
+                      <p className="text-slate-500 text-xs">Controle de agendamentos e financeiro</p>
+                    </div>
+                  </div>
+                  
+                  {/* Tab Switcher */}
+                  <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 flex-wrap gap-1">
+                    <button 
+                      onClick={() => setActiveTab('obras')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'obras' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Obras
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('servicos')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'servicos' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Agendamento de Serviço
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('escala')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'escala' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Escala Semanal
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('posvenda')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'posvenda' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Pós-Venda
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('notebook')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'notebook' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Bloco de Notas
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('dashboard')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${activeTab === 'dashboard' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      Dashboard
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('alertas')}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${activeTab === 'alertas' ? 'bg-amber-500 text-slate-950 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                    >
+                      <CalendarClock size={14} className={activeTab === 'alertas' ? 'text-slate-950' : 'text-amber-500'} />
+                      <span>Alertas 3 Dias</span>
+                      {upcoming3DaysCount > 0 && (
+                        <span className="bg-red-500 text-white text-[10px] px-1.5 py-0.2 rounded-full font-black animate-pulse">
+                          {upcoming3DaysCount}
+                        </span>
+                      )}
+                    </button>
+                  </div>
+
+                  <div className="flex flex-wrap items-center gap-3">
+                    <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1.5">
+                        <span className="text-sm font-bold text-slate-900">{user.displayName || user.email}</span>
+                        {isAdminActive && (
+                          <span 
+                            title="Administrador Sempre Ativo: Todas as funções liberadas (Criar, Editar, Excluir, Importar, Configurações)"
+                            className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-2 py-0.5 rounded-full shadow-xs cursor-default"
+                          >
+                            <ShieldCheck size={11} className="text-white" />
+                            Admin Ativo
+                          </span>
+                        )}
+                      </div>
+                      <button onClick={handleLogout} className="text-[10px] font-bold text-red-500 hover:text-red-600 flex items-center gap-1 mt-0.5">
+                        <LogOut size={10} />
+                        Sair
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                      <UserIcon size={16} className={isAdminActive ? "text-amber-600" : "text-slate-500"} />
+                      <select 
+                        value={currentUser.id}
+                        onChange={(e) => {
+                          const selectedUser = availableUsers.find(u => u.id === e.target.value);
+                          if (selectedUser) setCurrentUser(selectedUser);
+                        }}
+                        className="bg-transparent text-sm font-semibold outline-none text-slate-700 cursor-pointer"
+                        title="Função do Usuário"
+                      >
+                        {availableUsers.map(u => (
+                          <option key={u.id} value={u.id}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button 
+                        onClick={() => setIsLembretesHubOpen(true)}
+                        className={`relative p-2.5 rounded-xl transition-all ${
+                          alarmesDeHoje.length > 0
+                            ? 'bg-amber-100 text-amber-600 hover:bg-amber-200 ring-2 ring-amber-400 ring-offset-1 animate-pulse'
+                            : 'text-slate-500 hover:text-indigo-600 hover:bg-slate-100'
+                        }`}
+                        title="Central de Alarmes e Lembretes"
+                      >
+                        <Bell size={20} className={alarmesDeHoje.length > 0 ? "animate-bounce" : ""} />
+                        {alarmesDeHoje.length > 0 && (
+                          <span className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-bold h-5 w-5 rounded-full flex items-center justify-center border border-white">
+                            {alarmesDeHoje.length}
+                          </span>
+                        )}
+                      </button>
+                      <button 
+                        onClick={() => setIsPayrollOpen(true)}
+                        className="p-2.5 text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all"
+                        title="Folha de Pagamento"
+                      >
+                        <Wallet size={20} />
+                      </button>
+                      <button 
+                        onClick={() => setIsSettingsOpen(true)}
+                        className="p-2.5 text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-all"
+                        title="Configurações"
+                      >
+                        <Settings size={20} />
+                      </button>
+                      {canImport && (
+                        <button 
+                          onClick={() => setIsImportModalOpen(true)}
+                          className="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2.5 rounded-xl font-semibold transition-all active:scale-95"
+                        >
+                          <FileSpreadsheet size={20} className="text-emerald-600" />
+                          Importar (Colar)
+                        </button>
+                      )}
+                      {canCreate && (
+                        <button 
+                          onClick={() => { 
+                            if (activeTab === 'obras') {
+                              resetForm(); 
+                              setIsFormOpen(true); 
+                            } else {
+                              resetServicoForm();
+                              setIsServicoFormOpen(true);
+                            }
+                          }}
+                          className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl font-semibold transition-all active:scale-95 shadow-lg shadow-indigo-200"
+                        >
+                          <Plus size={20} />
+                          {activeTab === 'obras' ? 'Nova Obra' : 'Novo Serviço'}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </header>
 
         {/* Banner de Alarmes Ativos do Dia */}
         <AnimatePresence>
@@ -3605,8 +3666,8 @@ export default function App() {
         </AnimatePresence>
 
         {/* Filters */}
-        <section className="bg-white p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3">
-          <div className="flex items-center justify-between">
+        <section className="bg-white p-3.5 sm:p-4 rounded-2xl shadow-sm border border-slate-200 space-y-3 touch-controls">
+          <div className="flex flex-wrap items-center justify-between gap-2">
             <div className="flex items-center gap-2 text-slate-700 font-semibold text-sm">
               <Filter size={16} />
               <h2>Filtros</h2>
@@ -3619,13 +3680,13 @@ export default function App() {
             </div>
             <button 
               onClick={() => setFiltros({ situacao: '', prioridade: '', cliente: '', vendedor: '', equipe: '', formaPagamento: '' })}
-              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1"
+              className="text-xs text-indigo-600 hover:text-indigo-700 font-medium flex items-center gap-1 px-2 py-1 rounded-lg"
             >
               <X size={12} />
               Limpar
             </button>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          <div className="fluid-grid-filters">
             <div className="space-y-1">
               <select 
                 value={filtros.situacao}
@@ -3824,7 +3885,7 @@ export default function App() {
                     {scheduledObras.length} obras
                   </span>
                 </div>
-                <div className="overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-indigo-50/30 border-b border-indigo-100">
@@ -4183,7 +4244,7 @@ export default function App() {
                     {unscheduledObras.length} obras
                   </span>
                 </div>
-                <div className="overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                   <table className="w-full text-left border-collapse">
                     <thead>
                       <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -4600,7 +4661,7 @@ export default function App() {
               </div>
               
               {showArchivedObras && (
-                <div className="overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                   <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -4871,7 +4932,7 @@ export default function App() {
                 </div>
               </div>
 
-              <div className="overflow-x-auto scrollbar-hide">
+              <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-purple-50/40 border-b border-purple-100">
@@ -5109,7 +5170,7 @@ export default function App() {
                   {scheduledServicosList.length} registros
                 </span>
               </div>
-              <div className="overflow-x-auto scrollbar-hide">
+              <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -5518,7 +5579,7 @@ export default function App() {
                   {unscheduledServicosList.length} aguardando
                 </span>
               </div>
-              <div className="overflow-x-auto scrollbar-hide">
+              <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -5966,7 +6027,7 @@ export default function App() {
               </div>
               
               {showArchivedServicos && (
-                <div className="overflow-x-auto scrollbar-hide">
+                <div className="table-responsive-wrap overflow-x-auto scrollbar-hide">
                   <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="bg-slate-50/50 border-b border-slate-200">
@@ -6332,16 +6393,16 @@ export default function App() {
             initial={{ y: 100, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             exit={{ y: 100, opacity: 0 }}
-            className="fixed bottom-8 left-1/2 -translate-x-1/2 z-40 bg-slate-900 text-white px-6 py-4 rounded-2xl shadow-2xl flex items-center gap-6 border border-slate-700/50 backdrop-blur-md"
+            className="fixed bottom-20 lg:bottom-8 left-1/2 -translate-x-1/2 z-40 w-[95vw] sm:w-auto max-w-[95vw] bg-slate-900 text-white px-4 py-3 sm:px-6 sm:py-4 rounded-2xl shadow-2xl flex flex-wrap items-center justify-center gap-3 sm:gap-6 border border-slate-700/50 backdrop-blur-md touch-controls"
           >
-            <div className="flex items-center gap-3 pr-6 border-r border-slate-700">
+            <div className="flex items-center gap-3 sm:pr-6 sm:border-r border-slate-700">
               <div className="bg-indigo-600 text-xs font-bold px-2 py-1 rounded-lg">
                 {selectedIds.size}
               </div>
               <span className="text-sm font-medium text-slate-300">Selecionados</span>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center justify-center gap-2">
               <button 
                 onClick={() => bulkUpdateStatus('Concluído')}
                 className="flex items-center gap-2 hover:bg-white/10 px-3 py-2 rounded-xl text-sm font-bold transition-all text-emerald-400"
@@ -6411,7 +6472,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[92vh] flex flex-col"
+              className="relative w-[95vw] sm:w-[90vw] max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden max-h-[90dvh] flex flex-col touch-controls"
             >
               <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white shrink-0">
                 <div className="flex items-center gap-2">
@@ -7557,7 +7618,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="relative w-full max-w-2xl bg-white rounded-2xl shadow-2xl p-4 space-y-3"
+              className="relative w-[95vw] sm:w-[90vw] max-w-2xl max-h-[90dvh] overflow-y-auto bg-white rounded-2xl shadow-2xl p-4 space-y-3 touch-controls"
             >
               <div className="flex items-center justify-between pb-1 border-b border-slate-100">
                 <div className="space-y-0.5">
@@ -7685,7 +7746,7 @@ export default function App() {
               initial={{ scale: 0.95, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden"
+              className="relative bg-white rounded-2xl shadow-2xl w-[95vw] sm:w-[90vw] max-w-md max-h-[90dvh] overflow-y-auto touch-controls"
             >
               <div className="p-6 text-center">
                 <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -7732,7 +7793,7 @@ export default function App() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
-              className="relative w-full max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]"
+              className="relative w-[95vw] sm:w-[90vw] max-w-3xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] touch-controls"
             >
               {/* Header */}
               <div className="px-4 py-2.5 bg-slate-900 text-white flex items-center justify-between shrink-0">
@@ -8153,7 +8214,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.9, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+              className="relative w-[95vw] sm:w-[90vw] max-w-2xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] touch-controls"
             >
               <div className="p-6 bg-indigo-600 text-white flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -8235,7 +8296,7 @@ export default function App() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh] z-10"
+              className="relative w-[95vw] sm:w-[90vw] max-w-5xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] z-10 touch-controls"
             >
               {/* Header */}
               <div className="p-6 bg-slate-900 text-white flex items-center justify-between shrink-0">
@@ -8288,9 +8349,9 @@ export default function App() {
               </div>
 
               {/* Body */}
-              <div className="flex-1 overflow-hidden flex flex-col md:flex-row min-h-0">
+              <div className="flex-1 overflow-y-auto md:overflow-hidden flex flex-col md:flex-row min-h-0">
                 {/* Form column */}
-                <div className="w-full md:w-2/5 p-4 border-b md:border-b-0 md:border-r border-slate-100 overflow-y-auto bg-slate-50">
+                <div className="w-full md:w-2/5 p-4 border-b md:border-b-0 md:border-r border-slate-100 md:overflow-y-auto bg-slate-50">
                   <h3 className="text-xs font-black text-slate-800 uppercase tracking-wider mb-2.5">
                     {editingLembreteId ? "📝 Editar Alarme" : "🔔 Criar Novo Alarme"}
                   </h3>
@@ -8485,13 +8546,201 @@ export default function App() {
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md max-w-md"
+            className="fixed bottom-20 lg:bottom-6 right-3 sm:right-6 z-50 bg-slate-900 text-white px-5 py-3.5 rounded-2xl shadow-2xl flex items-center gap-3 border border-slate-700/50 backdrop-blur-md max-w-[92vw] sm:max-w-md"
           >
             <CalendarClock className="text-blue-400 shrink-0" size={20} />
             <span className="text-sm font-semibold">{toastMessage}</span>
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Mobile Navigation Drawer (< 1024px) */}
+      <AnimatePresence>
+        {isMobileMenuOpen && (
+          <div className="fixed inset-0 z-[150] lg:hidden flex justify-end">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsMobileMenuOpen(false)}
+              className="absolute inset-0 bg-slate-950/60 backdrop-blur-xs"
+            />
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 320 }}
+              className="relative w-[86vw] max-w-sm h-full bg-white shadow-2xl flex flex-col overflow-y-auto touch-controls z-10"
+            >
+              <div className="p-4 bg-slate-900 text-white flex items-center justify-between shrink-0">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="bg-indigo-600 p-2 rounded-xl shrink-0">
+                    <ClipboardList size={20} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="font-bold text-sm truncate">{user.displayName || user.email}</p>
+                    <p className="text-[11px] text-slate-400">{isAdminActive ? 'Administrador Ativo' : currentUser.name}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="p-2 hover:bg-white/10 rounded-xl text-white touch-target flex items-center justify-center"
+                  aria-label="Fechar Menu"
+                >
+                  <X size={20} />
+                </button>
+              </div>
+
+              <div className="p-4 space-y-4 flex-1">
+                <div className="space-y-1.5">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Navegação</p>
+                  <div className="grid grid-cols-1 gap-1.5">
+                    {[
+                      { id: 'obras', label: 'Obras', icon: ClipboardList },
+                      { id: 'servicos', label: 'Agendamento de Serviço', icon: Wrench },
+                      { id: 'escala', label: 'Escala Semanal', icon: Calendar },
+                      { id: 'posvenda', label: 'Pós-Venda', icon: FileText },
+                      { id: 'notebook', label: 'Bloco de Notas', icon: FileText },
+                      { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
+                      { id: 'alertas', label: 'Alertas 3 Dias', icon: CalendarClock, badge: upcoming3DaysCount }
+                    ].map((item) => {
+                      const Icon = item.icon;
+                      const isActive = activeTab === item.id;
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => {
+                            setActiveTab(item.id as any);
+                            setIsMobileMenuOpen(false);
+                          }}
+                          className={`w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-bold transition-all min-h-[44px] ${
+                            isActive
+                              ? 'bg-indigo-600 text-white shadow-sm'
+                              : 'bg-slate-50 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          <span className="flex items-center gap-2.5">
+                            <Icon size={18} />
+                            {item.label}
+                          </span>
+                          {item.badge !== undefined && item.badge > 0 && (
+                            <span className="bg-red-500 text-white text-[10px] px-2 py-0.5 rounded-full font-black">
+                              {item.badge}
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                <div className="space-y-1.5 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Perfil & Função</p>
+                  <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl border border-slate-200">
+                    <UserIcon size={16} className={isAdminActive ? "text-amber-600" : "text-slate-500"} />
+                    <select
+                      value={currentUser.id}
+                      onChange={(e) => {
+                        const selectedUser = availableUsers.find(u => u.id === e.target.value);
+                        if (selectedUser) setCurrentUser(selectedUser);
+                      }}
+                      className="w-full bg-transparent text-sm font-semibold outline-none text-slate-700"
+                    >
+                      {availableUsers.map(u => (
+                        <option key={u.id} value={u.id}>{u.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="space-y-2 pt-3 border-t border-slate-100">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Ferramentas</p>
+                  <button
+                    onClick={() => { setIsLembretesHubOpen(true); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center justify-between px-3.5 py-2.5 rounded-xl bg-amber-50 text-amber-800 border border-amber-200 text-sm font-bold min-h-[44px]"
+                  >
+                    <span className="flex items-center gap-2"><Bell size={18} /> Central de Alarmes</span>
+                    {alarmesDeHoje.length > 0 && (
+                      <span className="bg-red-600 text-white text-[10px] px-2 py-0.5 rounded-full font-black">{alarmesDeHoje.length}</span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => { setIsPayrollOpen(true); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-bold min-h-[44px]"
+                  >
+                    <Wallet size={18} className="text-indigo-600" /> Folha de Pagamento
+                  </button>
+                  <button
+                    onClick={() => { setIsSettingsOpen(true); setIsMobileMenuOpen(false); }}
+                    className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-slate-50 text-slate-700 border border-slate-200 text-sm font-bold min-h-[44px]"
+                  >
+                    <Settings size={18} className="text-slate-600" /> Configurações
+                  </button>
+                  {canImport && (
+                    <button
+                      onClick={() => { setIsImportModalOpen(true); setIsMobileMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2.5 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 text-sm font-bold min-h-[44px]"
+                    >
+                      <FileSpreadsheet size={18} /> Importar (Colar)
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="p-4 border-t border-slate-100 bg-slate-50">
+                <button
+                  onClick={() => { setIsMobileMenuOpen(false); handleLogout(); }}
+                  className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 font-bold text-sm min-h-[44px]"
+                >
+                  <LogOut size={16} /> Sair da Conta
+                </button>
+              </div>
+            </motion.aside>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Mobile Fixed Bottom Navigation Bar (< 1024px) */}
+      <nav
+        aria-label="Navegação Mobile"
+        className="lg:hidden fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-[0_-4px_20px_rgba(15,23,42,0.06)] pb-[env(safe-area-inset-bottom)]"
+      >
+        <div className="grid grid-cols-5 items-center px-1 py-1">
+          {[
+            { id: 'obras', label: 'Obras', icon: ClipboardList },
+            { id: 'servicos', label: 'Serviços', icon: Wrench },
+            { id: 'escala', label: 'Escala', icon: Calendar },
+            { id: 'alertas', label: 'Alertas', icon: CalendarClock, badge: upcoming3DaysCount }
+          ].map((item) => {
+            const Icon = item.icon;
+            const isActive = activeTab === item.id;
+            return (
+              <button
+                key={item.id}
+                onClick={() => setActiveTab(item.id as any)}
+                className={`relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all min-h-[44px] ${
+                  isActive ? 'text-indigo-600 bg-indigo-50/70' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                <Icon size={18} />
+                <span className="text-[10px] font-bold leading-none truncate max-w-full px-1">{item.label}</span>
+                {item.badge !== undefined && item.badge > 0 && (
+                  <span className="absolute top-0.5 right-2 bg-red-500 text-white text-[9px] font-black h-4 min-w-[16px] px-1 rounded-full flex items-center justify-center">
+                    {item.badge}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+          <button
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl text-slate-600 hover:text-indigo-600 transition-all min-h-[44px]"
+          >
+            <Menu size={18} />
+            <span className="text-[10px] font-bold leading-none">Mais</span>
+          </button>
+        </div>
+      </nav>
 
       {/* Modal de Observação Ampliada */}
       <ObservacaoModal 
@@ -8555,8 +8804,8 @@ function SettingsModal({
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[85vh]">
-        <div className="p-6 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white">
+      <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} className="relative w-[95vw] sm:w-[90vw] max-w-4xl bg-white rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] touch-controls">
+        <div className="p-4 sm:p-6 border-b border-slate-100 flex items-center justify-between bg-slate-900 text-white shrink-0">
           <div className="flex items-center gap-2.5">
             <Settings size={20} />
             <h2 className="text-base font-bold">Configurações do Sistema</h2>
@@ -8564,14 +8813,14 @@ function SettingsModal({
           <button onClick={onClose} className="p-1.5 hover:bg-white/10 rounded-full transition-colors"><X size={20} /></button>
         </div>
 
-        <div className="flex flex-1 overflow-hidden text-xs">
+        <div className="flex flex-col md:flex-row flex-1 overflow-hidden text-xs">
           {/* Sidebar Tabs */}
-          <div className="w-56 bg-slate-50 border-r border-slate-200 p-2.5 space-y-1 shrink-0">
+          <div className="w-full md:w-56 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 p-2.5 flex md:flex-col overflow-x-auto md:overflow-x-visible gap-1.5 md:space-y-1 shrink-0 scrollbar-hide">
             <TabButton active={activeTab === 'vendedores'} onClick={() => { setActiveTab('vendedores'); setIsAdding(false); }} icon={<UserIcon size={16} />} label="Vendedores" />
             <TabButton active={activeTab === 'equipes'} onClick={() => { setActiveTab('equipes'); setIsAdding(false); }} icon={<Users size={16} />} label="Equipes" />
             <TabButton active={activeTab === 'inversores'} onClick={() => { setActiveTab('inversores'); setIsAdding(false); }} icon={<BarChart3 size={16} />} label="Inversores" />
             <TabButton active={activeTab === 'formasPagamento'} onClick={() => { setActiveTab('formasPagamento'); setIsAdding(false); }} icon={<DollarSign size={16} />} label="Pagamentos" />
-            <div className="my-2 border-t border-slate-200 pt-2">
+            <div className="md:my-2 md:border-t md:border-slate-200 md:pt-2 shrink-0">
               <TabButton active={activeTab === 'bancoDados'} onClick={() => { setActiveTab('bancoDados'); setIsAdding(false); }} icon={<Database size={16} />} label="Banco de Dados" />
             </div>
           </div>
@@ -8828,7 +9077,7 @@ function PayrollModal({ isOpen, onClose, obras, equipes, onSelectObra, onOpenDet
   return (
     <div className="fixed inset-0 z-[60] flex items-center justify-center p-3">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} onClick={onClose} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" />
-      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="relative w-[95vw] sm:w-[90vw] max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90dvh] touch-controls">
         <div className="px-4 py-2.5 border-b border-slate-100 flex items-center justify-between bg-indigo-600 text-white">
           <div className="flex items-center gap-2">
             <Wallet size={18} />

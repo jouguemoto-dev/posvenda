@@ -255,8 +255,8 @@ const NotebookView: React.FC<{
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <div className="relative flex-1 min-w-[180px] md:w-56">
+        <div className="flex flex-wrap items-center gap-2 touch-controls">
+          <div className="relative flex-1 min-w-[min(100%,180px)] md:w-56">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input 
               type="text"
@@ -321,7 +321,7 @@ const NotebookView: React.FC<{
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-md rounded-2xl overflow-hidden shadow-2xl border border-slate-100"
+              className="bg-white w-[95vw] sm:w-[90vw] max-w-md max-h-[90dvh] overflow-y-auto rounded-2xl shadow-2xl border border-slate-100 touch-controls"
             >
               <div className="px-4 py-2.5 bg-slate-50 border-b border-slate-100 flex items-center justify-between">
                 <h3 className="text-sm font-bold text-slate-800">
@@ -468,7 +468,7 @@ const NotebookView: React.FC<{
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-sm rounded-3xl overflow-hidden shadow-2xl"
+              className="bg-white w-[95vw] sm:w-[90vw] max-w-sm max-h-[90dvh] overflow-y-auto rounded-3xl shadow-2xl touch-controls"
             >
               <div className="p-6 text-center">
                 <div className="w-16 h-16 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -498,7 +498,7 @@ const NotebookView: React.FC<{
       </AnimatePresence>
 
       {/* Notes Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 pt-4">
+      <div className="fluid-grid-cards pt-4">
         {sortedNotes.map((note, index) => {
           const colorSet = COLORS.find(c => c.bg === note.color) || COLORS[0];
           

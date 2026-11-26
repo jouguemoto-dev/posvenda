@@ -67,7 +67,7 @@ export default function PeriodoRelatorioModal({
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
-          className="relative z-50 inline-block w-full max-w-sm p-3.5 my-4 overflow-hidden text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl border border-slate-100"
+          className="relative z-50 inline-block w-[95vw] sm:w-[90vw] max-w-sm max-h-[90dvh] overflow-y-auto p-4 my-4 text-left align-middle transition-all transform bg-white shadow-2xl rounded-2xl border border-slate-100 touch-controls"
         >
           {/* Header */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-2.5">
@@ -86,40 +86,40 @@ export default function PeriodoRelatorioModal({
             </div>
             <button
               onClick={onClose}
-              className="p-1 text-slate-400 hover:text-slate-650 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors"
+              className="p-2 text-slate-400 hover:text-slate-650 bg-slate-50 hover:bg-slate-100 rounded-lg border border-slate-200 transition-colors min-h-[40px] min-w-[40px] flex items-center justify-center"
             >
-              <X size={14} />
+              <X size={16} />
             </button>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-2">
+          <form onSubmit={handleSubmit} className="space-y-3">
             {/* Range Presets */}
-            <div className="grid grid-cols-2 gap-1.5 mb-1">
+            <div className="grid grid-cols-2 gap-2 mb-1">
               <button
                 type="button"
                 onClick={() => applyPreset('este-mes')}
-                className="px-2.5 py-1 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all transition-colors active:scale-95 cursor-pointer"
+                className="px-2.5 py-2 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
               >
                 Este Mês
               </button>
               <button
                 type="button"
                 onClick={() => applyPreset('mes-passado')}
-                className="px-2.5 py-1 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all transition-colors active:scale-95 cursor-pointer"
+                className="px-2.5 py-2 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
               >
                 Mês Passado
               </button>
               <button
                 type="button"
                 onClick={() => applyPreset('ultimos-30')}
-                className="px-2.5 py-1 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all transition-colors active:scale-95 cursor-pointer"
+                className="px-2.5 py-2 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
               >
                 Últimos 30 Dias
               </button>
               <button
                 type="button"
                 onClick={() => applyPreset('tudo')}
-                className="px-2.5 py-1 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all transition-colors active:scale-95 cursor-pointer"
+                className="px-2.5 py-2 hover:bg-indigo-50 hover:text-indigo-700 text-slate-600 bg-slate-50 border border-slate-150 rounded-lg text-center text-[10px] font-bold transition-all active:scale-95 cursor-pointer"
               >
                 Todo o Período
               </button>
@@ -135,7 +135,7 @@ export default function PeriodoRelatorioModal({
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-250 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-slate-50 border border-slate-250 rounded-lg px-2.5 py-2 text-xs text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500 outline-none"
                 />
               </div>
 
@@ -147,25 +147,25 @@ export default function PeriodoRelatorioModal({
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-250 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500 outline-none"
+                  className="w-full bg-slate-50 border border-slate-250 rounded-lg px-2.5 py-2 text-xs text-slate-700 font-bold focus:ring-1 focus:ring-indigo-500 outline-none"
                 />
               </div>
             </div>
 
             {/* Action buttons */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2">
+            <div className="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-end gap-2">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-black uppercase tracking-wider transition-all cursor-pointer"
               >
                 Cancelar
               </button>
               <button
                 type="submit"
-                className="flex items-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-xs transition-all active:scale-98 cursor-pointer"
+                className="flex items-center gap-1.5 px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-black uppercase tracking-wider shadow-xs transition-all active:scale-98 cursor-pointer"
               >
-                <Printer size={12} />
+                <Printer size={14} />
                 <span>Gerar Relatório</span>
               </button>
             </div>
