@@ -2165,7 +2165,7 @@ export default function EscalaView({
             )}
           </div>
         ) : (
-          <div className="table-responsive-wrap overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
+          <div className="table-responsive-wrap escala-matrix-wrap overflow-auto flex-1 scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-transparent">
             <table
               className="w-full border-collapse table-fixed"
               style={{ minWidth: `${horizontalTableMinWidth}px` }}
@@ -2178,11 +2178,11 @@ export default function EscalaView({
               </colgroup>
               <thead className="sticky top-0 z-30">
                 <tr className="bg-[#1e2f3e] text-white">
-                  <th className="sticky left-0 z-40 bg-[#1e2f3e] p-2.5 text-left font-bold border-r border-white/15 text-xs sm:text-sm shadow-[2px_0_6px_-2px_rgba(0,0,0,0.3)]">
+                  <th className="sticky left-0 z-40 bg-[#1e2f3e] text-white p-2.5 text-left font-bold border-r border-white/15 text-xs sm:text-sm shadow-[2px_0_6px_-2px_rgba(0,0,0,0.3)]">
                     Dia / Data
                   </th>
                   {visibleTeams.map((team, vIdx) => (
-                    <th key={team.id} className="p-2 text-center font-bold border-r border-white/10 text-xs sm:text-sm relative group/header overflow-hidden">
+                    <th key={team.id} className="bg-[#1e2f3e] text-white p-2 text-center font-bold border-r border-white/10 text-xs sm:text-sm relative group/header overflow-hidden">
                       <div className="flex items-center justify-between gap-1 min-w-0">
                         <button 
                           onClick={() => moveVisibleTeam(team.id, 'left')}
@@ -2194,7 +2194,7 @@ export default function EscalaView({
                         </button>
                         
                         <div className="flex flex-col items-center min-w-0 flex-1 overflow-hidden">
-                          <span className="block w-full truncate font-black text-xs sm:text-sm leading-tight" title={team.name}>
+                          <span className="block w-full truncate font-black text-xs sm:text-sm leading-tight text-white" title={team.name}>
                             {team.name}
                           </span>
                           {teamScheduleCounts[team.id] > 0 && (
@@ -2216,7 +2216,7 @@ export default function EscalaView({
                     </th>
                   ))}
                   {visibleTeams.length === 0 && (
-                    <th className="p-4 text-center italic text-white/70 font-normal">
+                    <th className="bg-[#1e2f3e] p-4 text-center italic text-white/70 font-normal">
                       {teams.length === 0 
                         ? 'Nenhuma equipe cadastrada' 
                         : (

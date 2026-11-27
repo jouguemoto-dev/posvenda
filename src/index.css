@@ -120,12 +120,15 @@
   .table-responsive-wrap {
     width: 100%;
     max-width: 100%;
-    max-height: 72dvh;
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     overscroll-behavior-x: contain;
     scrollbar-width: thin;
     scrollbar-color: #94a3b8 #f1f5f9;
+  }
+
+  .table-responsive-wrap:not(.escala-matrix-wrap) {
+    max-height: 72dvh;
   }
 
   .table-responsive-wrap::-webkit-scrollbar {
@@ -148,7 +151,7 @@
     background: #64748b;
   }
 
-  .table-responsive-wrap > table > thead > tr > th {
+  .table-responsive-wrap:not(.escala-matrix-wrap) > table > thead > tr > th {
     position: sticky;
     top: 0;
     z-index: 10;
@@ -159,12 +162,12 @@
     white-space: nowrap;
   }
 
-  .table-responsive-wrap > table > tbody > tr > td {
+  .table-responsive-wrap:not(.escala-matrix-wrap) > table > tbody > tr > td {
     padding-inline: clamp(0.28rem, 0.35vw, 0.5rem);
     padding-block: 0.55rem;
   }
 
-  .table-responsive-wrap > table > thead > tr > th.sticky-actions-col {
+  .table-responsive-wrap:not(.escala-matrix-wrap) > table > thead > tr > th.sticky-actions-col {
     position: sticky;
     right: 0;
     top: 0;
@@ -173,7 +176,7 @@
     box-shadow: -6px 0 10px -6px rgba(15, 23, 42, 0.14), inset 0 -1px 0 #e2e8f0;
   }
 
-  .table-responsive-wrap > table > tbody > tr > td.sticky-actions-col {
+  .table-responsive-wrap:not(.escala-matrix-wrap) > table > tbody > tr > td.sticky-actions-col {
     position: sticky;
     right: 0;
     z-index: 5;
